@@ -39,9 +39,9 @@ contract AAAMarket {
     constructor(
         address _nft,
         address _collectionManager,
-        address payable _accessControls,
+        address  _accessControls,
         address _agents
-    ) payable {
+    )  {
         nft = AAANFT(_nft);
         collectionManager = AAACollectionManager(_collectionManager);
         accessControls = AAAAccessControls(_accessControls);
@@ -263,7 +263,7 @@ contract AAAMarket {
     }
 
     function setAccessControls(
-        address payable _accessControls
+        address  _accessControls
     ) external onlyAdmin {
         accessControls = AAAAccessControls(_accessControls);
     }

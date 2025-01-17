@@ -57,7 +57,7 @@ contract AAADevTreasury {
     event AddToServices(address token, uint256 amount);
     event DevTreasuryAdded(address token, uint256 amount);
 
-    constructor(address payable _accessControls) payable {
+    constructor(address _accessControls)  {
         accessControls = AAAAccessControls(_accessControls);
         ownerAmountPercent = 30;
         distributionAmountPercent = 30;
@@ -219,7 +219,7 @@ contract AAADevTreasury {
     }
 
     function setAccessControls(
-        address payable _accessControls
+        address  _accessControls
     ) external onlyAdmin {
         accessControls = AAAAccessControls(_accessControls);
     }

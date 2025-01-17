@@ -60,24 +60,24 @@ contract AAAAgentsTest is Test {
 
     function setUp() public {
         accessControls = new AAAAccessControls();
-        devTreasury = new AAADevTreasury(payable(address(accessControls)));
+        devTreasury = new AAADevTreasury((address(accessControls)));
         nft = new AAANFT(
             "Triple A NFT",
             "AAANFT",
-            payable(address(accessControls))
+            (address(accessControls))
         );
         collectionManager = new AAACollectionManager(
-            payable(address(accessControls))
+            (address(accessControls))
         );
         agents = new AAAAgents(
-            payable(address(accessControls)),
+            (address(accessControls)),
             address(devTreasury),
             address(collectionManager)
         );
         market = new AAAMarket(
             address(nft),
             address(collectionManager),
-            payable(address(accessControls)),
+            (address(accessControls)),
             address(agents)
         );
 

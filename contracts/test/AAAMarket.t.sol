@@ -36,24 +36,24 @@ contract AAAMarketTest is Test {
     function setUp() public {
         accessControls = new AAAAccessControls();
         collectionManager = new AAACollectionManager(
-            payable(address(accessControls))
+            (address(accessControls))
         );
 
         nft = new AAANFT(
             "Triple A NFT",
             "AAANFT",
-            payable(address(accessControls))
+            (address(accessControls))
         );
-        devTreasury = new AAADevTreasury(payable(address(accessControls)));
+        devTreasury = new AAADevTreasury((address(accessControls)));
         agents = new AAAAgents(
-            payable(address(accessControls)),
+            (address(accessControls)),
             address(devTreasury),
             address(collectionManager)
         );
         market = new AAAMarket(
             address(nft),
             address(collectionManager),
-            payable(address(accessControls)),
+            (address(accessControls)),
             address(agents)
         );
 
@@ -251,7 +251,7 @@ contract AAAMarketTest is Test {
     function testSetCollectionManager() public {
         vm.startPrank(admin);
         AAACollectionManager newCollectionManager = new AAACollectionManager(
-            payable(address(accessControls))
+            (address(accessControls))
         );
         market.setCollectionManager(address(newCollectionManager));
         assertEq(
@@ -266,7 +266,7 @@ contract AAAMarketTest is Test {
         AAANFT newNFT = new AAANFT(
             "Triple A NFT",
             "AAANFT",
-            payable(address(accessControls))
+            (address(accessControls))
         );
         market.setNFT(address(newNFT));
         assertEq(address(market.nft()), address(newNFT));
@@ -276,7 +276,7 @@ contract AAAMarketTest is Test {
     function testSetAccessControls() public {
         vm.startPrank(admin);
         AAAAccessControls newAccessControls = new AAAAccessControls();
-        market.setAccessControls(payable(address(newAccessControls)));
+        market.setAccessControls((address(newAccessControls)));
         assertEq(address(market.accessControls()), address(newAccessControls));
         vm.stopPrank();
     }

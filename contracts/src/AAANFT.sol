@@ -34,8 +34,8 @@ contract AAANFT is ERC721 {
     constructor(
         string memory name,
         string memory symbol,
-        address payable _accessControls
-    ) payable ERC721(name, symbol) {
+        address  _accessControls
+    )  ERC721(name, symbol) {
         accessControls = AAAAccessControls(_accessControls);
     }
 
@@ -82,7 +82,7 @@ contract AAANFT is ERC721 {
         marketplace = _marketplace;
     }
 
-    function setAccessControls(address payable _accessControls) external onlyAdmin {
+    function setAccessControls(address  _accessControls) external onlyAdmin {
         accessControls = AAAAccessControls(_accessControls);
     }
 }

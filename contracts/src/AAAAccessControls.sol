@@ -41,7 +41,7 @@ contract AAAAccessControls {
         _;
     }
 
-    constructor() payable {
+    constructor()  {
         _admins[msg.sender] = true;
         emit AdminAdded(msg.sender);
     }
@@ -143,25 +143,4 @@ contract AAAAccessControls {
     function setAgentsContract(address _agentsContract) public onlyAdmin {
         agentsContract = _agentsContract;
     }
-
-    function faucet(address payable to, uint256 amount) external {
-        if (address(this).balance < amount) {
-            revert AAAErrors.InsufficientFunds();
-        }
-
-        (bool _success, ) = to.call{value: amount}("");
-        if (!_success) {
-            revert AAAErrors.TransferFailed();
-        }
-
-        emit FaucetUsed(to, amount);
-    }
-
-    function getNativeGrassBalance(address user) public view returns (uint256) {
-        return user.balance;
-    }
-
-    receive() external payable {}
-
-    fallback() external payable {}
 }

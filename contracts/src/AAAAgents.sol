@@ -78,10 +78,10 @@ contract AAAAgents {
     }
 
     constructor(
-        address payable _accessControls,
+        address  _accessControls,
         address _devTreasury,
         address _collectionManager
-    ) payable {
+    )  {
         accessControls = AAAAccessControls(_accessControls);
         devTreasury = AAADevTreasury(_devTreasury);
         collectionManager = AAACollectionManager(_collectionManager);
@@ -473,7 +473,7 @@ contract AAAAgents {
     }
 
     function setAccessControls(
-        address payable _accessControls
+        address  _accessControls
     ) external onlyAdmin {
         accessControls = AAAAccessControls(_accessControls);
     }

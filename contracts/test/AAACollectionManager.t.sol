@@ -29,7 +29,7 @@ contract AAACollectionManagerTest is Test {
     function setUp() public {
         accessControls = new AAAAccessControls();
         collectionManager = new AAACollectionManager(
-            payable(address(accessControls))
+            (address(accessControls))
         );
         token1 = new MockERC20("Token1", "TK1");
         token2 = new MockERC20("Token2", "TK2");
@@ -291,7 +291,7 @@ contract AAACollectionManagerTest is Test {
         AAAAccessControls newAccessControls = new AAAAccessControls();
         vm.startPrank(admin);
         collectionManager.setAccessControls(
-            payable(address(newAccessControls))
+            (address(newAccessControls))
         );
         assertEq(
             address(collectionManager.accessControls()),

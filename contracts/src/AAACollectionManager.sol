@@ -63,7 +63,7 @@ contract AAACollectionManager {
         _;
     }
 
-    constructor(address payable _accessControls) payable {
+    constructor(address  _accessControls)  {
         accessControls = AAAAccessControls(_accessControls);
     }
 
@@ -409,7 +409,7 @@ contract AAACollectionManager {
     }
 
     function setAccessControls(
-        address payable _accessControls
+        address  _accessControls
     ) external onlyAdmin {
         accessControls = AAAAccessControls(_accessControls);
     }
