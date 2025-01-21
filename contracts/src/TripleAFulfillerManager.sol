@@ -28,8 +28,10 @@ contract TripleAFulfillerManager {
         _;
     }
 
-    modifier onlyAdminOrMarket {
-        if (!accessControls.isAdmin(msg.sender) && msg.sender != address(market)) {
+    modifier onlyAdminOrMarket() {
+        if (
+            !accessControls.isAdmin(msg.sender) && msg.sender != address(market)
+        ) {
             revert TripleAErrors.NotAdmin();
         }
         _;
@@ -58,12 +60,12 @@ contract TripleAFulfillerManager {
             metadata: input.metadata
         });
 
-        emit FulfillerCreated( input.wallet, _fulfillerCounter);
+        emit FulfillerCreated(input.wallet, _fulfillerCounter);
     }
 
     function deleteFulfillerProfile(uint256 fulfillerId) public onlyFulfiller {
         if (_fulfillers[fulfillerId].wallet != msg.sender) {
-            TripleAErrors.NotFulfiller();
+            revert TripleAErrors.NotFulfiller();
         }
 
         if (_fulfillers[fulfillerId].activeOrders.length > 0) {
@@ -87,7 +89,7 @@ contract TripleAFulfillerManager {
 
     function fulfillOrder(uint256 fulfillerId, uint256 orderId) public {
         if (_fulfillers[fulfillerId].wallet != msg.sender) {
-            TripleAErrors.NotFulfiller();
+            revert TripleAErrors.NotFulfiller();
         }
 
         for (
@@ -98,7 +100,9 @@ contract TripleAFulfillerManager {
             if (_fulfillers[fulfillerId].activeOrders[i] == orderId) {
                 _fulfillers[fulfillerId].activeOrders[i] = _fulfillers[
                     fulfillerId
-                ].activeOrders[_fulfillers[fulfillerId].activeOrders.length - 1];
+                ].activeOrders[
+                        _fulfillers[fulfillerId].activeOrders.length - 1
+                    ];
                 _fulfillers[fulfillerId].activeOrders.pop();
                 break;
             }

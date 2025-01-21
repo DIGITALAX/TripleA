@@ -5,12 +5,14 @@ import "./TripleAErrors.sol";
 import "./TripleAAccessControls.sol";
 import "./TripleAAgents.sol";
 import "./TripleAMarket.sol";
+import "./TripleAMeme.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 contract TripleADevTreasury {
     TripleAAccessControls public accessControls;
     TripleAAgents public agents;
     TripleAMarket public market;
+    TripleAMeme public meme;
     uint256 public ownerAmountPercent;
     uint256 public distributionAmountPercent;
     uint256 public devAmountPercent;
@@ -20,6 +22,8 @@ contract TripleADevTreasury {
     mapping(uint256 => mapping(address => uint256)) private _collectorPayment;
     mapping(address => uint256) private _allTimeBalance;
     mapping(address => uint256) private _allTimeServices;
+    mapping(address => uint256) private _collectorsMemeActivated;
+    mapping(address => uint256) private _ownersMemeActivated;
 
     modifier onlyAdmin() {
         if (!accessControls.isAdmin(msg.sender)) {
@@ -56,6 +60,18 @@ contract TripleADevTreasury {
     event AgentOwnerPaid(address token, address owner, uint256 amount);
     event AddToServices(address token, uint256 amount);
     event DevTreasuryAdded(address token, uint256 amount);
+    event CollectorMemeActivated(address collector, uint256 amount);
+    event AgentOwnerMemeActivated(address owner, uint256 amount);
+    event AgentOwnerMemeAllocation(
+        address token,
+        address owner,
+        uint256 amount
+    );
+    event CollectorMemeAllocation(
+        address token,
+        address collector,
+        uint256 amount
+    );
 
     constructor(address payable _accessControls) payable {
         accessControls = TripleAAccessControls(_accessControls);
@@ -178,28 +194,81 @@ contract TripleADevTreasury {
                 uint256 weight = 1e18 / (j + 1);
                 uint256 payment = (_distributionAmount * weight) / totalWeight;
 
-                _collectorPayment[collectionId][_collectors[j]] = payment;
-
-                if (IERC20(token).transfer(_collectors[j], payment)) {
-                    emit OrderPayment(token, _collectors[j], payment);
-                }
-            }
-        }
-
-        for (uint8 i = 0; i < owners.length; i++) {
-            if (
-                IERC20(token).transfer(owners[i], _ownerAmount / owners.length)
-            ) {
-                emit AgentOwnerPaid(
+                _memeSplitCollector(
                     token,
-                    owners[i],
-                    _ownerAmount / owners.length
+                    _collectors[j],
+                    payment,
+                    collectionId
                 );
             }
         }
 
+        for (uint8 i = 0; i < owners.length; i++) {
+            _memeSplitOwner(token, owners[i], _ownerAmount / owners.length);
+        }
+
         _treasury[token] += _devAmount;
         emit DevTreasuryAdded(token, _devAmount);
+    }
+
+    function _memeSplitOwner(
+        address token,
+        address owner,
+        uint256 amount
+    ) internal {
+        if (_ownersMemeActivated[owner] > 0) {
+            uint256 _meme = (_ownersMemeActivated[owner] * amount) / 100;
+            uint256 _paid = 0;
+            if (amount > _meme) {
+                _paid = amount - _meme;
+            }
+
+            if (IERC20(token).transfer(owner, _meme)) {
+                emit AgentOwnerMemeAllocation(token, owner, _meme);
+            }
+
+            if (_paid > 0) {
+                if (IERC20(token).transfer(owner, _paid)) {
+                    emit AgentOwnerPaid(token, owner, _paid);
+                }
+            }
+        } else {
+            if (IERC20(token).transfer(owner, amount)) {
+                emit AgentOwnerPaid(token, owner, amount);
+            }
+        }
+    }
+
+    function _memeSplitCollector(
+        address token,
+        address collector,
+        uint256 amount,
+        uint256 collectionId
+    ) internal {
+        if (_collectorsMemeActivated[collector] > 0) {
+            uint256 _meme = (_collectorsMemeActivated[collector] * amount) /
+                100;
+            uint256 _paid = 0;
+            if (amount > _meme) {
+                _paid = amount - _meme;
+            }
+
+            if (IERC20(token).transfer(collector, _meme)) {
+                emit CollectorMemeAllocation(token, collector, _meme);
+            }
+
+            if (_paid > 0) {
+                if (IERC20(token).transfer(collector, _paid)) {
+                    _collectorPayment[collectionId][collector] += _paid;
+                    emit OrderPayment(token, collector, _paid);
+                }
+            }
+        } else {
+            if (IERC20(token).transfer(collector, amount)) {
+                _collectorPayment[collectionId][collector] += amount;
+                emit OrderPayment(token, collector, amount);
+            }
+        }
     }
 
     function getBalanceByToken(address token) public view returns (uint256) {
@@ -240,6 +309,10 @@ contract TripleADevTreasury {
         market = TripleAMarket(_market);
     }
 
+    function setMeme(address payable _meme) external onlyAdmin {
+        meme = TripleAMeme(_meme);
+    }
+
     function setAmounts(
         uint256 _ownerAmountPercent,
         uint256 _distributionAmountPercent,
@@ -255,4 +328,30 @@ contract TripleADevTreasury {
         distributionAmountPercent = _distributionAmountPercent;
         devAmountPercent = _devAmountPercent;
     }
+
+    function getCollectorMemeActivated(
+        address collector
+    ) public view returns (uint256) {
+        return _collectorsMemeActivated[collector];
+    }
+
+    function getAgentOwnerMemeActivated(
+        address owner
+    ) public view returns (uint256) {
+        return _ownersMemeActivated[owner];
+    }
+
+    function setCollectorMemeActivated(uint256 amount) public {
+        _collectorsMemeActivated[msg.sender] = amount;
+        emit CollectorMemeActivated(msg.sender, amount);
+    }
+
+    function setAgentOwnerMemeActivated(uint256 amount) public {
+        _ownersMemeActivated[msg.sender] = amount;
+        emit AgentOwnerMemeActivated(msg.sender, amount);
+    }
+
+    receive() external payable {}
+
+    fallback() external payable {}
 }

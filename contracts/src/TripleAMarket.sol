@@ -354,7 +354,7 @@ contract TripleAMarket {
         agents = TripleAAgents(_agents);
     }
 
-    function setDevTreasury(address _devTreasury) external onlyAdmin {
+    function setDevTreasury(address payable _devTreasury) external onlyAdmin {
         devTreasury = TripleADevTreasury(_devTreasury);
     }
 

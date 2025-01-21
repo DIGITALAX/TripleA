@@ -104,7 +104,7 @@ contract TripleAAgents {
 
     constructor(
         address payable _accessControls,
-        address _devTreasury,
+        address payable _devTreasury,
         address _collectionManager
     ) payable {
         accessControls = TripleAAccessControls(_accessControls);
@@ -413,7 +413,7 @@ contract TripleAAgents {
         address token,
         uint256 agentId,
         uint256 collectionId
-    ) internal returns (uint256) {
+    ) internal view returns (uint256) {
         uint256 _rent = 0;
 
         if (_workers[agentId][collectionId].remix) {
@@ -643,7 +643,7 @@ contract TripleAAgents {
         accessControls = TripleAAccessControls(_accessControls);
     }
 
-    function setDevTreasury(address _devTreasury) external onlyAdmin {
+    function setDevTreasury(address payable _devTreasury) external onlyAdmin {
         devTreasury = TripleADevTreasury(_devTreasury);
     }
 
