@@ -2,10 +2,10 @@
 pragma solidity 0.8.24;
 
 import "forge-std/Test.sol";
-import "src/AAACollectionManager.sol";
-import "src/AAAAccessControls.sol";
-import "src/AAAErrors.sol";
-import "src/AAALibrary.sol";
+import "src/TripleACollectionManager.sol";
+import "src/TripleAAccessControls.sol";
+import "src/TripleAErrors.sol";
+import "src/TripleALibrary.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 contract MockERC20 is ERC20 {
@@ -16,9 +16,9 @@ contract MockERC20 is ERC20 {
     }
 }
 
-contract AAACollectionManagerTest is Test {
-    AAACollectionManager private collectionManager;
-    AAAAccessControls private accessControls;
+contract TripleACollectionManagerTest is Test {
+    TripleACollectionManager private collectionManager;
+    TripleAAccessControls private accessControls;
     address private admin = address(0x123);
     address private artist = address(0x456);
     address private market = address(0x789);
@@ -27,9 +27,9 @@ contract AAACollectionManagerTest is Test {
     MockERC20 private token2;
 
     function setUp() public {
-        accessControls = new AAAAccessControls();
-        collectionManager = new AAACollectionManager(
-            (address(accessControls))
+        accessControls = new TripleAAccessControls();
+        collectionManager = new TripleACollectionManager(
+            payable(address(accessControls))
         );
         token1 = new MockERC20("Token1", "TK1");
         token2 = new MockERC20("Token2", "TK2");
@@ -41,13 +41,13 @@ contract AAACollectionManagerTest is Test {
 
     function testCreateDropAndCollections() public {
         vm.startPrank(artist);
-        AAALibrary.CollectionInput memory inputs_1 = AAALibrary
+        TripleALibrary.CollectionInput memory inputs_1 = TripleALibrary
             .CollectionInput({
                 tokens: new address[](2),
                 prices: new uint256[](2),
                 agentIds: new uint256[](3),
                 customInstructions: new string[](3),
-                dailyFrequency: new uint256[](3),
+                cycleFrequency: new uint256[](3),
                 metadata: "Metadata 1",
                 amount: 1
             });
@@ -61,18 +61,18 @@ contract AAACollectionManagerTest is Test {
         inputs_1.customInstructions[0] = "custom1";
         inputs_1.customInstructions[1] = "custom2";
         inputs_1.customInstructions[2] = "custom3";
-        inputs_1.dailyFrequency[0] = 1;
-        inputs_1.dailyFrequency[1] = 2;
-        inputs_1.dailyFrequency[2] = 3;
+        inputs_1.cycleFrequency[0] = 1;
+        inputs_1.cycleFrequency[1] = 2;
+        inputs_1.cycleFrequency[2] = 3;
 
-        AAALibrary.CollectionInput memory inputs_2 = AAALibrary
+        TripleALibrary.CollectionInput memory inputs_2 = TripleALibrary
             .CollectionInput({
                 tokens: new address[](1),
                 prices: new uint256[](1),
                 agentIds: new uint256[](1),
                 metadata: "Metadata 2",
                 customInstructions: new string[](1),
-                dailyFrequency: new uint256[](1),
+                cycleFrequency: new uint256[](1),
                 amount: 10
             });
 
@@ -80,7 +80,7 @@ contract AAACollectionManagerTest is Test {
         inputs_2.prices[0] = 13200000000000000000;
         inputs_2.agentIds[0] = 3;
         inputs_2.customInstructions[0] = "another custom";
-        inputs_2.dailyFrequency[0] = 1;
+        inputs_2.cycleFrequency[0] = 1;
 
         collectionManager.create(inputs_1, "some drop URI", 0);
         collectionManager.create(inputs_2, "", 1);
@@ -180,13 +180,13 @@ contract AAACollectionManagerTest is Test {
         testCreateDropAndCollections();
 
         vm.startPrank(artist);
-        AAALibrary.CollectionInput memory inputs_1 = AAALibrary
+        TripleALibrary.CollectionInput memory inputs_1 = TripleALibrary
             .CollectionInput({
                 tokens: new address[](2),
                 prices: new uint256[](2),
                 agentIds: new uint256[](3),
                 customInstructions: new string[](3),
-                dailyFrequency: new uint256[](3),
+                cycleFrequency: new uint256[](3),
                 metadata: "Metadata 2",
                 amount: 1
             });
@@ -200,17 +200,17 @@ contract AAACollectionManagerTest is Test {
         inputs_1.customInstructions[0] = "custom1";
         inputs_1.customInstructions[1] = "custom2";
         inputs_1.customInstructions[2] = "custom3";
-        inputs_1.dailyFrequency[0] = 1;
-        inputs_1.dailyFrequency[1] = 2;
-        inputs_1.dailyFrequency[2] = 3;
+        inputs_1.cycleFrequency[0] = 1;
+        inputs_1.cycleFrequency[1] = 2;
+        inputs_1.cycleFrequency[2] = 3;
 
-        AAALibrary.CollectionInput memory inputs_2 = AAALibrary
+        TripleALibrary.CollectionInput memory inputs_2 = TripleALibrary
             .CollectionInput({
                 tokens: new address[](1),
                 prices: new uint256[](1),
                 agentIds: new uint256[](1),
                 customInstructions: new string[](1),
-                dailyFrequency: new uint256[](1),
+                cycleFrequency: new uint256[](1),
                 metadata: "Metadata 3",
                 amount: 10
             });
@@ -219,7 +219,7 @@ contract AAACollectionManagerTest is Test {
         inputs_2.prices[0] = 13200000000000000000;
         inputs_2.agentIds[0] = 3;
         inputs_2.customInstructions[0] = "another custom";
-        inputs_2.dailyFrequency[0] = 1;
+        inputs_2.cycleFrequency[0] = 1;
         collectionManager.create(inputs_1, "", 1);
         collectionManager.create(inputs_2, "", 1);
 
@@ -233,7 +233,7 @@ contract AAACollectionManagerTest is Test {
         );
         assertEq(collectionIds.length, 4);
 
-        vm.expectRevert(abi.encodeWithSelector(AAAErrors.DropInvalid.selector));
+        vm.expectRevert(abi.encodeWithSelector(TripleAErrors.DropInvalid.selector));
         collectionManager.create(inputs_1, "", 2);
     }
 
@@ -244,7 +244,7 @@ contract AAACollectionManagerTest is Test {
         collectionManager.deleteCollection(1);
 
         vm.startPrank(admin);
-        vm.expectRevert(abi.encodeWithSelector(AAAErrors.NotArtist.selector));
+        vm.expectRevert(abi.encodeWithSelector(TripleAErrors.NotArtist.selector));
         collectionManager.deleteCollection(2);
 
         uint256[] memory dropIds = collectionManager.getDropIdsByArtist(artist);
@@ -288,10 +288,10 @@ contract AAACollectionManagerTest is Test {
     }
 
     function testSetAccessControls() public {
-        AAAAccessControls newAccessControls = new AAAAccessControls();
+        TripleAAccessControls newAccessControls = new TripleAAccessControls();
         vm.startPrank(admin);
         collectionManager.setAccessControls(
-            (address(newAccessControls))
+            payable(address(newAccessControls))
         );
         assertEq(
             address(collectionManager.accessControls()),
@@ -305,14 +305,14 @@ contract AAACollectionManagerTest is Test {
         uint256[] memory mintedTokenIds = new uint256[](1);
         mintedTokenIds[0] = 1;
         vm.expectRevert(
-            abi.encodeWithSelector(AAAErrors.OnlyMarketContract.selector)
+            abi.encodeWithSelector(TripleAErrors.OnlyMarketContract.selector)
         );
         collectionManager.updateData(mintedTokenIds, 1, 1);
     }
 
     function testOnlyAdminModifier() public {
         vm.prank(artist);
-        vm.expectRevert(abi.encodeWithSelector(AAAErrors.NotAdmin.selector));
+        vm.expectRevert(abi.encodeWithSelector(TripleAErrors.NotAdmin.selector));
         collectionManager.setMarket(address(0x1234));
     }
 }

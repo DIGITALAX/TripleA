@@ -2,11 +2,11 @@
 pragma solidity 0.8.24;
 
 import "forge-std/Test.sol";
-import "src/AAAAccessControls.sol";
-import "src/AAAErrors.sol";
+import "src/TripleAAccessControls.sol";
+import "src/TripleAErrors.sol";
 
-contract AAAAccessControlsTest is Test {
-    AAAAccessControls private accessControls;
+contract TripleAAccessControlsTest is Test {
+    TripleAAccessControls private accessControls;
     address private admin1 = address(0x123);
     address private admin2 = address(0x456);
     address private agent1 = address(0x789);
@@ -15,7 +15,7 @@ contract AAAAccessControlsTest is Test {
     address private agentsContract = address(0x333);
 
     function setUp() public {
-        accessControls = new AAAAccessControls();
+        accessControls = new TripleAAccessControls();
     }
 
     function testConstructor() public view {
@@ -30,7 +30,7 @@ contract AAAAccessControlsTest is Test {
     function testAddAdminRevertIfAlreadyExists() public {
         accessControls.addAdmin(admin1);
         vm.expectRevert(
-            abi.encodeWithSelector(AAAErrors.AdminAlreadyExists.selector)
+            abi.encodeWithSelector(TripleAErrors.AdminAlreadyExists.selector)
         );
         accessControls.addAdmin(admin1);
     }
@@ -43,14 +43,14 @@ contract AAAAccessControlsTest is Test {
 
     function testRemoveAdminRevertIfDoesNotExist() public {
         vm.expectRevert(
-            abi.encodeWithSelector(AAAErrors.AdminDoesntExist.selector)
+            abi.encodeWithSelector(TripleAErrors.AdminDoesntExist.selector)
         );
         accessControls.removeAdmin(admin1);
     }
 
     function testRemoveAdminRevertIfRemovingSelf() public {
         vm.expectRevert(
-            abi.encodeWithSelector(AAAErrors.CannotRemoveSelf.selector)
+            abi.encodeWithSelector(TripleAErrors.CannotRemoveSelf.selector)
         );
         accessControls.removeAdmin(address(this));
     }
@@ -69,7 +69,7 @@ contract AAAAccessControlsTest is Test {
         vm.prank(agentsContract);
         accessControls.addAgent(agent1);
         vm.expectRevert(
-            abi.encodeWithSelector(AAAErrors.AgentAlreadyExists.selector)
+            abi.encodeWithSelector(TripleAErrors.AgentAlreadyExists.selector)
         );
         vm.prank(agentsContract);
         accessControls.addAgent(agent1);
@@ -90,7 +90,7 @@ contract AAAAccessControlsTest is Test {
         accessControls.setAgentsContract(agentsContract);
         vm.prank(agentsContract);
         vm.expectRevert(
-            abi.encodeWithSelector(AAAErrors.AgentDoesntExist.selector)
+            abi.encodeWithSelector(TripleAErrors.AgentDoesntExist.selector)
         );
         accessControls.removeAgent(agent1);
     }
@@ -103,7 +103,7 @@ contract AAAAccessControlsTest is Test {
     function testSetAcceptedTokenRevertIfAlreadyExists() public {
         accessControls.setAcceptedToken(token1);
         vm.expectRevert(
-            abi.encodeWithSelector(AAAErrors.TokenAlreadyExists.selector)
+            abi.encodeWithSelector(TripleAErrors.TokenAlreadyExists.selector)
         );
         accessControls.setAcceptedToken(token1);
     }
@@ -117,7 +117,7 @@ contract AAAAccessControlsTest is Test {
 
     function testRemoveAcceptedTokenRevertIfDoesNotExist() public {
         vm.expectRevert(
-            abi.encodeWithSelector(AAAErrors.TokenDoesntExist.selector)
+            abi.encodeWithSelector(TripleAErrors.TokenDoesntExist.selector)
         );
         accessControls.removeAcceptedToken(token1);
     }
@@ -130,7 +130,7 @@ contract AAAAccessControlsTest is Test {
 
     function testSetTokenThresholdRevertIfTokenNotAccepted() public {
         vm.expectRevert(
-            abi.encodeWithSelector(AAAErrors.TokenNotAccepted.selector)
+            abi.encodeWithSelector(TripleAErrors.TokenNotAccepted.selector)
         );
         accessControls.setTokenThresholdAndRent(token1, 100, 10);
     }
@@ -142,13 +142,13 @@ contract AAAAccessControlsTest is Test {
 
     function testSetAgentContractRevertIfNotAdmin() public {
         vm.prank(admin1);
-        vm.expectRevert(abi.encodeWithSelector(AAAErrors.NotAdmin.selector));
+        vm.expectRevert(abi.encodeWithSelector(TripleAErrors.NotAdmin.selector));
         accessControls.setAgentsContract(agentsContract);
     }
 
     function testOnlyAdminModifier() public {
         vm.prank(admin1);
-        vm.expectRevert(abi.encodeWithSelector(AAAErrors.NotAdmin.selector));
+        vm.expectRevert(abi.encodeWithSelector(TripleAErrors.NotAdmin.selector));
         accessControls.addAdmin(admin2);
     }
 }

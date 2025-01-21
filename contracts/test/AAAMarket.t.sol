@@ -2,12 +2,12 @@
 pragma solidity 0.8.24;
 
 import "forge-std/Test.sol";
-import "./../src/AAAMarket.sol";
-import "./../src/AAANFT.sol";
-import "./../src/AAADevTreasury.sol";
-import "./../src/AAAAgents.sol";
-import "./../src/AAACollectionManager.sol";
-import "./../src/AAAAccessControls.sol";
+import "./../src/TripleAMarket.sol";
+import "./../src/TripleANFT.sol";
+import "./../src/TripleADevTreasury.sol";
+import "./../src/TripleAAgents.sol";
+import "./../src/TripleACollectionManager.sol";
+import "./../src/TripleAAccessControls.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
@@ -19,13 +19,13 @@ contract MockERC20 is ERC20 {
     }
 }
 
-contract AAAMarketTest is Test {
-    AAAMarket private market;
-    AAADevTreasury private devTreasury;
-    AAAAgents private agents;
-    AAACollectionManager private collectionManager;
-    AAAAccessControls private accessControls;
-    AAANFT private nft;
+contract TripleAMarketTest is Test {
+    TripleAMarket private market;
+    TripleADevTreasury private devTreasury;
+    TripleAAgents private agents;
+    TripleACollectionManager private collectionManager;
+    TripleAAccessControls private accessControls;
+    TripleANFT private nft;
     MockERC20 private token1;
     MockERC20 private token2;
 
@@ -34,26 +34,26 @@ contract AAAMarketTest is Test {
     address private buyer = address(0x789);
 
     function setUp() public {
-        accessControls = new AAAAccessControls();
-        collectionManager = new AAACollectionManager(
-            (address(accessControls))
+        accessControls = new TripleAAccessControls();
+        collectionManager = new TripleACollectionManager(
+            payable(address(accessControls))
         );
 
-        nft = new AAANFT(
+        nft = new TripleANFT(
             "Triple A NFT",
-            "AAANFT",
-            (address(accessControls))
+            "TripleANFT",
+            payable(address(accessControls))
         );
-        devTreasury = new AAADevTreasury((address(accessControls)));
-        agents = new AAAAgents(
-            (address(accessControls)),
+        devTreasury = new TripleADevTreasury(payable(address(accessControls)));
+        agents = new TripleAAgents(
+            payable(address(accessControls)),
             address(devTreasury),
             address(collectionManager)
         );
-        market = new AAAMarket(
+        market = new TripleAMarket(
             address(nft),
             address(collectionManager),
-            (address(accessControls)),
+            payable(address(accessControls)),
             address(agents)
         );
 
@@ -88,12 +88,12 @@ contract AAAMarketTest is Test {
     function testBuyCollection() public {
         vm.startPrank(artist);
 
-        AAALibrary.CollectionInput memory inputs_1 = AAALibrary
+        TripleALibrary.CollectionInput memory inputs_1 = TripleALibrary
             .CollectionInput({
                 tokens: new address[](1),
                 prices: new uint256[](1),
                 agentIds: new uint256[](1),
-                dailyFrequency: new uint256[](1),
+                cycleFrequency: new uint256[](1),
                 customInstructions: new string[](1),
                 metadata: "Metadata 1",
                 amount: 5
@@ -103,7 +103,7 @@ contract AAAMarketTest is Test {
         inputs_1.prices[0] = 10 ether;
         inputs_1.agentIds[0] = 1;
         inputs_1.customInstructions[0] = "custom";
-        inputs_1.dailyFrequency[0] = 1;
+        inputs_1.cycleFrequency[0] = 1;
         collectionManager.create(inputs_1, "some drop uri", 0);
         vm.stopPrank();
 
@@ -132,12 +132,12 @@ contract AAAMarketTest is Test {
     function testBuyWithInvalidToken() public {
         vm.startPrank(artist);
 
-        AAALibrary.CollectionInput memory inputs_1 = AAALibrary
+        TripleALibrary.CollectionInput memory inputs_1 = TripleALibrary
             .CollectionInput({
                 tokens: new address[](1),
                 prices: new uint256[](1),
                 agentIds: new uint256[](1),
-                dailyFrequency: new uint256[](1),
+                cycleFrequency: new uint256[](1),
                 customInstructions: new string[](1),
                 metadata: "Metadata 2",
                 amount: 5
@@ -147,7 +147,7 @@ contract AAAMarketTest is Test {
         inputs_1.prices[0] = 10 ether;
         inputs_1.agentIds[0] = 1;
         inputs_1.customInstructions[0] = "custom";
-        inputs_1.dailyFrequency[0] = 1;
+        inputs_1.cycleFrequency[0] = 1;
         collectionManager.create(inputs_1, "some 2 drop", 0);
         vm.stopPrank();
 
@@ -159,7 +159,7 @@ contract AAAMarketTest is Test {
         token2.allowance(buyer, address(devTreasury));
 
         vm.expectRevert(
-            abi.encodeWithSelector(AAAErrors.TokenNotAccepted.selector)
+            abi.encodeWithSelector(TripleAErrors.TokenNotAccepted.selector)
         );
         market.buy(1, 2, address(token2));
         vm.stopPrank();
@@ -176,13 +176,13 @@ contract AAAMarketTest is Test {
         createAgent();
         vm.startPrank(artist);
 
-        AAALibrary.CollectionInput memory inputs_1 = AAALibrary
+        TripleALibrary.CollectionInput memory inputs_1 = TripleALibrary
             .CollectionInput({
                 tokens: new address[](1),
                 prices: new uint256[](1),
                 agentIds: new uint256[](1),
                 customInstructions: new string[](1),
-                dailyFrequency: new uint256[](1),
+                cycleFrequency: new uint256[](1),
                 metadata: "Metadata Over Threshold",
                 amount: 10
             });
@@ -191,7 +191,7 @@ contract AAAMarketTest is Test {
         inputs_1.prices[0] = 70 ether;
         inputs_1.agentIds[0] = 1;
         inputs_1.customInstructions[0] = "custom";
-        inputs_1.dailyFrequency[0] = 1;
+        inputs_1.cycleFrequency[0] = 1;
 
         collectionManager.create(inputs_1, "some 3 drop", 0);
         vm.stopPrank();
@@ -240,7 +240,7 @@ contract AAAMarketTest is Test {
             1,
             1
         );
-        uint256 rent = accessControls.getTokenDailyRent(address(token1));
+        uint256 rent = accessControls.getTokenCycleRent(address(token1));
         assertEq(agentBalance, rent);
         assertEq(bonusBalance, agentShare - rent);
 
@@ -250,8 +250,8 @@ contract AAAMarketTest is Test {
 
     function testSetCollectionManager() public {
         vm.startPrank(admin);
-        AAACollectionManager newCollectionManager = new AAACollectionManager(
-            (address(accessControls))
+        TripleACollectionManager newCollectionManager = new TripleACollectionManager(
+            payable(address(accessControls))
         );
         market.setCollectionManager(address(newCollectionManager));
         assertEq(
@@ -263,10 +263,10 @@ contract AAAMarketTest is Test {
 
     function testSetNFT() public {
         vm.startPrank(admin);
-        AAANFT newNFT = new AAANFT(
+        TripleANFT newNFT = new TripleANFT(
             "Triple A NFT",
-            "AAANFT",
-            (address(accessControls))
+            "TripleANFT",
+            payable(address(accessControls))
         );
         market.setNFT(address(newNFT));
         assertEq(address(market.nft()), address(newNFT));
@@ -275,15 +275,15 @@ contract AAAMarketTest is Test {
 
     function testSetAccessControls() public {
         vm.startPrank(admin);
-        AAAAccessControls newAccessControls = new AAAAccessControls();
-        market.setAccessControls((address(newAccessControls)));
+        TripleAAccessControls newAccessControls = new TripleAAccessControls();
+        market.setAccessControls(payable(address(newAccessControls)));
         assertEq(address(market.accessControls()), address(newAccessControls));
         vm.stopPrank();
     }
 
     function testOnlyAdminReverts() public {
         vm.prank(artist);
-        vm.expectRevert(abi.encodeWithSelector(AAAErrors.NotAdmin.selector));
+        vm.expectRevert(abi.encodeWithSelector(TripleAErrors.NotAdmin.selector));
         market.setCollectionManager(address(collectionManager));
     }
 }

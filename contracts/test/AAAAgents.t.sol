@@ -2,14 +2,14 @@
 pragma solidity 0.8.24;
 
 import "forge-std/Test.sol";
-import "src/AAAAgents.sol";
-import "src/AAAErrors.sol";
-import "src/AAALibrary.sol";
-import "src/AAAAccessControls.sol";
-import "src/AAADevTreasury.sol";
-import "src/AAACollectionManager.sol";
-import "src/AAANFT.sol";
-import "src/AAAMarket.sol";
+import "src/TripleAAgents.sol";
+import "src/TripleAErrors.sol";
+import "src/TripleALibrary.sol";
+import "src/TripleAAccessControls.sol";
+import "src/TripleADevTreasury.sol";
+import "src/TripleACollectionManager.sol";
+import "src/TripleANFT.sol";
+import "src/TripleAMarket.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 
@@ -35,13 +35,13 @@ struct BonusInput {
     uint256 treasuryBalance;
 }
 
-contract AAAAgentsTest is Test {
-    AAAAgents private agents;
-    AAAAccessControls private accessControls;
-    AAACollectionManager private collectionManager;
-    AAADevTreasury private devTreasury;
-    AAAMarket private market;
-    AAANFT private nft;
+contract TripleAAgentsTest is Test {
+    TripleAAgents private agents;
+    TripleAAccessControls private accessControls;
+    TripleACollectionManager private collectionManager;
+    TripleADevTreasury private devTreasury;
+    TripleAMarket private market;
+    TripleANFT private nft;
     string private metadata = "Agent Metadata";
     address private agentWallet = address(0x789);
     string private metadata2 = "Agent Metadata1";
@@ -59,25 +59,25 @@ contract AAAAgentsTest is Test {
     MockERC20 private token2;
 
     function setUp() public {
-        accessControls = new AAAAccessControls();
-        devTreasury = new AAADevTreasury((address(accessControls)));
-        nft = new AAANFT(
+        accessControls = new TripleAAccessControls();
+        devTreasury = new TripleADevTreasury(payable(address(accessControls)));
+        nft = new TripleANFT(
             "Triple A NFT",
-            "AAANFT",
-            (address(accessControls))
+            "TripleANFT",
+            payable(address(accessControls))
         );
-        collectionManager = new AAACollectionManager(
-            (address(accessControls))
+        collectionManager = new TripleACollectionManager(
+            payable(address(accessControls))
         );
-        agents = new AAAAgents(
-            (address(accessControls)),
+        agents = new TripleAAgents(
+            payable(address(accessControls)),
             address(devTreasury),
             address(collectionManager)
         );
-        market = new AAAMarket(
+        market = new TripleAMarket(
             address(nft),
             address(collectionManager),
-            (address(accessControls)),
+            payable(address(accessControls)),
             address(agents)
         );
 
@@ -152,7 +152,7 @@ contract AAAAgentsTest is Test {
 
         vm.startPrank(address(0xABC));
         vm.expectRevert(
-            abi.encodeWithSelector(AAAErrors.NotAgentOwner.selector)
+            abi.encodeWithSelector(TripleAErrors.NotAgentOwner.selector)
         );
 
         address[] memory newWallet = new address[](1);
@@ -185,7 +185,7 @@ contract AAAAgentsTest is Test {
 
         vm.startPrank(address(0xABC));
         vm.expectRevert(
-            abi.encodeWithSelector(AAAErrors.NotAgentOwner.selector)
+            abi.encodeWithSelector(TripleAErrors.NotAgentOwner.selector)
         );
         agents.deleteAgent(agentId);
         vm.stopPrank();
@@ -220,12 +220,12 @@ contract AAAAgentsTest is Test {
         vm.stopPrank();
 
         vm.startPrank(artist);
-        AAALibrary.CollectionInput memory inputs_1 = AAALibrary
+        TripleALibrary.CollectionInput memory inputs_1 = TripleALibrary
             .CollectionInput({
                 tokens: new address[](1),
                 prices: new uint256[](1),
                 agentIds: new uint256[](1),
-                dailyFrequency: new uint256[](1),
+                cycleFrequency: new uint256[](1),
                 customInstructions: new string[](1),
                 metadata: "Metadata 1",
                 amount: 5
@@ -235,7 +235,7 @@ contract AAAAgentsTest is Test {
         inputs_1.prices[0] = 10 ether;
         inputs_1.agentIds[0] = 1;
         inputs_1.customInstructions[0] = "custom";
-        inputs_1.dailyFrequency[0] = 1;
+        inputs_1.cycleFrequency[0] = 1;
         collectionManager.create(inputs_1, "some drop uri", 0);
         vm.stopPrank();
 
@@ -250,7 +250,7 @@ contract AAAAgentsTest is Test {
 
         agents.rechargeAgentActiveBalance(address(token1), 1, 1, 123400000);
         vm.expectRevert(
-            abi.encodeWithSelector(AAAErrors.TokenNotAccepted.selector)
+            abi.encodeWithSelector(TripleAErrors.TokenNotAccepted.selector)
         );
         agents.rechargeAgentActiveBalance(address(token2), 1, 1, 100000000);
 
@@ -282,12 +282,12 @@ contract AAAAgentsTest is Test {
         vm.stopPrank();
 
         vm.startPrank(artist);
-        AAALibrary.CollectionInput memory inputs_1 = AAALibrary
+        TripleALibrary.CollectionInput memory inputs_1 = TripleALibrary
             .CollectionInput({
                 tokens: new address[](1),
                 prices: new uint256[](1),
                 agentIds: new uint256[](1),
-                dailyFrequency: new uint256[](1),
+                cycleFrequency: new uint256[](1),
                 customInstructions: new string[](1),
                 metadata: "Metadata 1",
                 amount: 10
@@ -297,7 +297,7 @@ contract AAAAgentsTest is Test {
         inputs_1.prices[0] = 5 ether;
         inputs_1.agentIds[0] = 1;
         inputs_1.customInstructions[0] = "custom";
-        inputs_1.dailyFrequency[0] = 1;
+        inputs_1.cycleFrequency[0] = 1;
         collectionManager.create(inputs_1, "some drop uri", 0);
         vm.stopPrank();
 
@@ -313,7 +313,7 @@ contract AAAAgentsTest is Test {
 
         agents.rechargeAgentActiveBalance(address(token1), 1, 1, 123400000);
         vm.expectRevert(
-            abi.encodeWithSelector(AAAErrors.TokenNotAccepted.selector)
+            abi.encodeWithSelector(TripleAErrors.TokenNotAccepted.selector)
         );
         agents.rechargeAgentActiveBalance(address(token2), 1, 1, 100000000);
 
@@ -355,7 +355,7 @@ contract AAAAgentsTest is Test {
         market.buy(1, 1, address(token1));
         vm.stopPrank();
 
-        uint256 rent = accessControls.getTokenDailyRent(address(token1));
+        uint256 rent = accessControls.getTokenCycleRent(address(token1));
         uint256 activeBalance_after = agents.getAgentActiveBalance(
             address(token1),
             1,
@@ -380,12 +380,12 @@ contract AAAAgentsTest is Test {
         vm.stopPrank();
 
         vm.startPrank(artist);
-        AAALibrary.CollectionInput memory inputs_1 = AAALibrary
+        TripleALibrary.CollectionInput memory inputs_1 = TripleALibrary
             .CollectionInput({
                 tokens: new address[](1),
                 prices: new uint256[](1),
                 agentIds: new uint256[](1),
-                dailyFrequency: new uint256[](1),
+                cycleFrequency: new uint256[](1),
                 customInstructions: new string[](1),
                 metadata: "Metadata 1",
                 amount: 5
@@ -395,7 +395,7 @@ contract AAAAgentsTest is Test {
         inputs_1.prices[0] = 10 ether;
         inputs_1.agentIds[0] = 1;
         inputs_1.customInstructions[0] = "custom";
-        inputs_1.dailyFrequency[0] = 1;
+        inputs_1.cycleFrequency[0] = 1;
         collectionManager.create(inputs_1, "some drop uri", 0);
         vm.stopPrank();
 
@@ -419,7 +419,7 @@ contract AAAAgentsTest is Test {
         agents.payRent(tokens, collectionIds, 1);
         vm.stopPrank();
 
-        uint256 rent = accessControls.getTokenDailyRent(address(token1));
+        uint256 rent = accessControls.getTokenCycleRent(address(token1));
 
         uint256 allBalance = devTreasury.getAllTimeBalanceByToken(
             address(token1)
@@ -458,7 +458,7 @@ contract AAAAgentsTest is Test {
         assertEq(oneServices_after3, rent * 3);
 
         vm.expectRevert(
-            abi.encodeWithSelector(AAAErrors.InsufficientBalance.selector)
+            abi.encodeWithSelector(TripleAErrors.InsufficientBalance.selector)
         );
         agents.payRent(tokens, collectionIds, 1);
         vm.stopPrank();
@@ -473,12 +473,12 @@ contract AAAAgentsTest is Test {
         vm.stopPrank();
 
         vm.startPrank(artist);
-        AAALibrary.CollectionInput memory inputs_1 = AAALibrary
+        TripleALibrary.CollectionInput memory inputs_1 = TripleALibrary
             .CollectionInput({
                 tokens: new address[](1),
                 prices: new uint256[](1),
                 agentIds: new uint256[](1),
-                dailyFrequency: new uint256[](1),
+                cycleFrequency: new uint256[](1),
                 customInstructions: new string[](1),
                 metadata: "Metadata 1",
                 amount: 10
@@ -488,7 +488,7 @@ contract AAAAgentsTest is Test {
         inputs_1.prices[0] = 5 ether;
         inputs_1.agentIds[0] = 1;
         inputs_1.customInstructions[0] = "custom";
-        inputs_1.dailyFrequency[0] = 1;
+        inputs_1.cycleFrequency[0] = 1;
         collectionManager.create(inputs_1, "some drop uri", 0);
         vm.stopPrank();
 
@@ -503,7 +503,7 @@ contract AAAAgentsTest is Test {
 
         agents.rechargeAgentActiveBalance(address(token1), 1, 1, 3000000000);
         vm.expectRevert(
-            abi.encodeWithSelector(AAAErrors.TokenNotAccepted.selector)
+            abi.encodeWithSelector(TripleAErrors.TokenNotAccepted.selector)
         );
         agents.rechargeAgentActiveBalance(address(token2), 1, 1, 3000000000);
         vm.stopPrank();
@@ -526,7 +526,7 @@ contract AAAAgentsTest is Test {
         agents.payRent(tokens, collectionIds, 1);
         vm.stopPrank();
 
-        uint256 rent = accessControls.getTokenDailyRent(address(token1));
+        uint256 rent = accessControls.getTokenCycleRent(address(token1));
 
         uint256 allBalance = devTreasury.getAllTimeBalanceByToken(
             address(token1)
@@ -576,12 +576,12 @@ contract AAAAgentsTest is Test {
         vm.stopPrank();
 
         vm.startPrank(artist);
-        AAALibrary.CollectionInput memory inputs_1 = AAALibrary
+        TripleALibrary.CollectionInput memory inputs_1 = TripleALibrary
             .CollectionInput({
                 tokens: new address[](1),
                 prices: new uint256[](1),
                 agentIds: new uint256[](1),
-                dailyFrequency: new uint256[](1),
+                cycleFrequency: new uint256[](1),
                 customInstructions: new string[](1),
                 metadata: "Metadata 1",
                 amount: 10
@@ -591,7 +591,7 @@ contract AAAAgentsTest is Test {
         inputs_1.prices[0] = 5 ether;
         inputs_1.agentIds[0] = 1;
         inputs_1.customInstructions[0] = "custom";
-        inputs_1.dailyFrequency[0] = 1;
+        inputs_1.cycleFrequency[0] = 1;
         collectionManager.create(inputs_1, "some drop uri", 0);
         vm.stopPrank();
 
@@ -626,12 +626,12 @@ contract AAAAgentsTest is Test {
         vm.stopPrank();
 
         vm.startPrank(artist);
-        AAALibrary.CollectionInput memory inputs_2 = AAALibrary
+        TripleALibrary.CollectionInput memory inputs_2 = TripleALibrary
             .CollectionInput({
                 tokens: new address[](1),
                 prices: new uint256[](1),
                 agentIds: new uint256[](2),
-                dailyFrequency: new uint256[](2),
+                cycleFrequency: new uint256[](2),
                 customInstructions: new string[](2),
                 metadata: "Metadata 2",
                 amount: 10
@@ -643,8 +643,8 @@ contract AAAAgentsTest is Test {
         inputs_2.agentIds[1] = 2;
         inputs_2.customInstructions[0] = "custom1";
         inputs_2.customInstructions[1] = "custom2";
-        inputs_2.dailyFrequency[0] = 1;
-        inputs_2.dailyFrequency[1] = 2;
+        inputs_2.cycleFrequency[0] = 1;
+        inputs_2.cycleFrequency[1] = 2;
         collectionManager.create(inputs_2, "some drop uri2", 0);
         vm.stopPrank();
 
@@ -702,7 +702,7 @@ contract AAAAgentsTest is Test {
         agents.payRent(tokens_2, collectionIds_2, 2);
         vm.stopPrank();
 
-        uint256 rent = accessControls.getTokenDailyRent(address(token1));
+        uint256 rent = accessControls.getTokenCycleRent(address(token1));
 
         uint256 allBalance = devTreasury.getAllTimeBalanceByToken(
             address(token1)
@@ -780,7 +780,7 @@ contract AAAAgentsTest is Test {
     function _bonusesCalc(
         BonusInput memory _bonusInput
     ) internal view returns (uint256, uint256, uint256) {
-        uint256 rent = accessControls.getTokenDailyRent(address(token1));
+        uint256 rent = accessControls.getTokenCycleRent(address(token1));
         uint256 agentShare_coll1 = ((10 / 100) * 10 ether); // one agent
         uint256 agentShare_coll2 = ((10 / 100) * 10 ether) / 2; // two agents
 
