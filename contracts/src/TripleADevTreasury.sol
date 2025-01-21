@@ -5,14 +5,21 @@ import "./TripleAErrors.sol";
 import "./TripleAAccessControls.sol";
 import "./TripleAAgents.sol";
 import "./TripleAMarket.sol";
-import "./TripleAMeme.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
+interface SkyhuntersReceiver {
+    function receiveTokensContract(
+        address token,
+        address user,
+        uint256 amount
+    ) external returns (bool);
+}
 
 contract TripleADevTreasury {
     TripleAAccessControls public accessControls;
     TripleAAgents public agents;
     TripleAMarket public market;
-    TripleAMeme public meme;
+    SkyhuntersReceiver public receiver;
     uint256 public ownerAmountPercent;
     uint256 public distributionAmountPercent;
     uint256 public devAmountPercent;
@@ -22,8 +29,8 @@ contract TripleADevTreasury {
     mapping(uint256 => mapping(address => uint256)) private _collectorPayment;
     mapping(address => uint256) private _allTimeBalance;
     mapping(address => uint256) private _allTimeServices;
-    mapping(address => uint256) private _collectorsMemeActivated;
-    mapping(address => uint256) private _ownersMemeActivated;
+    mapping(address => uint256) private _collectorsReceiverActivated;
+    mapping(address => uint256) private _ownersReceiverActivated;
 
     modifier onlyAdmin() {
         if (!accessControls.isAdmin(msg.sender)) {
@@ -60,14 +67,14 @@ contract TripleADevTreasury {
     event AgentOwnerPaid(address token, address owner, uint256 amount);
     event AddToServices(address token, uint256 amount);
     event DevTreasuryAdded(address token, uint256 amount);
-    event CollectorMemeActivated(address collector, uint256 amount);
-    event AgentOwnerMemeActivated(address owner, uint256 amount);
-    event AgentOwnerMemeAllocation(
+    event CollectorReceiverActivated(address collector, uint256 amount);
+    event AgentOwnerReceiverActivated(address owner, uint256 amount);
+    event AgentOwnerReceiverAllocation(
         address token,
         address owner,
         uint256 amount
     );
-    event CollectorMemeAllocation(
+    event CollectorReceiverAllocation(
         address token,
         address collector,
         uint256 amount
@@ -194,7 +201,7 @@ contract TripleADevTreasury {
                 uint256 weight = 1e18 / (j + 1);
                 uint256 payment = (_distributionAmount * weight) / totalWeight;
 
-                _memeSplitCollector(
+                _receiverSplitCollector(
                     token,
                     _collectors[j],
                     payment,
@@ -204,27 +211,29 @@ contract TripleADevTreasury {
         }
 
         for (uint8 i = 0; i < owners.length; i++) {
-            _memeSplitOwner(token, owners[i], _ownerAmount / owners.length);
+            _receiverSplitOwner(token, owners[i], _ownerAmount / owners.length);
         }
 
         _treasury[token] += _devAmount;
         emit DevTreasuryAdded(token, _devAmount);
     }
 
-    function _memeSplitOwner(
+    function _receiverSplitOwner(
         address token,
         address owner,
         uint256 amount
     ) internal {
-        if (_ownersMemeActivated[owner] > 0) {
-            uint256 _meme = (_ownersMemeActivated[owner] * amount) / 100;
+        if (_ownersReceiverActivated[owner] > 0) {
+            uint256 _receiver = (_ownersReceiverActivated[owner] * amount) /
+                100;
             uint256 _paid = 0;
-            if (amount > _meme) {
-                _paid = amount - _meme;
+            if (amount > _receiver) {
+                _paid = amount - _receiver;
             }
-
-            if (IERC20(token).transfer(owner, _meme)) {
-                emit AgentOwnerMemeAllocation(token, owner, _meme);
+            if (IERC20(token).transfer(address(receiver), _receiver)) {
+                if (receiver.receiveTokensContract(token, owner, _receiver)) {
+                    emit AgentOwnerReceiverAllocation(token, owner, _receiver);
+                }
             }
 
             if (_paid > 0) {
@@ -239,22 +248,30 @@ contract TripleADevTreasury {
         }
     }
 
-    function _memeSplitCollector(
+    function _receiverSplitCollector(
         address token,
         address collector,
         uint256 amount,
         uint256 collectionId
     ) internal {
-        if (_collectorsMemeActivated[collector] > 0) {
-            uint256 _meme = (_collectorsMemeActivated[collector] * amount) /
-                100;
+        if (_collectorsReceiverActivated[collector] > 0) {
+            uint256 _receiver = (_collectorsReceiverActivated[collector] *
+                amount) / 100;
             uint256 _paid = 0;
-            if (amount > _meme) {
-                _paid = amount - _meme;
+            if (amount > _receiver) {
+                _paid = amount - _receiver;
             }
 
-            if (IERC20(token).transfer(collector, _meme)) {
-                emit CollectorMemeAllocation(token, collector, _meme);
+            if (IERC20(token).transfer(address(receiver), _receiver)) {
+                if (
+                    receiver.receiveTokensContract(token, collector, _receiver)
+                ) {
+                    emit CollectorReceiverAllocation(
+                        token,
+                        collector,
+                        _receiver
+                    );
+                }
             }
 
             if (_paid > 0) {
@@ -309,8 +326,8 @@ contract TripleADevTreasury {
         market = TripleAMarket(_market);
     }
 
-    function setMeme(address payable _meme) external onlyAdmin {
-        meme = TripleAMeme(_meme);
+    function setReceiver(address payable _receiver) external onlyAdmin {
+        receiver = SkyhuntersReceiver(_receiver);
     }
 
     function setAmounts(
@@ -329,26 +346,26 @@ contract TripleADevTreasury {
         devAmountPercent = _devAmountPercent;
     }
 
-    function getCollectorMemeActivated(
+    function getCollectorReceiverActivated(
         address collector
     ) public view returns (uint256) {
-        return _collectorsMemeActivated[collector];
+        return _collectorsReceiverActivated[collector];
     }
 
-    function getAgentOwnerMemeActivated(
+    function getAgentOwnerReceiverActivated(
         address owner
     ) public view returns (uint256) {
-        return _ownersMemeActivated[owner];
+        return _ownersReceiverActivated[owner];
     }
 
-    function setCollectorMemeActivated(uint256 amount) public {
-        _collectorsMemeActivated[msg.sender] = amount;
-        emit CollectorMemeActivated(msg.sender, amount);
+    function setCollectorReceiverActivated(uint256 amount) public {
+        _collectorsReceiverActivated[msg.sender] = amount;
+        emit CollectorReceiverActivated(msg.sender, amount);
     }
 
-    function setAgentOwnerMemeActivated(uint256 amount) public {
-        _ownersMemeActivated[msg.sender] = amount;
-        emit AgentOwnerMemeActivated(msg.sender, amount);
+    function setAgentOwnerReceiverActivated(uint256 amount) public {
+        _ownersReceiverActivated[msg.sender] = amount;
+        emit AgentOwnerReceiverActivated(msg.sender, amount);
     }
 
     receive() external payable {}
