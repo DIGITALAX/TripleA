@@ -73,8 +73,8 @@ contract TripleAAgents {
         _;
     }
 
-    modifier onlyAgentOwner(uint256 agentId) {
-        if (!_isOwner[msg.sender][agentId]) {
+    modifier onlyAgentOwnerOrCreator(uint256 agentId) {
+        if (!_isOwner[msg.sender][agentId] && _agents[agentId].creator != msg.sender) {
             revert TripleAErrors.NotAgentOwner();
         }
 
@@ -127,6 +127,8 @@ contract TripleAAgents {
             _isWallet[wallets[i]][_agentCounter] = true;
         }
 
+        _isOwner[msg.sender][_agentCounter] = true;
+
         _agents[_agentCounter] = TripleALibrary.Agent({
             id: _agentCounter,
             metadata: metadata,
@@ -147,13 +149,13 @@ contract TripleAAgents {
     function editAgent(
         string memory metadata,
         uint256 agentId
-    ) external onlyAgentOwner(agentId) {
+    ) external onlyAgentOwnerOrCreator(agentId) {
         _agents[agentId].metadata = metadata;
 
         emit AgentEdited(agentId);
     }
 
-    function deleteAgent(uint256 agentId) external onlyAgentOwner(agentId) {
+    function deleteAgent(uint256 agentId) external onlyAgentOwnerOrCreator(agentId) {
         if (_agents[agentId].activeCollectionIds.length > 0) {
             revert TripleAErrors.AgentStillActive();
         }
@@ -163,11 +165,11 @@ contract TripleAAgents {
 
         for (uint8 i = 0; i < _wallets.length; i++) {
             accessControls.removeAgent(_wallets[i]);
-            _isWallet[_wallets[i]][_agentCounter] = false;
+            _isWallet[_wallets[i]][agentId] = false;
         }
 
         for (uint8 i = 0; i < _owners.length; i++) {
-            _isOwner[_owners[i]][_agentCounter] = false;
+            _isOwner[_owners[i]][agentId] = false;
         }
 
         for (
@@ -224,7 +226,7 @@ contract TripleAAgents {
                 break;
             }
         }
-        _isOwner[wallet][_agentCounter] = false;
+        _isOwner[wallet][agentId] = false;
         emit RevokeOwner(wallet, agentId);
     }
 
@@ -233,14 +235,14 @@ contract TripleAAgents {
         uint256 agentId
     ) public onlyAgentCreator(agentId) {
         _agents[agentId].owners.push(wallet);
-        _isOwner[wallet][_agentCounter] = true;
+        _isOwner[wallet][agentId] = true;
         emit AddOwner(wallet, agentId);
     }
 
     function revokeAgentWallet(
         address wallet,
         uint256 agentId
-    ) public onlyAgentOwner(agentId) {
+    ) public onlyAgentOwnerOrCreator(agentId) {
         for (uint8 i = 0; i < _agents[agentId].agentWallets.length; i++) {
             if (_agents[agentId].agentWallets[i] == wallet) {
                 _agents[agentId].agentWallets[i] = _agents[agentId]
@@ -249,7 +251,7 @@ contract TripleAAgents {
                 break;
             }
         }
-        _isWallet[wallet][_agentCounter] = false;
+        _isWallet[wallet][agentId] = false;
         accessControls.removeAgent(wallet);
 
         emit RevokeAgentWallet(wallet, agentId);
@@ -258,9 +260,9 @@ contract TripleAAgents {
     function addAgentWallet(
         address wallet,
         uint256 agentId
-    ) public onlyAgentOwner(agentId) {
+    ) public onlyAgentOwnerOrCreator(agentId) {
         _agents[agentId].agentWallets.push(wallet);
-        _isWallet[wallet][_agentCounter] = true;
+        _isWallet[wallet][agentId] = true;
         accessControls.addAgent(wallet);
         emit AddAgentWallet(wallet, agentId);
     }

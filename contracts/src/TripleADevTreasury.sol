@@ -5,15 +5,8 @@ import "./TripleAErrors.sol";
 import "./TripleAAccessControls.sol";
 import "./TripleAAgents.sol";
 import "./TripleAMarket.sol";
+import "./skyhunters/SkyhuntersReceiver.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-
-interface SkyhuntersReceiver {
-    function receiveTokensContract(
-        address token,
-        address user,
-        uint256 amount
-    ) external returns (bool);
-}
 
 contract TripleADevTreasury {
     TripleAAccessControls public accessControls;
@@ -183,6 +176,7 @@ contract TripleADevTreasury {
         uint256 bonus,
         uint256 collectionId
     ) internal {
+    
         uint256 _ownerAmount = (bonus * ownerAmountPercent) / 100;
         uint256 _devAmount = (bonus * devAmountPercent) / 100;
         uint256 _distributionAmount = (bonus * distributionAmountPercent) / 100;
@@ -230,6 +224,7 @@ contract TripleADevTreasury {
             if (amount > _receiver) {
                 _paid = amount - _receiver;
             }
+
             if (IERC20(token).transfer(address(receiver), _receiver)) {
                 if (receiver.receiveTokensContract(token, owner, _receiver)) {
                     emit AgentOwnerReceiverAllocation(token, owner, _receiver);

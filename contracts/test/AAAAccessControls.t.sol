@@ -124,15 +124,20 @@ contract TripleAAccessControlsTest is Test {
 
     function testSetTokenThreshold() public {
         accessControls.setAcceptedToken(token1);
-        accessControls.setTokenThresholdAndRent(token1, 100, 10);
+        accessControls.setTokenDetails(token1, 100, 20, 21, 10, 5, 10000);
         assertEq(accessControls.getTokenThreshold(token1), 100);
+        assertEq(accessControls.getTokenCycleRentLead(token1), 20);
+        assertEq(accessControls.getTokenCycleRentRemix(token1), 21);
+        assertEq(accessControls.getTokenCycleRentPublish(token1), 10);
+        assertEq(accessControls.getTokenVig(token1), 5);
+        assertEq(accessControls.getTokenBase(token1), 10000);
     }
 
     function testSetTokenThresholdRevertIfTokenNotAccepted() public {
         vm.expectRevert(
             abi.encodeWithSelector(TripleAErrors.TokenNotAccepted.selector)
         );
-        accessControls.setTokenThresholdAndRent(token1, 100, 10);
+        accessControls.setTokenDetails(token1, 100, 20, 21, 10, 5, 10000);
     }
 
     function testSetAgentContract() public {
@@ -142,13 +147,17 @@ contract TripleAAccessControlsTest is Test {
 
     function testSetAgentContractRevertIfNotAdmin() public {
         vm.prank(admin1);
-        vm.expectRevert(abi.encodeWithSelector(TripleAErrors.NotAdmin.selector));
+        vm.expectRevert(
+            abi.encodeWithSelector(TripleAErrors.NotAdmin.selector)
+        );
         accessControls.setAgentsContract(agentsContract);
     }
 
     function testOnlyAdminModifier() public {
         vm.prank(admin1);
-        vm.expectRevert(abi.encodeWithSelector(TripleAErrors.NotAdmin.selector));
+        vm.expectRevert(
+            abi.encodeWithSelector(TripleAErrors.NotAdmin.selector)
+        );
         accessControls.addAdmin(admin2);
     }
 }

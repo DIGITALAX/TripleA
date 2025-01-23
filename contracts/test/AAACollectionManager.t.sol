@@ -6,6 +6,8 @@ import "src/TripleACollectionManager.sol";
 import "src/TripleAAccessControls.sol";
 import "src/TripleAErrors.sol";
 import "src/TripleALibrary.sol";
+import "src/TripleADevTreasury.sol";
+import "src/TripleAFulfillerManager.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 contract MockERC20 is ERC20 {
@@ -19,9 +21,13 @@ contract MockERC20 is ERC20 {
 contract TripleACollectionManagerTest is Test {
     TripleACollectionManager private collectionManager;
     TripleAAccessControls private accessControls;
+    TripleAFulfillerManager private fulfillerManager;
+    TripleADevTreasury private devTreasury;
+    TripleAAgents private agents;
     address private admin = address(0x123);
     address private artist = address(0x456);
     address private market = address(0x789);
+    address private fulfiller = address(0x1324);
 
     MockERC20 private token1;
     MockERC20 private token2;
@@ -31,11 +37,33 @@ contract TripleACollectionManagerTest is Test {
         collectionManager = new TripleACollectionManager(
             payable(address(accessControls))
         );
+        fulfillerManager = new TripleAFulfillerManager(
+            payable(address(accessControls))
+        );
+                devTreasury = new TripleADevTreasury(payable(address(accessControls)));
+           agents = new TripleAAgents(
+            payable(address(accessControls)),
+            payable(address(devTreasury)),
+            address(collectionManager)
+        );
         token1 = new MockERC20("Token1", "TK1");
         token2 = new MockERC20("Token2", "TK2");
         accessControls.addAdmin(admin);
         vm.startPrank(admin);
+                agents.setMarket(address(market));
         collectionManager.setMarket(market);
+               collectionManager.setAgents(address(agents));
+        fulfillerManager.setMarket(address(market));
+        accessControls.addFulfiller(fulfiller);
+        vm.stopPrank();
+        vm.startPrank(fulfiller);
+        fulfillerManager.createFulfillerProfile(
+            TripleALibrary.FulfillerInput({
+                metadata: "fulfiller metadata",
+                wallet: fulfiller
+            })
+        );
+
         vm.stopPrank();
     }
 
@@ -49,7 +77,9 @@ contract TripleACollectionManagerTest is Test {
                 customInstructions: new string[](3),
                 cycleFrequency: new uint256[](3),
                 metadata: "Metadata 1",
-                amount: 1
+                amount: 1,
+                collectionType: TripleALibrary.CollectionType.Digital,
+                fulfillerId: 1
             });
         inputs_1.tokens[0] = address(token1);
         inputs_1.tokens[1] = address(token2);
@@ -73,7 +103,9 @@ contract TripleACollectionManagerTest is Test {
                 metadata: "Metadata 2",
                 customInstructions: new string[](1),
                 cycleFrequency: new uint256[](1),
-                amount: 10
+                amount: 10,
+                collectionType: TripleALibrary.CollectionType.Digital,
+                fulfillerId: 1
             });
 
         inputs_2.tokens[0] = address(token2);
@@ -82,8 +114,36 @@ contract TripleACollectionManagerTest is Test {
         inputs_2.customInstructions[0] = "another custom";
         inputs_2.cycleFrequency[0] = 1;
 
-        collectionManager.create(inputs_1, "some drop URI", 0);
-        collectionManager.create(inputs_2, "", 1);
+        TripleALibrary.CollectionWorker[]
+            memory workers_1 = new TripleALibrary.CollectionWorker[](3);
+
+        workers_1[0] = TripleALibrary.CollectionWorker({
+            publish: true,
+            remix: true,
+            lead: true
+        });
+             workers_1[1] = TripleALibrary.CollectionWorker({
+            publish: true,
+            remix: true,
+            lead: true
+        });
+             workers_1[2] = TripleALibrary.CollectionWorker({
+            publish: true,
+            remix: true,
+            lead: true
+        });
+
+        TripleALibrary.CollectionWorker[]
+            memory workers_2 = new TripleALibrary.CollectionWorker[](1);
+
+        workers_2[0] = TripleALibrary.CollectionWorker({
+            publish: true,
+            remix: true,
+            lead: true
+        });
+
+        collectionManager.create(inputs_1, workers_1, "some drop URI", 0);
+        collectionManager.create(inputs_2, workers_2, "", 1);
 
         uint256[] memory dropIds = collectionManager.getDropIdsByArtist(artist);
         assertEq(dropIds.length, 1);
@@ -171,7 +231,6 @@ contract TripleACollectionManagerTest is Test {
             ),
             "custom3"
         );
-  
 
         vm.stopPrank();
     }
@@ -188,7 +247,9 @@ contract TripleACollectionManagerTest is Test {
                 customInstructions: new string[](3),
                 cycleFrequency: new uint256[](3),
                 metadata: "Metadata 2",
-                amount: 1
+                amount: 1,
+                collectionType: TripleALibrary.CollectionType.Digital,
+                fulfillerId: 1
             });
         inputs_1.tokens[0] = address(token1);
         inputs_1.tokens[1] = address(token2);
@@ -212,7 +273,9 @@ contract TripleACollectionManagerTest is Test {
                 customInstructions: new string[](1),
                 cycleFrequency: new uint256[](1),
                 metadata: "Metadata 3",
-                amount: 10
+                amount: 10,
+                collectionType: TripleALibrary.CollectionType.Digital,
+                fulfillerId: 1
             });
 
         inputs_2.tokens[0] = address(token2);
@@ -220,8 +283,37 @@ contract TripleACollectionManagerTest is Test {
         inputs_2.agentIds[0] = 3;
         inputs_2.customInstructions[0] = "another custom";
         inputs_2.cycleFrequency[0] = 1;
-        collectionManager.create(inputs_1, "", 1);
-        collectionManager.create(inputs_2, "", 1);
+
+        TripleALibrary.CollectionWorker[]
+            memory workers_1 = new TripleALibrary.CollectionWorker[](3);
+
+        workers_1[0] = TripleALibrary.CollectionWorker({
+            publish: true,
+            remix: true,
+            lead: true
+        });
+           workers_1[1] = TripleALibrary.CollectionWorker({
+            publish: true,
+            remix: true,
+            lead: true
+        });
+           workers_1[2] = TripleALibrary.CollectionWorker({
+            publish: true,
+            remix: true,
+            lead: true
+        });
+
+        TripleALibrary.CollectionWorker[]
+            memory workers_2 = new TripleALibrary.CollectionWorker[](1);
+
+        workers_2[0] = TripleALibrary.CollectionWorker({
+            publish: true,
+            remix: true,
+            lead: true
+        });
+
+        collectionManager.create(inputs_1, workers_1, "", 1);
+        collectionManager.create(inputs_2, workers_2, "", 1);
 
         uint256[] memory dropIds = collectionManager.getDropIdsByArtist(artist);
 
@@ -233,8 +325,10 @@ contract TripleACollectionManagerTest is Test {
         );
         assertEq(collectionIds.length, 4);
 
-        vm.expectRevert(abi.encodeWithSelector(TripleAErrors.DropInvalid.selector));
-        collectionManager.create(inputs_1, "", 2);
+        vm.expectRevert(
+            abi.encodeWithSelector(TripleAErrors.DropInvalid.selector)
+        );
+        collectionManager.create(inputs_1, workers_1, "", 2);
     }
 
     function testDeleteCollection() public {
@@ -244,7 +338,9 @@ contract TripleACollectionManagerTest is Test {
         collectionManager.deleteCollection(1);
 
         vm.startPrank(admin);
-        vm.expectRevert(abi.encodeWithSelector(TripleAErrors.NotArtist.selector));
+        vm.expectRevert(
+            abi.encodeWithSelector(TripleAErrors.NotArtist.selector)
+        );
         collectionManager.deleteCollection(2);
 
         uint256[] memory dropIds = collectionManager.getDropIdsByArtist(artist);
@@ -312,7 +408,9 @@ contract TripleACollectionManagerTest is Test {
 
     function testOnlyAdminModifier() public {
         vm.prank(artist);
-        vm.expectRevert(abi.encodeWithSelector(TripleAErrors.NotAdmin.selector));
+        vm.expectRevert(
+            abi.encodeWithSelector(TripleAErrors.NotAdmin.selector)
+        );
         collectionManager.setMarket(address(0x1234));
     }
 }

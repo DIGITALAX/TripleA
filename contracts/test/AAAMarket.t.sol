@@ -8,6 +8,10 @@ import "./../src/TripleADevTreasury.sol";
 import "./../src/TripleAAgents.sol";
 import "./../src/TripleACollectionManager.sol";
 import "./../src/TripleAAccessControls.sol";
+import "./../src/TripleAFulfillerManager.sol";
+import "./../src/skyhunters/SkyhuntersAccessControls.sol";
+import "./../src/skyhunters/SkyhuntersPools.sol";
+import "./../src/skyhunters/SkyhuntersReceiver.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
@@ -23,22 +27,39 @@ contract TripleAMarketTest is Test {
     TripleAMarket private market;
     TripleADevTreasury private devTreasury;
     TripleAAgents private agents;
+    TripleAFulfillerManager private fulfillerManager;
     TripleACollectionManager private collectionManager;
     TripleAAccessControls private accessControls;
     TripleANFT private nft;
     MockERC20 private token1;
     MockERC20 private token2;
 
+    SkyhuntersReceiver private receiver;
+    SkyhuntersAccessControls private skyhuntersAccess;
+    SkyhuntersPools private pools;
+
     address private admin = address(0x123);
     address private artist = address(0x456);
     address private buyer = address(0x789);
+    address private fulfiller = address(0x1324);
+
+    function _skyhunters() public {
+        vm.startPrank(admin);
+        skyhuntersAccess = new SkyhuntersAccessControls();
+        pools = new SkyhuntersPools(payable(address(accessControls)));
+        receiver = new SkyhuntersReceiver(payable(address(accessControls)));
+
+        vm.stopPrank();
+    }
 
     function setUp() public {
         accessControls = new TripleAAccessControls();
         collectionManager = new TripleACollectionManager(
             payable(address(accessControls))
         );
-
+        fulfillerManager = new TripleAFulfillerManager(
+            payable(address(accessControls))
+        );
         nft = new TripleANFT(
             "Triple A NFT",
             "TripleANFT",
@@ -47,14 +68,15 @@ contract TripleAMarketTest is Test {
         devTreasury = new TripleADevTreasury(payable(address(accessControls)));
         agents = new TripleAAgents(
             payable(address(accessControls)),
-            address(devTreasury),
+            payable(address(devTreasury)),
             address(collectionManager)
         );
         market = new TripleAMarket(
             address(nft),
             address(collectionManager),
             payable(address(accessControls)),
-            address(agents)
+            address(agents),
+            address(fulfillerManager)
         );
 
         token1 = new MockERC20("Token1", "TK1");
@@ -62,26 +84,50 @@ contract TripleAMarketTest is Test {
 
         accessControls.addAdmin(admin);
 
+        _skyhunters();
+
         vm.startPrank(admin);
         collectionManager.setMarket(address(market));
+        collectionManager.setAgents(address(agents));
         accessControls.setAgentsContract(address(agents));
         nft.setMarket(address(market));
-        market.setDevTreasury(address(devTreasury));
+        market.setDevTreasury(payable(address(devTreasury)));
         agents.setMarket(address(market));
         accessControls.setAcceptedToken(address(token1));
-        accessControls.setTokenThresholdAndRent(
+        accessControls.setTokenDetails(
             address(token1),
-            60000000000000000000,
-            1000000000
+            100000000,
+            110,
+            105,
+            10,
+            3000000000000000000,
+            15000000000000000000
         );
         accessControls.setAcceptedToken(address(token2));
-        accessControls.setTokenThresholdAndRent(
+        accessControls.setTokenDetails(
             address(token2),
-            100000000000000000000,
-            100000000
+            100000000,
+            120,
+            125,
+            12,
+            5000000000000000000,
+            12000000000000000000
         );
         devTreasury.setMarket(address(market));
         devTreasury.setAgents(address(agents));
+        devTreasury.setReceiver(payable(address(receiver)));
+        fulfillerManager.setMarket(address(market));
+        accessControls.addFulfiller(fulfiller);
+        vm.stopPrank();
+
+        vm.startPrank(fulfiller);
+        fulfillerManager.createFulfillerProfile(
+            TripleALibrary.FulfillerInput({
+                metadata: "fulfiller metadata",
+                wallet: fulfiller
+            })
+        );
+
         vm.stopPrank();
     }
 
@@ -96,7 +142,9 @@ contract TripleAMarketTest is Test {
                 cycleFrequency: new uint256[](1),
                 customInstructions: new string[](1),
                 metadata: "Metadata 1",
-                amount: 5
+                amount: 5,
+                collectionType: TripleALibrary.CollectionType.Digital,
+                fulfillerId: 1
             });
 
         inputs_1.tokens[0] = address(token1);
@@ -104,7 +152,17 @@ contract TripleAMarketTest is Test {
         inputs_1.agentIds[0] = 1;
         inputs_1.customInstructions[0] = "custom";
         inputs_1.cycleFrequency[0] = 1;
-        collectionManager.create(inputs_1, "some drop uri", 0);
+
+        TripleALibrary.CollectionWorker[]
+            memory workers_1 = new TripleALibrary.CollectionWorker[](1);
+
+        workers_1[0] = TripleALibrary.CollectionWorker({
+            publish: true,
+            remix: true,
+            lead: true
+        });
+
+        collectionManager.create(inputs_1, workers_1, "some drop uri", 0);
         vm.stopPrank();
 
         token1.mint(buyer, 100 ether);
@@ -117,7 +175,7 @@ contract TripleAMarketTest is Test {
         token1.approve(address(devTreasury), 50 ether);
         token1.allowance(buyer, address(market));
         token1.allowance(buyer, address(devTreasury));
-        market.buy(1, 1, address(token1));
+        market.buy("fulfillment", address(token1), 1, 1);
 
         uint256 buyerExpectedBalance = buyerInitialBalance - (10 ether);
         uint256 artistExpectedBalance = artistInitialBalance + (10 ether);
@@ -140,7 +198,9 @@ contract TripleAMarketTest is Test {
                 cycleFrequency: new uint256[](1),
                 customInstructions: new string[](1),
                 metadata: "Metadata 2",
-                amount: 5
+                amount: 5,
+                collectionType: TripleALibrary.CollectionType.Digital,
+                fulfillerId: 1
             });
 
         inputs_1.tokens[0] = address(token1);
@@ -148,7 +208,15 @@ contract TripleAMarketTest is Test {
         inputs_1.agentIds[0] = 1;
         inputs_1.customInstructions[0] = "custom";
         inputs_1.cycleFrequency[0] = 1;
-        collectionManager.create(inputs_1, "some 2 drop", 0);
+        TripleALibrary.CollectionWorker[]
+            memory workers_1 = new TripleALibrary.CollectionWorker[](1);
+
+        workers_1[0] = TripleALibrary.CollectionWorker({
+            publish: true,
+            remix: true,
+            lead: true
+        });
+        collectionManager.create(inputs_1, workers_1, "some 2 drop", 0);
         vm.stopPrank();
 
         token2.mint(buyer, 100 ether);
@@ -161,7 +229,7 @@ contract TripleAMarketTest is Test {
         vm.expectRevert(
             abi.encodeWithSelector(TripleAErrors.TokenNotAccepted.selector)
         );
-        market.buy(1, 2, address(token2));
+        market.buy("fulfillment", address(token2), 1, 2);
         vm.stopPrank();
     }
 
@@ -169,7 +237,9 @@ contract TripleAMarketTest is Test {
         vm.startPrank(admin);
         address[] memory wallets = new address[](1);
         wallets[0] = address(0x789);
-        agents.createAgent(wallets, "Agent Metadata");
+        address[] memory owners = new address[](1);
+        owners[0] = admin;
+        agents.createAgent(wallets, owners, "Agent Metadata");
     }
 
     function testBuyCollectionOverThreshold() public {
@@ -184,7 +254,9 @@ contract TripleAMarketTest is Test {
                 customInstructions: new string[](1),
                 cycleFrequency: new uint256[](1),
                 metadata: "Metadata Over Threshold",
-                amount: 10
+                amount: 10,
+                collectionType: TripleALibrary.CollectionType.Digital,
+                fulfillerId: 1
             });
 
         inputs_1.tokens[0] = address(token1);
@@ -192,8 +264,15 @@ contract TripleAMarketTest is Test {
         inputs_1.agentIds[0] = 1;
         inputs_1.customInstructions[0] = "custom";
         inputs_1.cycleFrequency[0] = 1;
+        TripleALibrary.CollectionWorker[]
+            memory workers_1 = new TripleALibrary.CollectionWorker[](1);
 
-        collectionManager.create(inputs_1, "some 3 drop", 0);
+        workers_1[0] = TripleALibrary.CollectionWorker({
+            publish: true,
+            remix: true,
+            lead: true
+        });
+        collectionManager.create(inputs_1, workers_1, "some 3 drop", 0);
         vm.stopPrank();
 
         token1.mint(buyer, 250 ether);
@@ -203,7 +282,7 @@ contract TripleAMarketTest is Test {
         token1.allowance(buyer, address(market));
         token1.allowance(buyer, address(devTreasury));
 
-        market.buy(1, 1, address(token1));
+        market.buy("fulfillment", address(token1), 1, 1);
 
         uint256 buyerInitialBalance = token1.balanceOf(buyer);
         uint256 artistInitialBalance = token1.balanceOf(artist);
@@ -211,7 +290,7 @@ contract TripleAMarketTest is Test {
             address(devTreasury)
         );
 
-        market.buy(1, 2, address(token1));
+        market.buy("fulfillment", address(token1), 1, 2);
         vm.stopPrank();
 
         uint256 totalPrice = 70 ether * 2;
@@ -240,7 +319,9 @@ contract TripleAMarketTest is Test {
             1,
             1
         );
-        uint256 rent = accessControls.getTokenCycleRent(address(token1));
+        uint256 rent = accessControls.getTokenCycleRentLead(address(token1)) +
+            accessControls.getTokenCycleRentRemix(address(token1)) +
+            accessControls.getTokenCycleRentPublish(address(token1));
         assertEq(agentBalance, rent);
         assertEq(bonusBalance, agentShare - rent);
 
@@ -251,8 +332,8 @@ contract TripleAMarketTest is Test {
     function testSetCollectionManager() public {
         vm.startPrank(admin);
         TripleACollectionManager newCollectionManager = new TripleACollectionManager(
-            payable(address(accessControls))
-        );
+                payable(address(accessControls))
+            );
         market.setCollectionManager(address(newCollectionManager));
         assertEq(
             address(market.collectionManager()),
@@ -283,7 +364,9 @@ contract TripleAMarketTest is Test {
 
     function testOnlyAdminReverts() public {
         vm.prank(artist);
-        vm.expectRevert(abi.encodeWithSelector(TripleAErrors.NotAdmin.selector));
+        vm.expectRevert(
+            abi.encodeWithSelector(TripleAErrors.NotAdmin.selector)
+        );
         market.setCollectionManager(address(collectionManager));
     }
 }

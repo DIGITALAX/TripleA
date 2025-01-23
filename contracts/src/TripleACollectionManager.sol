@@ -84,7 +84,6 @@ contract TripleACollectionManager {
         ) {
             revert TripleAErrors.BadUserInput();
         }
-
         if (
             collectionInput.collectionType == TripleALibrary.CollectionType.IRL
         ) {
@@ -126,7 +125,6 @@ contract TripleACollectionManager {
             fulfillerId: collectionInput.fulfillerId,
             active: true
         });
-
         for (uint8 i = 0; i < collectionInput.agentIds.length; i++) {
             _agentCustomInstructions[_collectionCounter][
                 collectionInput.agentIds[i]
@@ -135,7 +133,6 @@ contract TripleACollectionManager {
             _agentCycleFrequency[_collectionCounter][
                 collectionInput.agentIds[i]
             ] = collectionInput.cycleFrequency[i];
-
             agents.addWorker(
                 workers[i],
                 collectionInput.agentIds[i],

@@ -78,7 +78,6 @@ contract TripleAMarket {
         ) {
             revert TripleAErrors.NotAvailable();
         }
-
         uint256 _tokenPrice = _checkTokens(paymentToken, collectionId);
         uint256 _totalPrice = _tokenPrice * amount;
         (
@@ -181,17 +180,7 @@ contract TripleAMarket {
             }
         }
 
-        uint256[] memory _mintedTokenIds = nft.mint(
-            amount,
-            msg.sender,
-            collectionManager.getCollectionMetadata(collectionId)
-        );
-
-        collectionManager.updateData(_mintedTokenIds, collectionId, amount);
-        _allCollectorsByCollectionIds[collectionId].push(msg.sender);
-
         _createOrder(
-            _mintedTokenIds,
             fulfillmentDetails,
             paymentToken,
             collectionId,
@@ -272,13 +261,21 @@ contract TripleAMarket {
     }
 
     function _createOrder(
-        uint256[] memory mintedTokens,
         string memory fulfillmentDetails,
         address token,
         uint256 collectionId,
         uint256 amount,
         uint256 totalPrice
     ) internal {
+        uint256[] memory _mintedTokens = nft.mint(
+            amount,
+            msg.sender,
+            collectionManager.getCollectionMetadata(collectionId)
+        );
+
+        collectionManager.updateData(_mintedTokens, collectionId, amount);
+        _allCollectorsByCollectionIds[collectionId].push(msg.sender);
+
         _orderCounter++;
         _buyerToOrderIds[msg.sender].push(_orderCounter);
         _orders[_orderCounter] = TripleALibrary.Order({
@@ -287,7 +284,7 @@ contract TripleAMarket {
             token: token,
             totalPrice: totalPrice,
             collectionId: collectionId,
-            mintedTokens: mintedTokens,
+            mintedTokens: _mintedTokens,
             fulfillmentDetails: fulfillmentDetails,
             fulfilled: true
         });
