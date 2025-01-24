@@ -1,4 +1,4 @@
-use crate::classes::publish::publish;
+use crate::classes::{lead::lead_generation, publish::publish, remix::remix};
 use crate::utils::{
     constants::{ACCESS_CONTROLS, AGENTS, LENS_CHAIN_ID, TRIPLEA_URI},
     contracts::{initialize_api, initialize_contracts},
@@ -704,11 +704,15 @@ async fn cycle_activity(
                 .await;
 
                 match task {
-                    ActivityType::Lead => lead_generation().await,
+                    ActivityType::Lead => {
+                        let _ = lead_generation().await;
+                    }
                     ActivityType::Publish => {
                         let _ = publish(&agent, tokens, &collection, &instructions).await;
                     }
-                    ActivityType::Remix => remix().await,
+                    ActivityType::Remix => {
+                        let _ = remix().await;
+                    }
                 }
             })
         })

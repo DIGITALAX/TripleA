@@ -89,18 +89,20 @@ contract TripleAMarket {
         uint256 _agentShare = 0;
 
         if (
-            collectionManager.getCollectionAmountSold(collectionId) == 0 &&
-            amount > 1
+            collectionManager.getCollectionAmount(collectionId) > 2 &&
+            collectionManager.getCollectionPrices(collectionId)[0] >
+            accessControls.getTokenThreshold(paymentToken) &&
+            collectionManager.getCollectionAgentIds(collectionId).length > 0 &&
+            amount + collectionManager.getCollectionAmountSold(collectionId) <
+            collectionManager.getCollectionAmount(collectionId)
         ) {
-            _artistShare = _tokenPrice;
-            uint256 _additionalUnits = amount - 1;
-
             if (
-                collectionManager.getCollectionAmount(collectionId) > 2 &&
-                collectionManager.getCollectionPrices(collectionId)[0] >
-                accessControls.getTokenThreshold(paymentToken) &&
-                collectionManager.getCollectionAgentIds(collectionId).length > 0
+                collectionManager.getCollectionAmountSold(collectionId) == 0 &&
+                amount > 1
             ) {
+                _artistShare = _tokenPrice;
+                uint256 _additionalUnits = amount - 1;
+
                 _agentShare = (_additionalUnits * _tokenPrice * 10) / 100;
 
                 _perAgentShare =
@@ -113,16 +115,10 @@ contract TripleAMarket {
                     _tokenPrice *
                     90) / 100;
                 _artistShare += _artistShareForAdditionalUnits;
-            }
-        } else {
-            if (
+            } else if (
                 collectionManager.getCollectionAmountSold(collectionId) +
                     amount >
-                1 &&
-                collectionManager.getCollectionAmount(collectionId) > 2 &&
-                collectionManager.getCollectionPrices(collectionId)[0] >
-                accessControls.getTokenThreshold(paymentToken) &&
-                collectionManager.getCollectionAgentIds(collectionId).length > 0
+                1
             ) {
                 _agentShare = (_totalPrice * 10) / 100;
 
