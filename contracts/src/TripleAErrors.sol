@@ -45,6 +45,7 @@ contract TripleAErrors {
     error NoActiveAgents();
     error CollectionSoldOut();
     error InvalidWorker();
+    error InvalidScore();
 
     error CollectionAlreadyDeactivated();
     error CollectionAlreadyActive();

@@ -1,7 +1,7 @@
 # Compiler files
 /contracts/cache/
 /contracts/out/
-
+/contracts/zkout/
 # Ignores development broadcast logs
 /contracts/!/broadcast
 /contracts/broadcast/*/31337/

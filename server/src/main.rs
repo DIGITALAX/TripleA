@@ -24,7 +24,7 @@ use tokio_tungstenite::{
 };
 use tungstenite::http::method;
 use utils::{
-    constants::{TripleA_URI, AGENT_INTERFACE_URL},
+    constants::{TRIPLEA_URI, AGENT_INTERFACE_URL},
     contracts::configure_key,
     lens::handle_lens_account,
     types::*,
@@ -303,11 +303,13 @@ async fn activity_loop(agents: Arc<RwLock<HashMap<u32, AgentManager>>>) {
             let agents_clone = agents.clone();
 
             tokio::spawn(async move {
+
                 let maybe_agent_manager = {
                     let mut agents_guard = agents_clone.write().await;
-                    agents_guard.get_mut(&id).cloned()
+                    agents_guard.remove(&id) 
                 };
 
+              
                 if let Some(mut agent_manager) = maybe_agent_manager {
                     if let Err(err) = agent_manager.resolve_activity().await {
                         eprintln!("Error resolving activity for agent {}: {:?}", id, err);
@@ -369,7 +371,7 @@ async fn handle_agents() -> Result<HashMap<u32, AgentManager>, Box<dyn Error + S
         "#,
     });
 
-    let res = client.post(TripleA_URI).json(&query).send().await;
+    let res = client.post(TRIPLEA_URI).json(&query).send().await;
 
     match res {
         Ok(response) => {

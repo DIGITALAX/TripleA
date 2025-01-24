@@ -1,14 +1,11 @@
-use crate::{
-    utils::{
-        constants::{TripleA_URI, ACCESS_CONTROLS, AGENTS, LENS_CHAIN_ID},
-        contracts::{initialize_api, initialize_contracts},
-        ipfs::upload_lens_storage,
-        lens::{handle_lens_account, handle_tokens, make_publication},
-        open_ai::call_chat_completion,
-        types::{AgentManager, Content, Publication, TripleAAgent},
-    },
-    AgentActivity, Collection, Image,
+use crate::classes::publish::publish;
+use crate::utils::{
+    constants::{ACCESS_CONTROLS, AGENTS, LENS_CHAIN_ID, TRIPLEA_URI},
+    contracts::{initialize_api, initialize_contracts},
+    lens::{handle_lens_account, handle_tokens},
+    types::{AgentActivity, AgentManager, Collection, SavedTokens, TripleAAgent, TripleAWorker},
 };
+use crate::ActivityType;
 use chrono::{Timelike, Utc};
 use ethers::{
     contract::{self, FunctionCall},
@@ -18,10 +15,9 @@ use ethers::{
     types::{Address, Eip1559TransactionRequest, NameOrAddress, H160, H256, U256},
 };
 use reqwest::Client;
-use serde_json::{json, to_string, Value};
+use serde_json::{json, Value};
 use std::{error::Error, io, str::FromStr, sync::Arc, time::Duration};
 use tokio::time;
-use uuid::Uuid;
 
 impl AgentManager {
     pub fn new(agent: &TripleAAgent) -> Option<Self> {
@@ -223,39 +219,16 @@ impl AgentManager {
                             Ok(balance) => {
                                 println!("Balance: {}\n", balance);
 
-                                let rent_method = self.access_controls_contract.method::<_, U256>(
-                                    "getTokenCycleRent",
-                                    H160::from_str(token).unwrap(),
-                                );
-
-                                match rent_method {
-                                    Ok(rent_call) => {
-                                        let token_result: Result<
-                                            U256,
-                                            contract::ContractError<
-                                                SignerMiddleware<Arc<Provider<Http>>, LocalWallet>,
-                                            >,
-                                        > = rent_call.call().await;
-
-                                        match token_result {
-                                            Ok(rent_threshold) => {
-                                                if balance
-                                                    >= (rent_threshold * collection.cycle_frequency)
-                                                {
-                                                    rent_tokens
-                                                        .push(H160::from_str(token).unwrap());
-                                                    rent_collection_ids
-                                                        .push(collection.collection_id);
-                                                    break;
-                                                }
-                                            }
-                                            Err(err) => {
-                                                eprintln!("Error calling rent threshold: {}", err);
-                                            }
+                                match self.calculate_rent(collection, token).await {
+                                    Ok(cycle_rent) => {
+                                        if balance >= (cycle_rent) {
+                                            rent_tokens.push(H160::from_str(token).unwrap());
+                                            rent_collection_ids.push(collection.collection_id);
+                                            break;
                                         }
                                     }
                                     Err(err) => {
-                                        eprintln!("Error in rent method: {}", err);
+                                        eprintln!("Error calculating rent: {}", err);
                                     }
                                 }
                             }
@@ -391,12 +364,19 @@ impl AgentManager {
                             prices
                             tokens
                         }
+                        worker {
+                            publish
+                            remix
+                            lead
+                            leadFrequency
+                            publishFrequency
+                            leadFrequency
+                        }
                         collectionId
                         token
                         totalBalance
                         activeBalance
                         instructions
-                        cycleFrequency
                     }
                 }
             }
@@ -407,7 +387,7 @@ impl AgentManager {
         });
 
         let response = time::timeout(Duration::from_secs(60), async {
-            let res = client.post(TripleA_URI).json(&query).send().await?;
+            let res = client.post(TRIPLEA_URI).json(&query).send().await?;
 
             res.json::<Value>().await
         })
@@ -469,10 +449,6 @@ impl AgentManager {
                                         .filter_map(|v| v.as_str().map(|s| s.to_string()))
                                         .collect(),
                                 },
-                                cycle_frequency: U256::from_dec_str(
-                                    balance["cycleFrequency"].as_str().unwrap_or("0"),
-                                )
-                                .unwrap_or_default(),
                                 custom_instructions: balance["instructions"]
                                     .as_str()
                                     .unwrap_or_default()
@@ -490,6 +466,28 @@ impl AgentManager {
                                     balance["collectionId"].as_str().unwrap_or("0"),
                                 )
                                 .unwrap_or_default(),
+                                worker: TripleAWorker {
+                                    lead: balance["worker"]["lead"].as_bool().unwrap_or_default(),
+                                    publish: balance["worker"]["publish"]
+                                        .as_bool()
+                                        .unwrap_or_default(),
+                                    remix: balance["worker"]["remix"].as_bool().unwrap_or_default(),
+                                    lead_frequency: U256::from_dec_str(
+                                        balance["worker"]["leadFrequency"].as_str().unwrap_or("0"),
+                                    )
+                                    .unwrap_or_default(),
+
+                                    publish_frequency: U256::from_dec_str(
+                                        balance["worker"]["publishFrequency"]
+                                            .as_str()
+                                            .unwrap_or("0"),
+                                    )
+                                    .unwrap_or_default(),
+                                    remix_frequency: U256::from_dec_str(
+                                        balance["worker"]["remixFrequency"].as_str().unwrap_or("0"),
+                                    )
+                                    .unwrap_or_default(),
+                                },
                             });
                         }
                     }
@@ -507,68 +505,6 @@ impl AgentManager {
                     io::ErrorKind::TimedOut,
                     format!("Timeout: {:?}", err),
                 )))
-            }
-        }
-    }
-
-    async fn chat_and_post(
-        &mut self,
-        collection: &Collection,
-        collection_instructions: &str,
-    ) -> Result<(), Box<dyn Error + Send + Sync>> {
-        match call_chat_completion(
-            collection,
-            &self.agent.custom_instructions,
-            collection_instructions,
-            &self.agent.id,
-        )
-        .await
-        {
-            Ok(llm_message) => {
-                let tokens = handle_tokens(
-                    self.agent.id,
-                    &self.agent.account_address,
-                    self.tokens.clone(),
-                )
-                .await;
-
-                match tokens {
-                    Ok(new_tokens) => {
-                        self.tokens = Some(new_tokens);
-
-                        match self.format_publication(&llm_message, &collection).await {
-                            Ok(_) => {
-                                let mut removed = false;
-
-                                self.current_queue.retain(|item| {
-                                    if !removed && item.collection_id == collection.collection_id {
-                                        removed = true;
-                                        false
-                                    } else {
-                                        true
-                                    }
-                                });
-                                Ok(())
-                            }
-                            Err(err) => {
-                                eprintln!(
-                                    "Error in making lens post for agent_{}: {:?}",
-                                    self.agent.id, err
-                                );
-                                Ok(())
-                            }
-                        }
-                    }
-
-                    Err(err) => {
-                        eprintln!("Error renewing Lens tokens: {:?}", err);
-                        Ok(())
-                    }
-                }
-            }
-            Err(err) => {
-                eprintln!("Error with OpenAI completion: {:?}", err);
-                Ok(())
             }
         }
     }
@@ -598,15 +534,33 @@ impl AgentManager {
             self.current_queue.len()
         );
 
-        for collection in queue {
-            let _ = self
-                .chat_and_post(&collection.collection, &collection.custom_instructions)
-                .await;
+        for activity in queue {
+            let tokens = handle_tokens(
+                self.agent.id,
+                &self.agent.account_address,
+                self.tokens.clone(),
+            )
+            .await;
 
-            if interval > 0 {
-                println!("Sleeping agent_{}", self.agent.id);
-                time::sleep(std::time::Duration::from_secs(interval as u64)).await;
+            match tokens {
+                Ok(new_tokens) => {
+                    self.tokens = Some(new_tokens);
+                    self.current_queue
+                        .retain(|item| item.collection_id == activity.collection_id);
+
+                    let agent = self.agent.clone();
+                    let tokens = self.tokens.clone();
+                    tokio::spawn(async move {
+                        cycle_activity(&agent, tokens, &activity, interval).await;
+                    });
+                }
+
+                Err(err) => {
+                    eprintln!("Error renewing Lens tokens: {:?}", err);
+                }
             }
+
+            tokio::time::sleep(std::time::Duration::from_secs(interval as u64)).await;
         }
 
         println!(
@@ -618,77 +572,165 @@ impl AgentManager {
         Ok(())
     }
 
-    async fn format_publication(
+    async fn calculate_rent(
         &self,
-        llm_message: &str,
-        collection: &Collection,
-    ) -> Result<(), Box<dyn Error + Send + Sync>> {
-        let focus = String::from("IMAGE");
-        let schema = "https://json-schemas.lens.dev/posts/image/3.0.0.json".to_string();
-        let tags = vec![
-            "tripleA".to_string(),
-            collection.title.to_string().replace(" ", "").to_lowercase(),
-        ];
+        activity: &AgentActivity,
+        token: &String,
+    ) -> Result<U256, Box<dyn Error + Send + Sync>> {
+        let mut rent_total = U256::from(0);
 
-        let publication = Publication {
-            schema,
-            lens: Content {
-                mainContentFocus: focus,
-                title: llm_message.chars().take(20).collect(),
-                content: format!(
-                    "{}\n\n Collect on TripleA here:\nhttps://triplea.agentmeme.xyz/nft/{}/{}/",
-                    llm_message.to_string(),
-                    collection.username,
-                    collection.collection_id
-                ),
-                id: Uuid::new_v4().to_string(),
-                locale: "en".to_string(),
-                tags,
-                image: Image {
-                    tipo: "image/png".to_string(),
-                    item: collection.image.clone(),
-                },
-            },
-        };
+        if activity.worker.lead {
+            let rent_method = self
+                .access_controls_contract
+                .method::<_, U256>("getTokenCycleRentLead", H160::from_str(token).unwrap());
 
-        let publication_json = to_string(&publication)?;
+            match rent_method {
+                Ok(rent_call) => {
+                    let token_result: Result<
+                        U256,
+                        contract::ContractError<SignerMiddleware<Arc<Provider<Http>>, LocalWallet>>,
+                    > = rent_call.call().await;
 
-        let content = match upload_lens_storage(publication_json).await {
-            Ok(con) => con,
-            Err(e) => {
-                eprintln!("Error uploading content to Lens Storage: {}", e);
-                return Err(Box::new(io::Error::new(
-                    io::ErrorKind::Other,
-                    format!("Error uploading content to Lens Storage: {}", e),
-                )));
-            }
-        };
-
-        let res = make_publication(
-            &content,
-            self.agent.id,
-            &self.tokens.as_ref().unwrap().tokens.access_token,
-        )
-        .await
-        .map_err(|e| Box::new(e.to_string()));
-
-        println!("Lens response for agent_{}: {:?}", self.agent.id, res);
-
-        match res {
-            Ok(success) => {
-                eprintln!("Post success: {:?}", success);
-                Ok(())
-            }
-            Err(e) => {
-                eprintln!(
-                    "Error processing message for agent_{}: {:?}",
-                    self.agent.id, e
-                );
-                Err(Box::new(io::Error::new(
-                    io::ErrorKind::Other,
-                    "Error sending message",
-                )))
+                    match token_result {
+                        Ok(rent_threshold) => {
+                            rent_total += rent_threshold * activity.worker.lead_frequency;
+                        }
+                        Err(err) => {
+                            eprintln!("Error in rent method lead: {}", err);
+                        }
+                    }
+                }
+                Err(err) => {
+                    eprintln!("Error in rent method lead: {}", err);
+                }
             }
         }
+
+        if activity.worker.publish {
+            let rent_method = self
+                .access_controls_contract
+                .method::<_, U256>("getTokenCycleRentPublish", H160::from_str(token).unwrap());
+
+            match rent_method {
+                Ok(rent_call) => {
+                    let token_result: Result<
+                        U256,
+                        contract::ContractError<SignerMiddleware<Arc<Provider<Http>>, LocalWallet>>,
+                    > = rent_call.call().await;
+
+                    match token_result {
+                        Ok(rent_threshold) => {
+                            rent_total += rent_threshold * activity.worker.publish_frequency;
+                        }
+                        Err(err) => {
+                            eprintln!("Error in rent method publish: {}", err);
+                        }
+                    }
+                }
+                Err(err) => {
+                    eprintln!("Error in rent method publish: {}", err);
+                }
+            }
+        }
+
+        if activity.worker.remix {
+            let rent_method = self
+                .access_controls_contract
+                .method::<_, U256>("getTokenCycleRentRemix", H160::from_str(token).unwrap());
+
+            match rent_method {
+                Ok(rent_call) => {
+                    let token_result: Result<
+                        U256,
+                        contract::ContractError<SignerMiddleware<Arc<Provider<Http>>, LocalWallet>>,
+                    > = rent_call.call().await;
+
+                    match token_result {
+                        Ok(rent_threshold) => {
+                            rent_total += rent_threshold * activity.worker.remix_frequency;
+                        }
+                        Err(err) => {
+                            eprintln!("Error in rent method remix: {}", err);
+                        }
+                    }
+                }
+                Err(err) => {
+                    eprintln!("Error in rent method remix: {}", err);
+                }
+            }
+        }
+
+        Ok(rent_total)
     }
+}
+
+async fn cycle_activity(
+    agent: &TripleAAgent,
+    tokens: Option<SavedTokens>,
+    activity: &AgentActivity,
+    interval: i64,
+) {
+    let total_activities = activity.worker.lead_frequency.as_u64()
+        + activity.worker.publish_frequency.as_u64()
+        + activity.worker.remix_frequency.as_u64();
+    let activity_interval = interval / total_activities as i64;
+
+    let mut tasks = vec![];
+    for _ in 0..activity.worker.lead_frequency.as_u64() {
+        tasks.push(ActivityType::Lead);
+    }
+    for _ in 0..activity.worker.publish_frequency.as_u64() {
+        tasks.push(ActivityType::Publish);
+    }
+    for _ in 0..activity.worker.remix_frequency.as_u64() {
+        tasks.push(ActivityType::Remix);
+    }
+
+    tasks = distribute_tasks(tasks);
+
+    let handles: Vec<_> = tasks
+        .into_iter()
+        .enumerate()
+        .map(|(i, task)| {
+            let agent = agent.clone();
+            let tokens = tokens.clone();
+            let collection = activity.collection.clone();
+            let instructions = activity.custom_instructions.clone();
+
+            tokio::spawn(async move {
+                tokio::time::sleep(std::time::Duration::from_secs(
+                    (i as i64 * activity_interval) as u64,
+                ))
+                .await;
+
+                match task {
+                    ActivityType::Lead => lead_generation().await,
+                    ActivityType::Publish => {
+                        let _ = publish(&agent, tokens, &collection, &instructions).await;
+                    }
+                    ActivityType::Remix => remix().await,
+                }
+            })
+        })
+        .collect();
+
+    for handle in handles {
+        let _ = handle.await;
+    }
+
+    println!(
+        "Finished cycle_activity for Agent_{} and Activity {:?}",
+        agent.id, activity
+    );
+}
+
+fn distribute_tasks(mut tasks: Vec<ActivityType>) -> Vec<ActivityType> {
+    let mut distributed = vec![];
+    while !tasks.is_empty() {
+        if let Some(task) = tasks.pop() {
+            distributed.push(task);
+        }
+        tasks.rotate_left(1);
+    }
+    distributed
 }

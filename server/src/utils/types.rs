@@ -22,6 +22,16 @@ pub struct TripleAAgent {
     pub account_address: String,
 }
 
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
+pub struct TripleAWorker {
+    pub lead: bool,
+    pub publish: bool,
+    pub remix: bool,
+    pub lead_frequency: U256,
+    pub publish_frequency: U256,
+    pub remix_frequency: U256,
+}
+
 #[derive(Debug, Clone)]
 pub struct AgentManager {
     pub agent: TripleAAgent,
@@ -57,11 +67,11 @@ pub struct Collection {
 pub struct AgentActivity {
     pub collection: Collection,
     pub token: String,
+    pub worker: TripleAWorker,
     pub active_balance: U256,
     pub total_balance: U256,
     pub collection_id: U256,
     pub custom_instructions: String,
-    pub cycle_frequency: U256,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -107,4 +117,10 @@ pub struct Content {
 pub struct SavedTokens {
     pub tokens: LensTokens,
     pub expiry: i64,
+}
+#[derive(Debug, Clone)]
+pub enum ActivityType {
+    Publish,
+    Lead,
+    Remix
 }

@@ -35,7 +35,6 @@ contract TripleALibrary {
         address[] tokens;
         uint256[] prices;
         uint256[] agentIds;
-        uint256[] cycleFrequency;
         string metadata;
         CollectionType collectionType;
         uint256 amount;
@@ -50,9 +49,14 @@ contract TripleALibrary {
         string metadata;
         address creator;
         uint256 id;
+        uint256 scorePositive;
+            uint256 scoreNegative;
     }
 
     struct CollectionWorker {
+        uint256 publishFrequency;
+        uint256 remixFrequency;
+        uint256 leadFrequency;
         bool publish;
         bool remix;
         bool lead;

@@ -16,7 +16,6 @@ import "./../src/skyhunters/SkyhuntersPools.sol";
 import "./../src/skyhunters/SkyhuntersReceiver.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
-
 contract MockERC20 is ERC20 {
     constructor(string memory name, string memory symbol) ERC20(name, symbol) {}
 
@@ -65,12 +64,11 @@ contract TripleAAgentsTest is Test {
     MockERC20 private token1;
     MockERC20 private token2;
 
-        SkyhuntersReceiver private receiver;
+    SkyhuntersReceiver private receiver;
     SkyhuntersAccessControls private skyhuntersAccess;
     SkyhuntersPools private pools;
 
-
-      function _skyhunters() public {
+    function _skyhunters() public {
         vm.startPrank(admin);
         skyhuntersAccess = new SkyhuntersAccessControls();
         pools = new SkyhuntersPools(payable(address(accessControls)));
@@ -111,7 +109,7 @@ contract TripleAAgentsTest is Test {
 
         accessControls.addAdmin(admin);
 
-            _skyhunters();
+        _skyhunters();
 
         vm.startPrank(admin);
         nft.setMarket(address(market));
@@ -119,7 +117,7 @@ contract TripleAAgentsTest is Test {
         agents.setMarket(address(market));
         accessControls.setAgentsContract(address(agents));
         collectionManager.setMarket(address(market));
-          collectionManager.setAgents(address(agents));
+        collectionManager.setAgents(address(agents));
         accessControls.setAcceptedToken(address(token1));
         accessControls.setTokenDetails(
             address(token1),
@@ -290,7 +288,6 @@ contract TripleAAgentsTest is Test {
                 tokens: new address[](1),
                 prices: new uint256[](1),
                 agentIds: new uint256[](1),
-                cycleFrequency: new uint256[](1),
                 customInstructions: new string[](1),
                 metadata: "Metadata 1",
                 amount: 5,
@@ -302,7 +299,6 @@ contract TripleAAgentsTest is Test {
         inputs_1.prices[0] = 10 ether;
         inputs_1.agentIds[0] = 1;
         inputs_1.customInstructions[0] = "custom";
-        inputs_1.cycleFrequency[0] = 1;
 
         TripleALibrary.CollectionWorker[]
             memory workers_1 = new TripleALibrary.CollectionWorker[](1);
@@ -310,7 +306,10 @@ contract TripleAAgentsTest is Test {
         workers_1[0] = TripleALibrary.CollectionWorker({
             publish: true,
             remix: true,
-            lead: true
+            lead: true,
+            publishFrequency: 1,
+            remixFrequency: 1,
+            leadFrequency: 1
         });
 
         collectionManager.create(inputs_1, workers_1, "some drop uri", 0);
@@ -367,7 +366,6 @@ contract TripleAAgentsTest is Test {
                 tokens: new address[](1),
                 prices: new uint256[](1),
                 agentIds: new uint256[](1),
-                cycleFrequency: new uint256[](1),
                 customInstructions: new string[](1),
                 metadata: "Metadata 1",
                 amount: 10,
@@ -379,14 +377,17 @@ contract TripleAAgentsTest is Test {
         inputs_1.prices[0] = 5 ether;
         inputs_1.agentIds[0] = 1;
         inputs_1.customInstructions[0] = "custom";
-        inputs_1.cycleFrequency[0] = 1;
+
         TripleALibrary.CollectionWorker[]
             memory workers_1 = new TripleALibrary.CollectionWorker[](1);
 
         workers_1[0] = TripleALibrary.CollectionWorker({
             publish: true,
             remix: true,
-            lead: true
+            lead: true,
+            publishFrequency: 1,
+            remixFrequency: 1,
+            leadFrequency: 1
         });
         collectionManager.create(inputs_1, workers_1, "some drop uri", 0);
         vm.stopPrank();
@@ -480,7 +481,6 @@ contract TripleAAgentsTest is Test {
                 tokens: new address[](1),
                 prices: new uint256[](1),
                 agentIds: new uint256[](1),
-                cycleFrequency: new uint256[](1),
                 customInstructions: new string[](1),
                 metadata: "Metadata 1",
                 amount: 5,
@@ -492,7 +492,6 @@ contract TripleAAgentsTest is Test {
         inputs_1.prices[0] = 10 ether;
         inputs_1.agentIds[0] = 1;
         inputs_1.customInstructions[0] = "custom";
-        inputs_1.cycleFrequency[0] = 1;
 
         TripleALibrary.CollectionWorker[]
             memory workers_1 = new TripleALibrary.CollectionWorker[](1);
@@ -500,7 +499,10 @@ contract TripleAAgentsTest is Test {
         workers_1[0] = TripleALibrary.CollectionWorker({
             publish: true,
             remix: true,
-            lead: true
+            lead: true,
+            publishFrequency: 1,
+            remixFrequency: 1,
+            leadFrequency: 1
         });
         collectionManager.create(inputs_1, workers_1, "some drop uri", 0);
         vm.stopPrank();
@@ -588,7 +590,6 @@ contract TripleAAgentsTest is Test {
                 tokens: new address[](1),
                 prices: new uint256[](1),
                 agentIds: new uint256[](1),
-                cycleFrequency: new uint256[](1),
                 customInstructions: new string[](1),
                 metadata: "Metadata 1",
                 amount: 10,
@@ -600,14 +601,17 @@ contract TripleAAgentsTest is Test {
         inputs_1.prices[0] = 5 ether;
         inputs_1.agentIds[0] = 1;
         inputs_1.customInstructions[0] = "custom";
-        inputs_1.cycleFrequency[0] = 1;
+
         TripleALibrary.CollectionWorker[]
             memory workers_1 = new TripleALibrary.CollectionWorker[](1);
 
         workers_1[0] = TripleALibrary.CollectionWorker({
             publish: true,
             remix: true,
-            lead: true
+            lead: true,
+            publishFrequency: 1,
+            remixFrequency: 1,
+            leadFrequency: 1
         });
         collectionManager.create(inputs_1, workers_1, "some drop uri", 0);
         vm.stopPrank();
@@ -705,7 +709,6 @@ contract TripleAAgentsTest is Test {
                 tokens: new address[](1),
                 prices: new uint256[](1),
                 agentIds: new uint256[](1),
-                cycleFrequency: new uint256[](1),
                 customInstructions: new string[](1),
                 metadata: "Metadata 1",
                 amount: 10,
@@ -717,7 +720,6 @@ contract TripleAAgentsTest is Test {
         inputs_1.prices[0] = 5 ether;
         inputs_1.agentIds[0] = 1;
         inputs_1.customInstructions[0] = "custom";
-        inputs_1.cycleFrequency[0] = 1;
 
         TripleALibrary.CollectionWorker[]
             memory workers_1 = new TripleALibrary.CollectionWorker[](1);
@@ -725,7 +727,10 @@ contract TripleAAgentsTest is Test {
         workers_1[0] = TripleALibrary.CollectionWorker({
             publish: true,
             remix: true,
-            lead: true
+            lead: true,
+            publishFrequency: 1,
+            remixFrequency: 1,
+            leadFrequency: 1
         });
         collectionManager.create(inputs_1, workers_1, "some drop uri", 0);
         vm.stopPrank();
@@ -767,7 +772,6 @@ contract TripleAAgentsTest is Test {
                 tokens: new address[](1),
                 prices: new uint256[](1),
                 agentIds: new uint256[](2),
-                cycleFrequency: new uint256[](2),
                 customInstructions: new string[](2),
                 metadata: "Metadata 2",
                 amount: 10,
@@ -781,8 +785,6 @@ contract TripleAAgentsTest is Test {
         inputs_2.agentIds[1] = 2;
         inputs_2.customInstructions[0] = "custom1";
         inputs_2.customInstructions[1] = "custom2";
-        inputs_2.cycleFrequency[0] = 1;
-        inputs_2.cycleFrequency[1] = 2;
 
         TripleALibrary.CollectionWorker[]
             memory workers_1 = new TripleALibrary.CollectionWorker[](2);
@@ -790,12 +792,18 @@ contract TripleAAgentsTest is Test {
         workers_1[0] = TripleALibrary.CollectionWorker({
             publish: true,
             remix: true,
-            lead: true
+            lead: true,
+            publishFrequency: 1,
+            remixFrequency: 1,
+            leadFrequency: 1
         });
-          workers_1[1] = TripleALibrary.CollectionWorker({
+        workers_1[1] = TripleALibrary.CollectionWorker({
             publish: true,
             remix: true,
-            lead: true
+            lead: true,
+            publishFrequency: 1,
+            remixFrequency: 1,
+            leadFrequency: 1
         });
         collectionManager.create(inputs_2, workers_1, "some drop uri2", 0);
         vm.stopPrank();
@@ -940,15 +948,17 @@ contract TripleAAgentsTest is Test {
         uint256 agentShare_coll1 = ((10 / 100) * 5 ether); // one agent
         uint256 agentShare_coll2 = ((10 / 100) * 5 ether) / 2; // two agents
 
-        uint256 agent1Coll1Bonus =( agentShare_coll1 - rent) * 2;
+        uint256 agent1Coll1Bonus = (agentShare_coll1 - rent) * 2;
         uint256 agent1Coll2Bonus = (agentShare_coll2 - rent) * 2;
         uint256 agent2Coll2Bonus = (agentShare_coll2 - rent) * 2;
 
         assertEq(
             token1.balanceOf(address(agentOwner)),
-           _bonusInput.ownerBalanceAgent1 +
-                ((agent1Coll1Bonus * 30) / 100) / 2 +
-                ((agent1Coll2Bonus * 30) / 100) / 2
+            _bonusInput.ownerBalanceAgent1 +
+                ((agent1Coll1Bonus * 30) / 100) /
+                2 +
+                ((agent1Coll2Bonus * 30) / 100) /
+                2
         );
         assertEq(
             token1.balanceOf(address(agentOwner2)),
@@ -1024,7 +1034,7 @@ contract TripleAAgentsTest is Test {
 
         assertEq(
             devTreasury.getBalanceByToken(address(token1)),
-            oneBalance_after - 200000 
+            oneBalance_after - 200000
         );
         assertEq(
             devTreasury.getAllTimeServices(address(token1)),
@@ -1032,7 +1042,7 @@ contract TripleAAgentsTest is Test {
         );
         assertEq(
             devTreasury.getServicesPaidByToken(address(token1)),
-            oneServices_after 
+            oneServices_after
         );
     }
 }

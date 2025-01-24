@@ -12,8 +12,6 @@ contract TripleACollectionManager {
     mapping(uint256 => TripleALibrary.Drop) private _drops;
     mapping(uint256 => mapping(uint256 => string))
         private _agentCustomInstructions;
-    mapping(uint256 => mapping(uint256 => uint256))
-        private _agentCycleFrequency;
 
     uint256 private _collectionCounter;
     uint256 private _dropCounter;
@@ -36,7 +34,6 @@ contract TripleACollectionManager {
     event CollectionDeleted(address artist, uint256 indexed collectionId);
     event AgentDetailsUpdated(
         string[] customInstructions,
-        uint256[] cycleFrequency,
         uint256[] agentIds,
         uint256 collectionId
     );
@@ -130,9 +127,6 @@ contract TripleACollectionManager {
                 collectionInput.agentIds[i]
             ] = collectionInput.customInstructions[i];
 
-            _agentCycleFrequency[_collectionCounter][
-                collectionInput.agentIds[i]
-            ] = collectionInput.cycleFrequency[i];
             agents.addWorker(
                 workers[i],
                 collectionInput.agentIds[i],
@@ -168,7 +162,6 @@ contract TripleACollectionManager {
 
     function updateAgentCollectionDetails(
         string[] memory customInstructions,
-        uint256[] memory cycleFrequency,
         uint256[] memory agentIds,
         uint256 collectionId
     ) external {
@@ -177,8 +170,7 @@ contract TripleACollectionManager {
         }
 
         if (
-            agentIds.length != customInstructions.length &&
-            customInstructions.length != cycleFrequency.length
+            agentIds.length != customInstructions.length 
         ) {
             revert TripleAErrors.BadUserInput();
         }
@@ -187,12 +179,10 @@ contract TripleACollectionManager {
                 agentIds[i]
             ] = customInstructions[i];
 
-            _agentCycleFrequency[collectionId][agentIds[i]] = cycleFrequency[i];
         }
 
         emit AgentDetailsUpdated(
             customInstructions,
-            cycleFrequency,
             agentIds,
             collectionId
         );
@@ -256,9 +246,7 @@ contract TripleACollectionManager {
             delete _agentCustomInstructions[collectionId][
                 _collections[collectionId].agentIds[i]
             ];
-            delete _agentCycleFrequency[collectionId][
-                _collections[collectionId].agentIds[i]
-            ];
+        
         }
 
         if (_collections[collectionId].amountSold > 0) {
@@ -439,13 +427,6 @@ contract TripleACollectionManager {
         uint256 agentId
     ) public view returns (string memory) {
         return _agentCustomInstructions[collectionId][agentId];
-    }
-
-    function getAgentCollectionCycleFrequency(
-        uint256 collectionId,
-        uint256 agentId
-    ) public view returns (uint256) {
-        return _agentCycleFrequency[collectionId][agentId];
     }
 
     function setMarket(address _market) external onlyAdmin {

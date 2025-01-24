@@ -24,6 +24,7 @@ contract TripleAAgents {
         private _agentBonusBalances;
     mapping(uint256 => mapping(uint256 => TripleALibrary.CollectionWorker))
         private _workers;
+    mapping(uint256 => mapping(uint256 => bool)) private _isArtist;
 
     event AgentCreated(address[] wallets, address creator, uint256 indexed id);
     event AgentDeleted(uint256 indexed id);
@@ -65,6 +66,7 @@ contract TripleAAgents {
     event AddOwner(address wallet, uint256 agentId);
     event RevokeAgentWallet(address wallet, uint256 agentId);
     event AddAgentWallet(address wallet, uint256 agentId);
+    event AgentScored(address scorer, uint256 agentId, uint256 score, bool positive);
 
     modifier onlyAdmin() {
         if (!accessControls.isAdmin(msg.sender)) {
@@ -74,7 +76,10 @@ contract TripleAAgents {
     }
 
     modifier onlyAgentOwnerOrCreator(uint256 agentId) {
-        if (!_isOwner[msg.sender][agentId] && _agents[agentId].creator != msg.sender) {
+        if (
+            !_isOwner[msg.sender][agentId] &&
+            _agents[agentId].creator != msg.sender
+        ) {
             revert TripleAErrors.NotAgentOwner();
         }
 
@@ -136,7 +141,9 @@ contract TripleAAgents {
             owners: owners,
             creator: msg.sender,
             collectionIdsHistory: new uint256[](0),
-            activeCollectionIds: new uint256[](0)
+            activeCollectionIds: new uint256[](0),
+            scorePositive: 0,
+            scoreNegative: 0
         });
 
         for (uint8 i = 0; i < wallets.length; i++) {
@@ -155,7 +162,9 @@ contract TripleAAgents {
         emit AgentEdited(agentId);
     }
 
-    function deleteAgent(uint256 agentId) external onlyAgentOwnerOrCreator(agentId) {
+    function deleteAgent(
+        uint256 agentId
+    ) external onlyAgentOwnerOrCreator(agentId) {
         if (_agents[agentId].activeCollectionIds.length > 0) {
             revert TripleAErrors.AgentStillActive();
         }
@@ -328,6 +337,7 @@ contract TripleAAgents {
 
         if (!existsInHistory) {
             _agents[agentId].collectionIdsHistory.push(collectionId);
+            _isArtist[agentId][collectionId] = true;
         }
 
         emit BalanceAdded(token, agentId, amount, collectionId);
@@ -538,6 +548,7 @@ contract TripleAAgents {
 
             if (!existsInHistory) {
                 _agents[agentId].collectionIdsHistory.push(collectionId);
+                _isArtist[agentId][collectionId] = true;
             }
 
             emit AgentRecharged(
@@ -548,6 +559,25 @@ contract TripleAAgents {
                 amount
             );
         }
+    }
+
+    function scoreAgent(uint256 agentId, uint256 collectionId, uint256 score, bool positive) public {
+
+        if (!_isArtist[agentId][collectionId] || collectionManager.getCollectionArtist(collectionId) != msg.sender){
+             revert TripleAErrors.NotArtist();
+        }
+
+        if (score > 1) { 
+            revert TripleAErrors.InvalidScore();
+        }
+
+        if (positive) {
+            _agents[agentId].scorePositive += score;
+        } else {
+            _agents[agentId].scoreNegative += score;
+        }
+
+        emit AgentScored(msg.sender, agentId, score, positive);
     }
 
     function excessAgent(
@@ -607,6 +637,14 @@ contract TripleAAgents {
         uint256 agentId
     ) public view returns (uint256[] memory) {
         return _agents[agentId].collectionIdsHistory;
+    }
+
+    function getAgentScorePositive(uint256 agentId) public view returns (uint256) {
+        return _agents[agentId].scorePositive;
+    }
+
+        function getAgentScoreNegative(uint256 agentId) public view returns (uint256) {
+        return _agents[agentId].scoreNegative;
     }
 
     function getAgentOwners(

@@ -24,7 +24,6 @@ async fn refresh(
     refresh_tokens: &str,
     auth_tokens: &str,
 ) -> Result<LensTokens, Box<dyn Error + Send + Sync>> {
-
     let query = json!({
         "query": r#"
             mutation Refresh($request: RefreshRequest!) {
@@ -231,8 +230,8 @@ pub async fn handle_tokens(
 
     if let Some(saved) = tokens {
         let now = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs();
-
-        if now < saved.expiry.try_into().unwrap() {
+        let expiry: u64 = saved.expiry.try_into().unwrap();
+        if now < (expiry - 3600) {
             return Ok(saved);
         } else {
             let new_tokens = refresh(

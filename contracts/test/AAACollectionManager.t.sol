@@ -40,8 +40,8 @@ contract TripleACollectionManagerTest is Test {
         fulfillerManager = new TripleAFulfillerManager(
             payable(address(accessControls))
         );
-                devTreasury = new TripleADevTreasury(payable(address(accessControls)));
-           agents = new TripleAAgents(
+        devTreasury = new TripleADevTreasury(payable(address(accessControls)));
+        agents = new TripleAAgents(
             payable(address(accessControls)),
             payable(address(devTreasury)),
             address(collectionManager)
@@ -50,9 +50,9 @@ contract TripleACollectionManagerTest is Test {
         token2 = new MockERC20("Token2", "TK2");
         accessControls.addAdmin(admin);
         vm.startPrank(admin);
-                agents.setMarket(address(market));
+        agents.setMarket(address(market));
         collectionManager.setMarket(market);
-               collectionManager.setAgents(address(agents));
+        collectionManager.setAgents(address(agents));
         fulfillerManager.setMarket(address(market));
         accessControls.addFulfiller(fulfiller);
         vm.stopPrank();
@@ -75,7 +75,6 @@ contract TripleACollectionManagerTest is Test {
                 prices: new uint256[](2),
                 agentIds: new uint256[](3),
                 customInstructions: new string[](3),
-                cycleFrequency: new uint256[](3),
                 metadata: "Metadata 1",
                 amount: 1,
                 collectionType: TripleALibrary.CollectionType.Digital,
@@ -91,9 +90,6 @@ contract TripleACollectionManagerTest is Test {
         inputs_1.customInstructions[0] = "custom1";
         inputs_1.customInstructions[1] = "custom2";
         inputs_1.customInstructions[2] = "custom3";
-        inputs_1.cycleFrequency[0] = 1;
-        inputs_1.cycleFrequency[1] = 2;
-        inputs_1.cycleFrequency[2] = 3;
 
         TripleALibrary.CollectionInput memory inputs_2 = TripleALibrary
             .CollectionInput({
@@ -102,7 +98,6 @@ contract TripleACollectionManagerTest is Test {
                 agentIds: new uint256[](1),
                 metadata: "Metadata 2",
                 customInstructions: new string[](1),
-                cycleFrequency: new uint256[](1),
                 amount: 10,
                 collectionType: TripleALibrary.CollectionType.Digital,
                 fulfillerId: 1
@@ -112,7 +107,6 @@ contract TripleACollectionManagerTest is Test {
         inputs_2.prices[0] = 13200000000000000000;
         inputs_2.agentIds[0] = 3;
         inputs_2.customInstructions[0] = "another custom";
-        inputs_2.cycleFrequency[0] = 1;
 
         TripleALibrary.CollectionWorker[]
             memory workers_1 = new TripleALibrary.CollectionWorker[](3);
@@ -120,17 +114,26 @@ contract TripleACollectionManagerTest is Test {
         workers_1[0] = TripleALibrary.CollectionWorker({
             publish: true,
             remix: true,
-            lead: true
+            lead: true,
+            publishFrequency: 1,
+            remixFrequency: 1,
+            leadFrequency: 1
         });
-             workers_1[1] = TripleALibrary.CollectionWorker({
+        workers_1[1] = TripleALibrary.CollectionWorker({
             publish: true,
             remix: true,
-            lead: true
+            lead: true,
+            publishFrequency: 1,
+            remixFrequency: 1,
+            leadFrequency: 1
         });
-             workers_1[2] = TripleALibrary.CollectionWorker({
+        workers_1[2] = TripleALibrary.CollectionWorker({
             publish: true,
             remix: true,
-            lead: true
+            lead: true,
+            publishFrequency: 1,
+            remixFrequency: 1,
+            leadFrequency: 1
         });
 
         TripleALibrary.CollectionWorker[]
@@ -139,7 +142,10 @@ contract TripleACollectionManagerTest is Test {
         workers_2[0] = TripleALibrary.CollectionWorker({
             publish: true,
             remix: true,
-            lead: true
+            lead: true,
+            publishFrequency: 1,
+            remixFrequency: 1,
+            leadFrequency: 1
         });
 
         collectionManager.create(inputs_1, workers_1, "some drop URI", 0);
@@ -245,7 +251,6 @@ contract TripleACollectionManagerTest is Test {
                 prices: new uint256[](2),
                 agentIds: new uint256[](3),
                 customInstructions: new string[](3),
-                cycleFrequency: new uint256[](3),
                 metadata: "Metadata 2",
                 amount: 1,
                 collectionType: TripleALibrary.CollectionType.Digital,
@@ -261,9 +266,6 @@ contract TripleACollectionManagerTest is Test {
         inputs_1.customInstructions[0] = "custom1";
         inputs_1.customInstructions[1] = "custom2";
         inputs_1.customInstructions[2] = "custom3";
-        inputs_1.cycleFrequency[0] = 1;
-        inputs_1.cycleFrequency[1] = 2;
-        inputs_1.cycleFrequency[2] = 3;
 
         TripleALibrary.CollectionInput memory inputs_2 = TripleALibrary
             .CollectionInput({
@@ -271,7 +273,6 @@ contract TripleACollectionManagerTest is Test {
                 prices: new uint256[](1),
                 agentIds: new uint256[](1),
                 customInstructions: new string[](1),
-                cycleFrequency: new uint256[](1),
                 metadata: "Metadata 3",
                 amount: 10,
                 collectionType: TripleALibrary.CollectionType.Digital,
@@ -282,7 +283,6 @@ contract TripleACollectionManagerTest is Test {
         inputs_2.prices[0] = 13200000000000000000;
         inputs_2.agentIds[0] = 3;
         inputs_2.customInstructions[0] = "another custom";
-        inputs_2.cycleFrequency[0] = 1;
 
         TripleALibrary.CollectionWorker[]
             memory workers_1 = new TripleALibrary.CollectionWorker[](3);
@@ -290,17 +290,26 @@ contract TripleACollectionManagerTest is Test {
         workers_1[0] = TripleALibrary.CollectionWorker({
             publish: true,
             remix: true,
-            lead: true
+            lead: true,
+            publishFrequency: 1,
+            remixFrequency: 1,
+            leadFrequency: 1
         });
-           workers_1[1] = TripleALibrary.CollectionWorker({
+        workers_1[1] = TripleALibrary.CollectionWorker({
             publish: true,
             remix: true,
-            lead: true
+            lead: true,
+            publishFrequency: 1,
+            remixFrequency: 1,
+            leadFrequency: 1
         });
-           workers_1[2] = TripleALibrary.CollectionWorker({
+        workers_1[2] = TripleALibrary.CollectionWorker({
             publish: true,
             remix: true,
-            lead: true
+            lead: true,
+            publishFrequency: 1,
+            remixFrequency: 1,
+            leadFrequency: 1
         });
 
         TripleALibrary.CollectionWorker[]
@@ -309,7 +318,10 @@ contract TripleACollectionManagerTest is Test {
         workers_2[0] = TripleALibrary.CollectionWorker({
             publish: true,
             remix: true,
-            lead: true
+            lead: true,
+            publishFrequency: 1,
+            remixFrequency: 1,
+            leadFrequency: 1
         });
 
         collectionManager.create(inputs_1, workers_1, "", 1);

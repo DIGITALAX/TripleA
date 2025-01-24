@@ -139,7 +139,6 @@ contract TripleAMarketTest is Test {
                 tokens: new address[](1),
                 prices: new uint256[](1),
                 agentIds: new uint256[](1),
-                cycleFrequency: new uint256[](1),
                 customInstructions: new string[](1),
                 metadata: "Metadata 1",
                 amount: 5,
@@ -151,7 +150,6 @@ contract TripleAMarketTest is Test {
         inputs_1.prices[0] = 10 ether;
         inputs_1.agentIds[0] = 1;
         inputs_1.customInstructions[0] = "custom";
-        inputs_1.cycleFrequency[0] = 1;
 
         TripleALibrary.CollectionWorker[]
             memory workers_1 = new TripleALibrary.CollectionWorker[](1);
@@ -159,7 +157,10 @@ contract TripleAMarketTest is Test {
         workers_1[0] = TripleALibrary.CollectionWorker({
             publish: true,
             remix: true,
-            lead: true
+            lead: true,
+            publishFrequency: 1,
+            remixFrequency: 1,
+            leadFrequency: 1
         });
 
         collectionManager.create(inputs_1, workers_1, "some drop uri", 0);
@@ -195,7 +196,6 @@ contract TripleAMarketTest is Test {
                 tokens: new address[](1),
                 prices: new uint256[](1),
                 agentIds: new uint256[](1),
-                cycleFrequency: new uint256[](1),
                 customInstructions: new string[](1),
                 metadata: "Metadata 2",
                 amount: 5,
@@ -207,14 +207,16 @@ contract TripleAMarketTest is Test {
         inputs_1.prices[0] = 10 ether;
         inputs_1.agentIds[0] = 1;
         inputs_1.customInstructions[0] = "custom";
-        inputs_1.cycleFrequency[0] = 1;
         TripleALibrary.CollectionWorker[]
             memory workers_1 = new TripleALibrary.CollectionWorker[](1);
 
         workers_1[0] = TripleALibrary.CollectionWorker({
             publish: true,
             remix: true,
-            lead: true
+            lead: true,
+            publishFrequency: 1,
+            remixFrequency: 1,
+            leadFrequency: 1
         });
         collectionManager.create(inputs_1, workers_1, "some 2 drop", 0);
         vm.stopPrank();
@@ -252,7 +254,6 @@ contract TripleAMarketTest is Test {
                 prices: new uint256[](1),
                 agentIds: new uint256[](1),
                 customInstructions: new string[](1),
-                cycleFrequency: new uint256[](1),
                 metadata: "Metadata Over Threshold",
                 amount: 10,
                 collectionType: TripleALibrary.CollectionType.Digital,
@@ -263,14 +264,16 @@ contract TripleAMarketTest is Test {
         inputs_1.prices[0] = 70 ether;
         inputs_1.agentIds[0] = 1;
         inputs_1.customInstructions[0] = "custom";
-        inputs_1.cycleFrequency[0] = 1;
         TripleALibrary.CollectionWorker[]
             memory workers_1 = new TripleALibrary.CollectionWorker[](1);
 
         workers_1[0] = TripleALibrary.CollectionWorker({
             publish: true,
             remix: true,
-            lead: true
+            lead: true,
+            publishFrequency: 1,
+            remixFrequency: 1,
+            leadFrequency: 1
         });
         collectionManager.create(inputs_1, workers_1, "some 3 drop", 0);
         vm.stopPrank();
