@@ -20,3 +20,4 @@ ethers = { version = "2.0.14", features = ["rustls"] }
 base64 = "0.22.1"
 uuid = { version = "1.8.0", features = ["v4"] }
 aes-gcm = "0.10.3"
+futures = "0.3.31"

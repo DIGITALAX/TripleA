@@ -24,7 +24,7 @@ use tokio_tungstenite::{
 };
 use tungstenite::http::method;
 use utils::{
-    constants::{TRIPLEA_URI, AGENT_INTERFACE_URL},
+    constants::{AGENT_INTERFACE_URL, TRIPLEA_URI},
     contracts::configure_key,
     lens::handle_lens_account,
     types::*,
@@ -145,15 +145,19 @@ async fn handle_connection(
                         Some(cover),
                         Some(custom_instructions),
                         Some(account_address),
+                        Some(model),
+                        Some(feeds),
                     ) = (
                         parsed["publicAddress"].as_str(),
                         parsed["encryptionDetails"].as_str(),
                         parsed["id"].as_u64().map(|v| v.to_string()),
                         parsed["title"].as_str(),
                         parsed["description"].as_str(),
+                        parsed["model"].as_str(),
                         parsed["cover"].as_str(),
                         parsed["customInstructions"].as_str(),
                         parsed["accountAddress"].as_str(),
+                        parsed["feeds"].as_array(),
                     ) {
                         let private_key = match configure_key(encryption_details) {
                             Ok(private_key) => private_key,
@@ -245,16 +249,24 @@ async fn handle_connection(
                                 file.write_all(data.as_bytes())
                                     .await
                                     .unwrap_or_else(|err| eprintln!("Error writing: {:?}", err));
+                                let mut all_feeds: Vec<String> = Vec::new();
+                                for value in feeds {
+                                    if let Some(string_value) = value.as_str() {
+                                        all_feeds.push(string_value.to_string());
+                                    }
+                                }
                                 let new_agent = AgentManager::new(&TripleAAgent {
                                     id: new_id,
                                     name: title.to_string(),
                                     description: description.to_string(),
+                                    model: model.to_string(),
                                     cover: cover.to_string(),
                                     custom_instructions: custom_instructions.to_string(),
                                     wallet: public_address.to_string(),
                                     clock,
                                     last_active_time: Utc::now().timestamp() as u32,
                                     account_address: account_address.to_string(),
+                                    feeds: all_feeds,
                                 });
 
                                 match new_agent {
@@ -303,13 +315,11 @@ async fn activity_loop(agents: Arc<RwLock<HashMap<u32, AgentManager>>>) {
             let agents_clone = agents.clone();
 
             tokio::spawn(async move {
-
                 let maybe_agent_manager = {
                     let mut agents_guard = agents_clone.write().await;
-                    agents_guard.remove(&id) 
+                    agents_guard.remove(&id)
                 };
 
-              
                 if let Some(mut agent_manager) = maybe_agent_manager {
                     if let Err(err) = agent_manager.resolve_activity().await {
                         eprintln!("Error resolving activity for agent {}: {:?}", id, err);
@@ -348,6 +358,7 @@ async fn handle_agents() -> Result<HashMap<u32, AgentManager>, Box<dyn Error + S
                     customInstructions
                     description
                     title
+                    feeds
                 }
                 balances {
                     collection {
@@ -357,6 +368,7 @@ async fn handle_agents() -> Result<HashMap<u32, AgentManager>, Box<dyn Error + S
                             description
                             image
                             title
+                            model
                         }
                         prices
                         tokens
@@ -426,6 +438,10 @@ async fn handle_agents() -> Result<HashMap<u32, AgentManager>, Box<dyn Error + S
                         .as_str()
                         .unwrap_or("")
                         .to_string(),
+                    model: agent_created["metadata"]["model"]
+                        .as_str()
+                        .unwrap_or("")
+                        .to_string(),
                     cover: agent_created["metadata"]["cover"]
                         .as_str()
                         .unwrap_or("")
@@ -434,6 +450,12 @@ async fn handle_agents() -> Result<HashMap<u32, AgentManager>, Box<dyn Error + S
                         .as_str()
                         .unwrap_or("")
                         .to_string(),
+                    feeds: agent_created["metadata"]["feeds"]
+                        .as_array()
+                        .unwrap_or(&Vec::new())
+                        .iter()
+                        .filter_map(|value| value.as_str().map(|s| s.to_string()))
+                        .collect(),
                     wallet,
                     clock,
                     last_active_time: Utc::now().timestamp() as u32,

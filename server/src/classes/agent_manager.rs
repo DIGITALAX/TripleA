@@ -705,7 +705,7 @@ async fn cycle_activity(
 
                 match task {
                     ActivityType::Lead => {
-                        let _ = lead_generation().await;
+                        let _ = lead_generation(&agent, &collection, tokens, &instructions).await;
                     }
                     ActivityType::Publish => {
                         let _ = publish(&agent, tokens, &collection, &instructions).await;

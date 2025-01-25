@@ -1,6 +1,6 @@
 pub mod constants;
 pub mod types;
 pub mod contracts;
-pub mod open_ai;
+pub mod models;
 pub mod ipfs;
 pub mod lens;

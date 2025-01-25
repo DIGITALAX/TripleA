@@ -5,7 +5,7 @@ use uuid::Uuid;
 use crate::utils::{
     ipfs::upload_lens_storage,
     lens::make_publication,
-    open_ai::call_chat_completion,
+    models::{call_chat_completion_claude, call_chat_completion_openai},
     types::{Collection, Content, Image, Publication, SavedTokens, TripleAAgent},
 };
 
@@ -15,15 +15,25 @@ pub async fn publish(
     collection: &Collection,
     collection_instructions: &str,
 ) -> Result<(), Box<dyn Error + Send + Sync>> {
-    match call_chat_completion(
-        collection,
-        &agent.custom_instructions,
-        collection_instructions,
-        &agent.id,
-    )
-    .await
-    {
-        Ok(llm_message) => match format_publication(agent,tokens, &llm_message, &collection).await {
+    match if agent.model == "Claude" {
+        call_chat_completion_claude(
+            collection,
+            &agent.custom_instructions,
+            collection_instructions,
+            &agent.id,
+        )
+        .await
+    } else {
+        call_chat_completion_openai(
+            collection,
+            &agent.custom_instructions,
+            collection_instructions,
+            &agent.id,
+        )
+        .await
+    } {
+        Ok(llm_message) => match format_publication(agent, tokens, &llm_message, &collection).await
+        {
             Ok(_) => Ok(()),
             Err(err) => {
                 eprintln!(
@@ -67,10 +77,10 @@ async fn format_publication(
             id: Uuid::new_v4().to_string(),
             locale: "en".to_string(),
             tags,
-            image: Image {
+            image: Some(Image {
                 tipo: "image/png".to_string(),
                 item: collection.image.clone(),
-            },
+            }),
         },
     };
 
@@ -90,7 +100,7 @@ async fn format_publication(
     let res = make_publication(
         &content,
         agent.id,
-        &tokens.as_ref().unwrap().tokens.access_token,
+        &tokens.as_ref().unwrap().tokens.access_token, None
     )
     .await
     .map_err(|e| Box::new(e.to_string()));

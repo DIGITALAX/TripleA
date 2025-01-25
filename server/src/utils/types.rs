@@ -14,12 +14,14 @@ pub struct TripleAAgent {
     pub id: u32,
     pub name: String,
     pub description: String,
+    pub model: String,
     pub cover: String,
     pub custom_instructions: String,
     pub wallet: String,
     pub clock: u32,
     pub last_active_time: u32,
     pub account_address: String,
+    pub feeds: Vec<String>
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
@@ -71,7 +73,7 @@ pub struct AgentActivity {
     pub active_balance: U256,
     pub total_balance: U256,
     pub collection_id: U256,
-    pub custom_instructions: String,
+    pub custom_instructions: String
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -110,7 +112,7 @@ pub struct Content {
     pub id: String,
     pub locale: String,
     pub tags: Vec<String>,
-    pub image: Image,
+    pub image: Option<Image>,
 }
 
 #[derive(Debug, Clone)]

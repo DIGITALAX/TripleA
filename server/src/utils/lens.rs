@@ -4,6 +4,7 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
+use super::constants::LENS_API;
 use crate::{
     utils::contracts::{initialize_api, initialize_provider, initialize_wallet},
     LensTokens, SavedTokens,
@@ -14,10 +15,9 @@ use ethers::{
     types::{transaction::eip2718::TypedTransaction, Bytes, Eip1559TransactionRequest},
     utils::hex,
 };
+use futures::future::join_all;
 use reqwest::Client;
 use serde_json::{json, Value};
-
-use super::constants::LENS_API;
 
 async fn refresh(
     client: Arc<Client>,
@@ -260,6 +260,7 @@ pub async fn make_publication(
     content: &str,
     private_key: u32,
     auth_tokens: &str,
+    feed: Option<String>,
 ) -> Result<String, Box<dyn Error>> {
     let client = initialize_api();
 
@@ -273,8 +274,8 @@ pub async fn make_publication(
 
     let query = json!({
         "query": r#"
-            mutation post($contentUri: String!) {
-                post(request: { contentUri: $contentUri }) {
+            mutation post($request: CreatePostRequest!) {
+                post(request: $request) {
                     ... on PostResponse {
                         hash
                     }
@@ -298,7 +299,10 @@ pub async fn make_publication(
             }
         "#,
         "variables": {
-                "contentUri": content
+                "request": {
+                    "contentUri": content,
+                    "feed": feed
+                }
         }
     });
 
@@ -519,5 +523,519 @@ pub async fn handle_lens_account(wallet: &str, username: bool) -> Result<String,
         return Err("No valid accounts found in the response.".into());
     } else {
         return Err(format!("Error: {}", response.status()).into());
+    }
+}
+
+pub async fn search_posts(
+    wallet: &str,
+    search_query: &str,
+) -> Result<(Vec<Value>, Vec<String>), Box<dyn Error + Send + Sync>> {
+    let client = initialize_api();
+
+    let query = json!({
+        "query": r#"
+        query Posts($request: PostsRequest!) {
+            posts(request: $request) {
+                items {
+                    ... on Post {
+                        id
+                        author {
+                            __typename
+                            owner
+                            address
+                            createdAt
+                            username {
+                                id
+                                localName
+                            }
+                            operations {
+                                isFollowedByMe
+                            }
+                        }
+                        metadata {
+                            __typename
+                            content
+                            attachments {
+                                __typename
+                                ... on MediaAudio {
+                                    item
+                                    artist
+                                    duration
+                                }
+                                ... on MediaImage {
+                                    item
+                                    altTag
+                                }
+                                ... on MediaVideo {
+                                    item
+                                    duration
+                                    cover
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        "#,
+        "variables": {
+            "request": {
+                "pageSize": "FIFTY",
+                "filter": {
+                    "searchQuery": search_query,
+                },
+            }
+        }
+    });
+
+    let res = client
+        .post(LENS_API)
+        .header("Content-Type", "application/json")
+        .header("Origin", "https://aaa-6t0j.onrender.com")
+        .json(&query)
+        .send()
+        .await?;
+
+    if res.status().is_success() {
+        let json: Value = res.json().await?;
+
+        if let Some(posts) = json["data"]["posts"]["items"].as_array() {
+            let filtered_posts: Vec<Value> = posts
+                .iter()
+                .filter(|post| {
+                    if let Some(author) = post["author"].as_object() {
+                        if let Some(owner) = author["owner"].as_str() {
+                            return owner.to_lowercase() != wallet.to_string().to_lowercase();
+                        }
+                    }
+                    false
+                })
+                .take(10)
+                .cloned()
+                .collect();
+
+            let filtered_profiles: Vec<String> = posts
+                .iter()
+                .filter(|post| {
+                    if let Some(author) = post["author"].as_object() {
+                        if let Some(operations) = author["operations"].as_object() {
+                            if let Some(following) = operations["isFollowedByMe"].as_bool() {
+                                if !following {
+                                    return true;
+                                }
+                            }
+                        }
+                    }
+                    false
+                })
+                .filter_map(|post| post["author"]["address"].as_str().map(|s| s.to_string()))
+                .take(10)
+                .collect();
+
+            return Ok((filtered_posts, filtered_profiles));
+        } else {
+            return Err("Error: Unexpected Structure for search posts".into());
+        }
+    } else {
+        return Err(format!("Error: {}", res.status()).into());
+    }
+}
+
+pub async fn follow_profiles(
+    profiles: Vec<String>,
+    auth_tokens: &str,
+) -> Result<(), Box<dyn Error + Send + Sync>> {
+    let client = initialize_api();
+
+    let follow_futures = profiles.into_iter().map(|profile| {
+        let client = client.clone();
+        let auth_tokens = auth_tokens.to_string();
+
+        async move {
+            let query = json!({
+                "query": r#"
+                    mutation Follow($request: FollowRequest!) {
+                        follow(request: $request) {
+                            ... on FollowResponse {
+                                hash
+                            }
+                        }
+                    }
+                "#,
+                "variables": {
+                    "request": {
+                        "account": profile
+                    }
+                }
+            });
+
+            let response = client
+                .post(LENS_API)
+                .header("Authorization", format!("Bearer {}", auth_tokens))
+                .header("Content-Type", "application/json")
+                .header("Origin", "https://aaa-6t0j.onrender.com")
+                .json(&query)
+                .send()
+                .await?;
+
+            if response.status().is_success() {
+                let json: Value = response.json().await?;
+
+                if let Some(follow_response) = json["data"]["follow"].as_object() {
+                    if let Some(hash) = follow_response.get("hash").and_then(|v| v.as_str()) {
+                        println!("Follow Hash for {}: {:?}", profile, hash);
+                        poll(hash, &auth_tokens).await;
+                    }
+                } else {
+                    println!("Unexpected structure for profile: {}", profile);
+                }
+            } else {
+                println!("Error following profile {}: {}", profile, response.status());
+            }
+
+            Ok::<(), Box<dyn Error + Send + Sync>>(())
+        }
+    });
+
+    let results: Vec<_> = join_all(follow_futures).await;
+
+    for result in results {
+        if let Err(e) = result {
+            println!("Error with following: {:?}", e);
+        }
+    }
+
+    Ok(())
+}
+
+pub async fn make_comment(
+    content: &str,
+    private_key: u32,
+    auth_tokens: &str,
+    comment_id: &str,
+) -> Result<String, Box<dyn Error>> {
+    let client = initialize_api();
+
+    let wallet = match initialize_wallet(private_key) {
+        Some(wallet) => wallet,
+        None => {
+            eprintln!("Wallet initialization failed. Skipping comment.");
+            return Err("Wallet initialization failed. Skipping comment.".into());
+        }
+    };
+
+    let query = json!({
+        "query": r#"
+            mutation post($request: CreatePostRequest!)   {
+                post(request: $request) {
+                    ... on PostResponse {
+                        hash
+                    }
+                    ... on SponsoredTransactionRequest {
+                        raw {
+                            to
+                            from
+                            data
+                            gasLimit
+                            maxFeePerGas
+                            maxPriorityFeePerGas
+                            value
+                            chainId
+                        }
+                        reason
+                    }
+                    ... on TransactionWillFail {
+                        reason
+                    }
+                }
+            }
+        "#,
+        "variables": {
+            "request": {
+                "contentUri": content,
+                "commentOn": {
+                    "post": comment_id
+                }
+            }
+        }
+    });
+
+    let response = client
+        .post(LENS_API)
+        .header("Authorization", format!("Bearer {}", auth_tokens))
+        .header("Content-Type", "application/json")
+        .header("Origin", "https://aaa-6t0j.onrender.com")
+        // .header("Origin", "http://localhost:3000")
+        .json(&query)
+        .send()
+        .await?;
+
+    let json: Value = response.json().await?;
+
+    if let Some(post_response) = json["data"]["post"].as_object() {
+        if let Some(hash) = post_response.get("hash").and_then(|v| v.as_str()) {
+            println!("Comment Hash: {:?}", hash);
+            return poll(hash, auth_tokens).await;
+        }
+
+        if let Some(raw) = post_response.get("raw").and_then(|v| v.as_object()) {
+            let to = raw.get("to").and_then(|v| v.as_str()).unwrap_or_default();
+            let from = raw.get("from").and_then(|v| v.as_str()).unwrap_or_default();
+            let data = raw.get("data").and_then(|v| v.as_str()).unwrap_or_default();
+
+            if to.is_empty() || from.is_empty() || data.is_empty() {
+                return Err("Invalid transaction data: missing required fields.".into());
+            }
+
+            let gas_limit = raw
+                .get("gasLimit")
+                .and_then(|v| v.as_u64())
+                .ok_or("Invalid gasLimit")?;
+            let max_fee_per_gas = raw
+                .get("maxFeePerGas")
+                .and_then(|v| v.as_str())
+                .ok_or("Invalid maxFeePerGas")?
+                .parse::<u128>()?;
+            let max_priority_fee_per_gas = raw
+                .get("maxPriorityFeePerGas")
+                .and_then(|v| v.as_str())
+                .ok_or("Invalid maxPriorityFeePerGas")?
+                .parse::<u128>()?;
+            let value = raw
+                .get("value")
+                .and_then(|v| v.as_str())
+                .ok_or("Invalid value")?
+                .parse::<u128>()?;
+            let chain_id = raw
+                .get("chainId")
+                .and_then(|v| v.as_u64())
+                .ok_or("Invalid chainId")?;
+
+            let provider = initialize_provider();
+            let current_nonce = provider
+                .get_transaction_count(wallet.address(), None)
+                .await?;
+
+            let tx = Eip1559TransactionRequest {
+                to: Some(to.parse()?),
+                from: Some(from.parse()?),
+                gas: Some(gas_limit.into()),
+                max_fee_per_gas: Some(max_fee_per_gas.into()),
+                max_priority_fee_per_gas: Some(max_priority_fee_per_gas.into()),
+                value: Some(value.into()),
+                data: Some(data.parse()?),
+                chain_id: Some(chain_id.into()),
+                nonce: Some(current_nonce.into()),
+                access_list: vec![].into(),
+            };
+
+            let typed_tx = TypedTransaction::Eip1559(tx);
+            let signed_tx = wallet.sign_transaction(&typed_tx).await?;
+            let signed_tx_bytes = typed_tx.rlp_signed(&signed_tx);
+
+            let pending_tx = provider
+                .send_raw_transaction(Bytes::from(signed_tx_bytes))
+                .await?;
+            return Ok(format!("Transaction sent: {}", pending_tx.tx_hash()));
+        }
+
+        if let Some(reason) = post_response.get("reason").and_then(|v| v.as_str()) {
+            return Err(format!("Transaction failed: {}", reason).into());
+        }
+    }
+
+    Err("Unexpected response format.".into())
+}
+
+pub async fn make_quote(
+    content: &str,
+    private_key: u32,
+    auth_tokens: &str,
+    quote_id: &str,
+) -> Result<String, Box<dyn Error>> {
+    let client = initialize_api();
+
+    let wallet = match initialize_wallet(private_key) {
+        Some(wallet) => wallet,
+        None => {
+            eprintln!("Wallet initialization failed. Skipping quote.");
+            return Err("Wallet initialization failed. Skipping quote.".into());
+        }
+    };
+
+    let query = json!({
+        "query": r#"
+            mutation post($request: CreatePostRequest!)   {
+                post(request: $request) {
+                    ... on PostResponse {
+                        hash
+                    }
+                    ... on SponsoredTransactionRequest {
+                        raw {
+                            to
+                            from
+                            data
+                            gasLimit
+                            maxFeePerGas
+                            maxPriorityFeePerGas
+                            value
+                            chainId
+                        }
+                        reason
+                    }
+                    ... on TransactionWillFail {
+                        reason
+                    }
+                }
+            }
+        "#,
+        "variables": {
+            "request": {
+                "contentUri": content,
+                "quoteOf": {
+                    "post": quote_id
+                }
+            }
+        }
+    });
+
+    let response = client
+        .post(LENS_API)
+        .header("Authorization", format!("Bearer {}", auth_tokens))
+        .header("Content-Type", "application/json")
+        .header("Origin", "https://aaa-6t0j.onrender.com")
+        // .header("Origin", "http://localhost:3000")
+        .json(&query)
+        .send()
+        .await?;
+
+    let json: Value = response.json().await?;
+
+    if let Some(post_response) = json["data"]["post"].as_object() {
+        if let Some(hash) = post_response.get("hash").and_then(|v| v.as_str()) {
+            println!("Quote Hash: {:?}", hash);
+            return poll(hash, auth_tokens).await;
+        }
+
+        if let Some(raw) = post_response.get("raw").and_then(|v| v.as_object()) {
+            let to = raw.get("to").and_then(|v| v.as_str()).unwrap_or_default();
+            let from = raw.get("from").and_then(|v| v.as_str()).unwrap_or_default();
+            let data = raw.get("data").and_then(|v| v.as_str()).unwrap_or_default();
+
+            if to.is_empty() || from.is_empty() || data.is_empty() {
+                return Err("Invalid transaction data: missing required fields.".into());
+            }
+
+            let gas_limit = raw
+                .get("gasLimit")
+                .and_then(|v| v.as_u64())
+                .ok_or("Invalid gasLimit")?;
+            let max_fee_per_gas = raw
+                .get("maxFeePerGas")
+                .and_then(|v| v.as_str())
+                .ok_or("Invalid maxFeePerGas")?
+                .parse::<u128>()?;
+            let max_priority_fee_per_gas = raw
+                .get("maxPriorityFeePerGas")
+                .and_then(|v| v.as_str())
+                .ok_or("Invalid maxPriorityFeePerGas")?
+                .parse::<u128>()?;
+            let value = raw
+                .get("value")
+                .and_then(|v| v.as_str())
+                .ok_or("Invalid value")?
+                .parse::<u128>()?;
+            let chain_id = raw
+                .get("chainId")
+                .and_then(|v| v.as_u64())
+                .ok_or("Invalid chainId")?;
+
+            let provider = initialize_provider();
+            let current_nonce = provider
+                .get_transaction_count(wallet.address(), None)
+                .await?;
+
+            let tx = Eip1559TransactionRequest {
+                to: Some(to.parse()?),
+                from: Some(from.parse()?),
+                gas: Some(gas_limit.into()),
+                max_fee_per_gas: Some(max_fee_per_gas.into()),
+                max_priority_fee_per_gas: Some(max_priority_fee_per_gas.into()),
+                value: Some(value.into()),
+                data: Some(data.parse()?),
+                chain_id: Some(chain_id.into()),
+                nonce: Some(current_nonce.into()),
+                access_list: vec![].into(),
+            };
+
+            let typed_tx = TypedTransaction::Eip1559(tx);
+            let signed_tx = wallet.sign_transaction(&typed_tx).await?;
+            let signed_tx_bytes = typed_tx.rlp_signed(&signed_tx);
+
+            let pending_tx = provider
+                .send_raw_transaction(Bytes::from(signed_tx_bytes))
+                .await?;
+            return Ok(format!("Transaction sent: {}", pending_tx.tx_hash()));
+        }
+
+        if let Some(reason) = post_response.get("reason").and_then(|v| v.as_str()) {
+            return Err(format!("Transaction failed: {}", reason).into());
+        }
+    }
+
+    Err("Unexpected response format.".into())
+}
+
+pub async fn feed_info(feed: &str) -> Result<(String, String), Box<dyn Error>> {
+    let client = initialize_api();
+
+    let query = json!({
+        "query": r#"
+        query Feed($request: FeedRequest!) {
+            feed(request: $request) {
+                metadata {
+                    title 
+                    description
+                }
+            }
+        }
+        "#,
+        "variables": {
+            "request": {
+                "filter": {
+                    "feed": feed,
+                },
+            }
+        }
+    });
+
+    let res = client
+        .post(LENS_API)
+        .header("Content-Type", "application/json")
+        .header("Origin", "https://aaa-6t0j.onrender.com")
+        .json(&query)
+        .send()
+        .await?;
+
+    if res.status().is_success() {
+        let json: Value = res.json().await?;
+
+        if let Some(metadata) = json["data"]["feed"]["metadata"].as_object() {
+            let mut description = String::from("");
+            let mut title = String::from("");
+
+            if let Some(des) = metadata["description"].as_str() {
+                description = des.to_string();
+            }
+            if let Some(tit) = metadata["title"].as_str() {
+                title = tit.to_string();
+            }
+
+            return Ok((title, description));
+        } else {
+            return Err("Error: Unexpected Structure for Feed Info".into());
+        }
+    } else {
+        return Err(format!("Error: {}", res.status()).into());
     }
 }
