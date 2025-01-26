@@ -19,19 +19,24 @@ use serde_json::{json, Value};
 use std::{error::Error, io, str::FromStr, sync::Arc, time::Duration};
 use tokio::time;
 
+use super::remix::receive_comfy;
+
 impl AgentManager {
     pub fn new(agent: &TripleAAgent) -> Option<Self> {
         let contracts = initialize_contracts(agent.id);
         initialize_api();
 
         match contracts {
-            Some((access_controls_contract, agents_contract)) => Some(AgentManager {
-                agent: agent.clone(),
-                current_queue: Vec::new(),
-                agents_contract,
-                access_controls_contract,
-                tokens: None,
-            }),
+            Some((access_controls_contract, agents_contract, collection_manager_contract)) => {
+                Some(AgentManager {
+                    agent: agent.clone(),
+                    current_queue: Vec::new(),
+                    agents_contract,
+                    access_controls_contract,
+                    tokens: None,
+                    collection_manager_contract,
+                })
+            }
             None => {
                 eprintln!(
                     "Failed to initialize contracts for agent with ID: {}",
@@ -550,6 +555,7 @@ impl AgentManager {
 
                     let agent = self.agent.clone();
                     let tokens = self.tokens.clone();
+
                     tokio::spawn(async move {
                         cycle_activity(&agent, tokens, &activity, interval).await;
                     });
@@ -662,6 +668,21 @@ impl AgentManager {
 
         Ok(rent_total)
     }
+
+    pub async fn comfy_remix(
+        &self,
+        image: &str,
+        remix_collection_id: &str,
+    ) -> Result<(), Box<dyn Error + Send + Sync>> {
+        receive_comfy(
+            image,
+            remix_collection_id,
+            &self.agent,
+            self.collection_manager_contract.clone(),
+            &self.tokens.as_ref().unwrap().tokens.access_token,
+        )
+        .await
+    }
 }
 
 async fn cycle_activity(
@@ -696,7 +717,6 @@ async fn cycle_activity(
             let tokens = tokens.clone();
             let collection = activity.collection.clone();
             let instructions = activity.custom_instructions.clone();
-
             tokio::spawn(async move {
                 tokio::time::sleep(std::time::Duration::from_secs(
                     (i as i64 * activity_interval) as u64,
@@ -711,7 +731,7 @@ async fn cycle_activity(
                         let _ = publish(&agent, tokens, &collection, &instructions).await;
                     }
                     ActivityType::Remix => {
-                        let _ = remix().await;
+                        let _ = remix(&agent, &collection).await;
                     }
                 }
             })

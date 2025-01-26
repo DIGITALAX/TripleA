@@ -87,49 +87,59 @@ contract TripleAMarket {
         ) = _manageCollectionType(paymentToken, _totalPrice, collectionId);
         uint256 _perAgentShare = 0;
         uint256 _agentShare = 0;
-
-        if (
-            collectionManager.getCollectionAmount(collectionId) > 2 &&
-            collectionManager.getCollectionPrices(collectionId)[0] >
-            accessControls.getTokenThreshold(paymentToken) &&
-            collectionManager.getCollectionAgentIds(collectionId).length > 0 &&
-            amount + collectionManager.getCollectionAmountSold(collectionId) <
-            collectionManager.getCollectionAmount(collectionId)
-        ) {
+        uint256 _remixId = collectionManager.getCollectionRemixId(collectionId);
+        address _artist = collectionManager.getCollectionArtist(collectionId);
+        if (_remixId > 0) {
+            _artistShare = (_tokenPrice * 50) / 100;
+            _agentShare = (_tokenPrice * 50) / 100;
+            _artist = collectionManager.getCollectionArtist(_remixId);
+        } else {
             if (
-                collectionManager.getCollectionAmountSold(collectionId) == 0 &&
-                amount > 1
+                collectionManager.getCollectionAmount(collectionId) > 2 &&
+                collectionManager.getCollectionPrices(collectionId)[0] >
+                accessControls.getTokenThreshold(paymentToken) &&
+                collectionManager.getCollectionAgentIds(collectionId).length >
+                0 &&
+                amount +
+                    collectionManager.getCollectionAmountSold(collectionId) <
+                collectionManager.getCollectionAmount(collectionId)
             ) {
-                _artistShare = _tokenPrice;
-                uint256 _additionalUnits = amount - 1;
+                if (
+                    collectionManager.getCollectionAmountSold(collectionId) ==
+                    0 &&
+                    amount > 1
+                ) {
+                    _artistShare = _tokenPrice;
+                    uint256 _additionalUnits = amount - 1;
 
-                _agentShare = (_additionalUnits * _tokenPrice * 10) / 100;
+                    _agentShare = (_additionalUnits * _tokenPrice * 10) / 100;
 
-                _perAgentShare =
-                    _agentShare /
-                    collectionManager
-                        .getCollectionAgentIds(collectionId)
-                        .length;
+                    _perAgentShare =
+                        _agentShare /
+                        collectionManager
+                            .getCollectionAgentIds(collectionId)
+                            .length;
 
-                uint256 _artistShareForAdditionalUnits = (_additionalUnits *
-                    _tokenPrice *
-                    90) / 100;
-                _artistShare += _artistShareForAdditionalUnits;
-            } else if (
-                collectionManager.getCollectionAmountSold(collectionId) +
-                    amount >
-                1
-            ) {
-                _agentShare = (_totalPrice * 10) / 100;
+                    uint256 _artistShareForAdditionalUnits = (_additionalUnits *
+                        _tokenPrice *
+                        90) / 100;
+                    _artistShare += _artistShareForAdditionalUnits;
+                } else if (
+                    collectionManager.getCollectionAmountSold(collectionId) +
+                        amount >
+                    1
+                ) {
+                    _agentShare = (_totalPrice * 10) / 100;
 
-                _perAgentShare =
-                    _agentShare /
-                    collectionManager
-                        .getCollectionAgentIds(collectionId)
-                        .length;
+                    _perAgentShare =
+                        _agentShare /
+                        collectionManager
+                            .getCollectionAgentIds(collectionId)
+                            .length;
 
-                if (_agentShare < _totalPrice) {
-                    _artistShare = _totalPrice - _agentShare;
+                    if (_agentShare < _totalPrice) {
+                        _artistShare = _totalPrice - _agentShare;
+                    }
                 }
             }
         }
@@ -157,7 +167,7 @@ contract TripleAMarket {
         if (
             !IERC20(paymentToken).transferFrom(
                 msg.sender,
-                collectionManager.getCollectionArtist(collectionId),
+                _artist,
                 _artistShare
             )
         ) {
@@ -194,6 +204,8 @@ contract TripleAMarket {
             _fulfillerShare
         );
     }
+
+    function _handleRemix(uint256 remixId) internal {}
 
     function _manageCollectionType(
         address token,

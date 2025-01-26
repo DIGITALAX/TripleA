@@ -35,7 +35,7 @@ pub fn authentication() -> String {
     STANDARD.encode(aut)
 }
 
-pub async fn upload_ipfs(data: String) -> Result<IPFSResponse, Box<dyn Error>> {
+pub async fn upload_ipfs(data: String) -> Result<IPFSResponse, Box<dyn Error + Send + Sync>> {
     let client = create_client();
     let aut_encoded = authentication();
 

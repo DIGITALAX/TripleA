@@ -19,6 +19,7 @@ contract TripleALibrary {
         uint256 dropId;
         uint256 amount;
         uint256 amountSold;
+        uint256 remixId;
         CollectionType collectionType;
         bool active;
     }
@@ -39,6 +40,7 @@ contract TripleALibrary {
         CollectionType collectionType;
         uint256 amount;
         uint256 fulfillerId;
+        uint256 remixId;
     }
 
     struct Agent {
@@ -50,7 +52,7 @@ contract TripleALibrary {
         address creator;
         uint256 id;
         uint256 scorePositive;
-            uint256 scoreNegative;
+        uint256 scoreNegative;
     }
 
     struct CollectionWorker {

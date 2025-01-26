@@ -24,7 +24,7 @@ use tokio_tungstenite::{
 };
 use tungstenite::http::method;
 use utils::{
-    constants::{AGENT_INTERFACE_URL, TRIPLEA_URI},
+    constants::{AGENT_INTERFACE_URL, COMFY_INTERFACE_URL, TRIPLEA_URI},
     contracts::configure_key,
     lens::handle_lens_account,
     types::*,
@@ -97,7 +97,9 @@ async fn handle_connection(
                         if let Some(origen) = origen {
                             match origen.to_str() {
                                 Ok(origen_str) => {
-                                    if origen_str == AGENT_INTERFACE_URL {
+                                    if origen_str == AGENT_INTERFACE_URL
+                                        || origen_str == COMFY_INTERFACE_URL
+                                    {
                                         return Ok(respuesta);
                                     } else {
                                         return Err(ErrorResponse::new(Some(
@@ -136,155 +138,189 @@ async fn handle_connection(
         match msg {
             Message::Text(text) => {
                 if let Ok(parsed) = from_str::<Value>(&text) {
-                    if let (
-                        Some(public_address),
-                        Some(encryption_details),
-                        Some(id),
-                        Some(title),
-                        Some(description),
-                        Some(cover),
-                        Some(custom_instructions),
-                        Some(account_address),
-                        Some(model),
-                        Some(feeds),
-                    ) = (
-                        parsed["publicAddress"].as_str(),
-                        parsed["encryptionDetails"].as_str(),
-                        parsed["id"].as_u64().map(|v| v.to_string()),
-                        parsed["title"].as_str(),
-                        parsed["description"].as_str(),
-                        parsed["model"].as_str(),
-                        parsed["cover"].as_str(),
-                        parsed["customInstructions"].as_str(),
-                        parsed["accountAddress"].as_str(),
-                        parsed["feeds"].as_array(),
-                    ) {
-                        let private_key = match configure_key(encryption_details) {
-                            Ok(private_key) => private_key,
-                            Err(err) => {
-                                eprintln!("Error in decrypting private key {}", err);
-                                "no_key".to_string()
-                            }
-                        };
+                    if let Some(message_type) = parsed.get("type").and_then(Value::as_str) {
+                        if message_type == "new_agent" {
+                            if let (
+                                Some(public_address),
+                                Some(encryption_details),
+                                Some(id),
+                                Some(title),
+                                Some(description),
+                                Some(cover),
+                                Some(custom_instructions),
+                                Some(account_address),
+                                Some(model),
+                                Some(feeds),
+                            ) = (
+                                parsed["publicAddress"].as_str(),
+                                parsed["encryptionDetails"].as_str(),
+                                parsed["id"].as_u64().map(|v| v.to_string()),
+                                parsed["title"].as_str(),
+                                parsed["description"].as_str(),
+                                parsed["model"].as_str(),
+                                parsed["cover"].as_str(),
+                                parsed["customInstructions"].as_str(),
+                                parsed["accountAddress"].as_str(),
+                                parsed["feeds"].as_array(),
+                            ) {
+                                let private_key = match configure_key(encryption_details) {
+                                    Ok(private_key) => private_key,
+                                    Err(err) => {
+                                        eprintln!("Error in decrypting private key {}", err);
+                                        "no_key".to_string()
+                                    }
+                                };
 
-                        if private_key == "no_key".to_string() {
-                            return Ok(());
-                        }
-                        let new_id: u32 = id.parse().expect("Error converting id to u32");
-                        println!("private_key for agent_{}: {:?}\n\n", private_key, new_id);
-
-                        let clock = {
-                            let agents_snapshot = agents.read().await;
-                            let mut rng = StdRng::from_entropy();
-                            let mut clock;
-                            loop {
-                                let random_hour = rng.gen_range(0..5);
-                                let random_minute = rng.gen_range(0..60);
-                                let random_second = rng.gen_range(0..60);
-                                clock = random_hour * 3600 + random_minute * 60 + random_second;
-
-                                if !agents_snapshot.values().any(|agent| {
-                                    let agent_clock = agent.agent.clock;
-                                    (clock as i32 - agent_clock as i32).abs() < 60
-                                }) {
-                                    break;
+                                if private_key == "no_key".to_string() {
+                                    return Ok(());
                                 }
-                            }
-                            clock
-                        };
-                        let mut agents_write = agents.write().await;
+                                let new_id: u32 = id.parse().expect("Error converting id to u32");
+                                println!("private_key for agent_{}: {:?}\n\n", private_key, new_id);
 
-                        let mut env_file = OpenOptions::new()
-                            .append(true)
-                            .create(true)
-                            .open(".env")
-                            .await
-                            .expect("Can't open .env");
+                                let clock = {
+                                    let agents_snapshot = agents.read().await;
+                                    let mut rng = StdRng::from_entropy();
+                                    let mut clock;
+                                    loop {
+                                        let random_hour = rng.gen_range(0..5);
+                                        let random_minute = rng.gen_range(0..60);
+                                        let random_second = rng.gen_range(0..60);
+                                        clock =
+                                            random_hour * 3600 + random_minute * 60 + random_second;
 
-                        let metadata = env_file.metadata().await.expect("Can't read metadata");
-                        if metadata.len() > 0 {
-                            env_file
-                                .write_all(b"\n")
-                                .await
-                                .expect("Error adding newline to .env");
-                        }
+                                        if !agents_snapshot.values().any(|agent| {
+                                            let agent_clock = agent.agent.clock;
+                                            (clock as i32 - agent_clock as i32).abs() < 60
+                                        }) {
+                                            break;
+                                        }
+                                    }
+                                    clock
+                                };
+                                let mut agents_write = agents.write().await;
 
-                        let entry = format!("ID_{}={}\n", new_id.to_string(), private_key);
-                        env_file
-                            .write_all(entry.as_bytes())
-                            .await
-                            .expect("Error writing to the .env");
-
-                        let mut existing_data = Map::new();
-                        if let Ok(mut file) = File::
-                        // open("var/data/data.json")
-                         open("/var/data/data.json")
-                        .await
-                        {
-                            let mut content = String::new();
-                            file.read_to_string(&mut content).await.unwrap();
-                            existing_data = from_str(&content).unwrap_or_else(|_| Map::new());
-                        }
-
-                        existing_data.insert(
-                            format!("ID_{}", new_id.to_string()),
-                            json!(encryption_details),
-                        );
-
-                        println!(
-                            "Attempting to create or write to var/data/data.json agent_{}",
-                            new_id
-                        );
-                        let file = OpenOptions::new()
-                            .write(true)
-                            .create(true)
-                            // .open("var/data/data.json")
-                            .open("/var/data/data.json")
-                            .await;
-
-                        match file {
-                            Ok(mut file) => {
-                                let data = to_string_pretty(&existing_data)
-                                    .unwrap_or_else(|_| String::new());
-                                file.write_all(data.as_bytes())
+                                let mut env_file = OpenOptions::new()
+                                    .append(true)
+                                    .create(true)
+                                    .open(".env")
                                     .await
-                                    .unwrap_or_else(|err| eprintln!("Error writing: {:?}", err));
-                                let mut all_feeds: Vec<String> = Vec::new();
-                                for value in feeds {
-                                    if let Some(string_value) = value.as_str() {
-                                        all_feeds.push(string_value.to_string());
-                                    }
-                                }
-                                let new_agent = AgentManager::new(&TripleAAgent {
-                                    id: new_id,
-                                    name: title.to_string(),
-                                    description: description.to_string(),
-                                    model: model.to_string(),
-                                    cover: cover.to_string(),
-                                    custom_instructions: custom_instructions.to_string(),
-                                    wallet: public_address.to_string(),
-                                    clock,
-                                    last_active_time: Utc::now().timestamp() as u32,
-                                    account_address: account_address.to_string(),
-                                    feeds: all_feeds,
-                                });
+                                    .expect("Can't open .env");
 
-                                match new_agent {
-                                    Some(agent) => {
-                                        agents_write.insert(new_id, agent);
-                                        println!("Agent added at address: {}", public_address);
+                                let metadata =
+                                    env_file.metadata().await.expect("Can't read metadata");
+                                if metadata.len() > 0 {
+                                    env_file
+                                        .write_all(b"\n")
+                                        .await
+                                        .expect("Error adding newline to .env");
+                                }
+
+                                let entry = format!("ID_{}={}\n", new_id.to_string(), private_key);
+                                env_file
+                                    .write_all(entry.as_bytes())
+                                    .await
+                                    .expect("Error writing to the .env");
+
+                                let mut existing_data = Map::new();
+                                if let Ok(mut file) =
+                                    File::
+                                // open("var/data/data.json")
+                                 open("/var/data/data.json")
+                                    .await
+                                {
+                                    let mut content = String::new();
+                                    file.read_to_string(&mut content).await.unwrap();
+                                    existing_data =
+                                        from_str(&content).unwrap_or_else(|_| Map::new());
+                                }
+
+                                existing_data.insert(
+                                    format!("ID_{}", new_id.to_string()),
+                                    json!(encryption_details),
+                                );
+
+                                println!(
+                                    "Attempting to create or write to var/data/data.json agent_{}",
+                                    new_id
+                                );
+                                let file = OpenOptions::new()
+                                    .write(true)
+                                    .create(true)
+                                    // .open("var/data/data.json")
+                                    .open("/var/data/data.json")
+                                    .await;
+
+                                match file {
+                                    Ok(mut file) => {
+                                        let data = to_string_pretty(&existing_data)
+                                            .unwrap_or_else(|_| String::new());
+                                        file.write_all(data.as_bytes()).await.unwrap_or_else(
+                                            |err| eprintln!("Error writing: {:?}", err),
+                                        );
+                                        let mut all_feeds: Vec<String> = Vec::new();
+                                        for value in feeds {
+                                            if let Some(string_value) = value.as_str() {
+                                                all_feeds.push(string_value.to_string());
+                                            }
+                                        }
+                                        let new_agent = AgentManager::new(&TripleAAgent {
+                                            id: new_id,
+                                            name: title.to_string(),
+                                            description: description.to_string(),
+                                            model: model.to_string(),
+                                            cover: cover.to_string(),
+                                            custom_instructions: custom_instructions.to_string(),
+                                            wallet: public_address.to_string(),
+                                            clock,
+                                            last_active_time: Utc::now().timestamp() as u32,
+                                            account_address: account_address.to_string(),
+                                            feeds: all_feeds,
+                                        });
+
+                                        match new_agent {
+                                            Some(agent) => {
+                                                agents_write.insert(new_id, agent);
+                                                println!(
+                                                    "Agent added at address: {}",
+                                                    public_address
+                                                );
+                                            }
+                                            None => {
+                                                eprintln!(
+                                                    "Agent not added at address: {}",
+                                                    public_address
+                                                );
+                                            }
+                                        }
                                     }
-                                    None => {
-                                        eprintln!("Agent not added at address: {}", public_address);
+                                    Err(err) => {
+                                        eprintln!("Failed to open file: {:?}", err);
                                     }
                                 }
+                            } else {
+                                eprintln!("Agent data not parsed");
                             }
-                            Err(err) => {
-                                eprintln!("Failed to open file: {:?}", err);
+                        } else if message_type == "comfy_response" {
+                            if let (Some(agent_id), Some(image), Some(remix_collection_id)) = (
+                                parsed["agentId"].as_str(),
+                                parsed["image"].as_str(),
+                                parsed["remixCollectionId"].as_str(),
+                            ) {
+                                let mut agents_write = agents.write().await;
+
+                                let id: u32 =
+                                    agent_id.parse().expect("Error converting agent id to u32");
+                                if let Some(agent) = agents_write.get_mut(&id) {
+                                    let _ = agent.comfy_remix(image, remix_collection_id).await;
+                                }
+                            } else {
+                                eprintln!("Comfy data not parsed");
                             }
+                        } else {
+                            eprintln!("Type not found.");
                         }
                     } else {
-                        eprintln!("Data not parsed");
+                        eprintln!("Message not recognised.");
                     }
                 }
             }

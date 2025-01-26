@@ -261,7 +261,7 @@ pub async fn make_publication(
     private_key: u32,
     auth_tokens: &str,
     feed: Option<String>,
-) -> Result<String, Box<dyn Error>> {
+) -> Result<String, Box<dyn Error + Send + Sync>> {
     let client = initialize_api();
 
     let wallet = match initialize_wallet(private_key) {
@@ -393,7 +393,7 @@ pub async fn make_publication(
     Err("Unexpected response format.".into())
 }
 
-async fn poll(hash: &str, auth_tokens: &str) -> Result<String, Box<dyn Error>> {
+async fn poll(hash: &str, auth_tokens: &str) -> Result<String, Box<dyn Error + Send + Sync>> {
     let client = initialize_api();
     let query = json!({
         "query": r#"
@@ -684,7 +684,7 @@ pub async fn follow_profiles(
                 if let Some(follow_response) = json["data"]["follow"].as_object() {
                     if let Some(hash) = follow_response.get("hash").and_then(|v| v.as_str()) {
                         println!("Follow Hash for {}: {:?}", profile, hash);
-                        poll(hash, &auth_tokens).await;
+                        let _  = poll(hash, &auth_tokens).await;
                     }
                 } else {
                     println!("Unexpected structure for profile: {}", profile);
@@ -713,7 +713,7 @@ pub async fn make_comment(
     private_key: u32,
     auth_tokens: &str,
     comment_id: &str,
-) -> Result<String, Box<dyn Error>> {
+) -> Result<String, Box<dyn Error + Send + Sync>> {
     let client = initialize_api();
 
     let wallet = match initialize_wallet(private_key) {
@@ -852,7 +852,7 @@ pub async fn make_quote(
     private_key: u32,
     auth_tokens: &str,
     quote_id: &str,
-) -> Result<String, Box<dyn Error>> {
+) -> Result<String, Box<dyn Error + Send + Sync>> {
     let client = initialize_api();
 
     let wallet = match initialize_wallet(private_key) {
@@ -986,7 +986,7 @@ pub async fn make_quote(
     Err("Unexpected response format.".into())
 }
 
-pub async fn feed_info(feed: &str) -> Result<(String, String), Box<dyn Error>> {
+pub async fn feed_info(feed: &str) -> Result<(String, String), Box<dyn Error + Send + Sync>> {
     let client = initialize_api();
 
     let query = json!({

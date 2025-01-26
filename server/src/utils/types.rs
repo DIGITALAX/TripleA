@@ -1,4 +1,5 @@
 use ethers::{
+    abi::{InvalidOutputType, Token, Tokenizable, TokenizableItem},
     contract::ContractInstance,
     core::k256::ecdsa::SigningKey,
     middleware::SignerMiddleware,
@@ -21,7 +22,7 @@ pub struct TripleAAgent {
     pub clock: u32,
     pub last_active_time: u32,
     pub account_address: String,
-    pub feeds: Vec<String>
+    pub feeds: Vec<String>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
@@ -50,6 +51,12 @@ pub struct AgentManager {
             SignerMiddleware<Arc<Provider<Http>>, Wallet<SigningKey>>,
         >,
     >,
+    pub collection_manager_contract: Arc<
+        ContractInstance<
+            Arc<SignerMiddleware<Arc<Provider<Http>>, Wallet<SigningKey>>>,
+            SignerMiddleware<Arc<Provider<Http>>, Wallet<SigningKey>>,
+        >,
+    >,
     pub tokens: Option<SavedTokens>,
 }
 
@@ -73,7 +80,7 @@ pub struct AgentActivity {
     pub active_balance: U256,
     pub total_balance: U256,
     pub collection_id: U256,
-    pub custom_instructions: String
+    pub custom_instructions: String,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -124,5 +131,121 @@ pub struct SavedTokens {
 pub enum ActivityType {
     Publish,
     Lead,
-    Remix
+    Remix,
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct CollectionInput {
+    pub remix: bool,
+    pub customInstructions: Vec<String>,
+    pub tokens: Vec<String>,
+    pub prices: Vec<U256>,
+    pub agentIds: Vec<U256>,
+    pub metadata: String,
+    pub collectionType: i32,
+    pub amount: U256,
+    pub fulfillerId: U256,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct CollectionWorker {
+    pub publishFrequency: U256,
+    pub remixFrequency: U256,
+    pub leadFrequency: U256,
+    pub publish: bool,
+    pub remix: bool,
+    pub lead: bool,
+}
+
+impl Tokenizable for CollectionInput {
+    fn from_token(token: Token) -> Result<Self, InvalidOutputType> {
+        match token {
+            Token::Tuple(tokens) if tokens.len() == 9 => Ok(Self {
+                remix: tokens[0].clone().into_bool().unwrap(),
+                customInstructions: tokens[1]
+                    .clone()
+                    .into_array()
+                    .unwrap()
+                    .into_iter()
+                    .map(|t| t.into_string().unwrap())
+                    .collect(),
+                tokens: tokens[2]
+                    .clone()
+                    .into_array()
+                    .unwrap()
+                    .into_iter()
+                    .map(|t| t.into_string().unwrap())
+                    .collect(),
+                prices: tokens[3]
+                    .clone()
+                    .into_array()
+                    .unwrap()
+                    .into_iter()
+                    .map(|t| t.into_uint().unwrap())
+                    .collect(),
+                agentIds: tokens[4]
+                    .clone()
+                    .into_array()
+                    .unwrap()
+                    .into_iter()
+                    .map(|t| t.into_uint().unwrap())
+                    .collect(),
+                metadata: tokens[5].clone().into_string().unwrap(),
+                collectionType: tokens[6].clone().into_int().unwrap().as_u32() as i32,
+                amount: tokens[7].clone().into_uint().unwrap(),
+                fulfillerId: tokens[8].clone().into_uint().unwrap(),
+            }),
+            _ => Err(InvalidOutputType(String::from("conversion error"))),
+        }
+    }
+
+    fn into_token(self) -> Token {
+        Token::Tuple(vec![
+            Token::Bool(self.remix),
+            Token::Array(
+                self.customInstructions
+                    .into_iter()
+                    .map(Token::String)
+                    .collect(),
+            ),
+            Token::Array(self.tokens.into_iter().map(Token::String).collect()),
+            Token::Array(self.prices.into_iter().map(Token::Uint).collect()),
+            Token::Array(self.agentIds.into_iter().map(Token::Uint).collect()),
+            Token::String(self.metadata),
+            Token::Int(self.collectionType.into()),
+            Token::Uint(self.amount),
+            Token::Uint(self.fulfillerId),
+        ])
+    }
+}
+
+impl Tokenizable for CollectionWorker {
+    fn from_token(token: Token) -> Result<Self, InvalidOutputType> {
+        match token {
+            Token::Tuple(tokens) if tokens.len() == 6 => Ok(Self {
+                publishFrequency: tokens[0].clone().into_uint().unwrap(),
+                remixFrequency: tokens[1].clone().into_uint().unwrap(),
+                leadFrequency: tokens[2].clone().into_uint().unwrap(),
+                publish: tokens[3].clone().into_bool().unwrap(),
+                remix: tokens[4].clone().into_bool().unwrap(),
+                lead: tokens[5].clone().into_bool().unwrap(),
+            }),
+            _ => Err(InvalidOutputType(String::from("conversion error"))),
+        }
+    }
+
+    fn into_token(self) -> Token {
+        Token::Tuple(vec![
+            Token::Uint(self.publishFrequency),
+            Token::Uint(self.remixFrequency),
+            Token::Uint(self.leadFrequency),
+            Token::Bool(self.publish),
+            Token::Bool(self.remix),
+            Token::Bool(self.lead),
+        ])
+    }
+}
+
+impl TokenizableItem for CollectionWorker {}
+
+impl TokenizableItem for CollectionInput {}

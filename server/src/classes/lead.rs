@@ -1,4 +1,5 @@
 use crate::utils::{
+    constants::INFURA_GATEWAY,
     ipfs::upload_lens_storage,
     lens::{feed_info, follow_profiles, make_comment, make_publication, make_quote, search_posts},
     models::{
@@ -8,9 +9,15 @@ use crate::utils::{
     },
     types::{Collection, Content, Image, Publication, SavedTokens, TripleAAgent},
 };
+use base64::{engine::general_purpose, Engine as _};
 use futures::future::join_all;
 use serde_json::{to_string, Value};
-use std::{error::Error, io};
+use std::{
+    error::Error,
+    fs::{remove_file, File},
+    io,
+    io::Read,
+};
 use uuid::Uuid;
 
 pub async fn lead_generation(
@@ -36,7 +43,7 @@ pub async fn lead_generation(
     } {
         Ok(query) => match search_posts(&agent.wallet, &query).await {
             Ok((posts, profiles)) => {
-                follow_profiles(
+                let _ = follow_profiles(
                     profiles.clone(),
                     &tokens.as_ref().unwrap().tokens.access_token,
                 )
@@ -44,7 +51,7 @@ pub async fn lead_generation(
 
                 let (comments_posts, quotes_posts) = posts.split_at(posts.len() / 2);
 
-                make_comments(
+                let _ = make_comments(
                     comments_posts.to_vec(),
                     &tokens.as_ref().unwrap().tokens.access_token,
                     agent.id,
@@ -55,7 +62,7 @@ pub async fn lead_generation(
                 )
                 .await;
 
-                make_quotes(
+                let _ = make_quotes(
                     quotes_posts.to_vec(),
                     &tokens.as_ref().unwrap().tokens.access_token,
                     agent.id,
@@ -66,7 +73,7 @@ pub async fn lead_generation(
                 )
                 .await;
 
-                feed_posts(
+                let _ = feed_posts(
                     collection,
                     &tokens.as_ref().unwrap().tokens.access_token,
                     agent.id,
@@ -76,7 +83,6 @@ pub async fn lead_generation(
                     &collection_instructions,
                 )
                 .await;
-
 
                 Ok(())
             }
@@ -111,8 +117,6 @@ async fn make_comments(
         let mut content = String::new();
         let mut attachment_type = String::new();
         let mut item = String::new();
-        let mut extra1 = String::new();
-        let mut extra2 = String::new();
 
         if let Some(metadata) = post["metadata"].as_object() {
             content = metadata
@@ -131,16 +135,17 @@ async fn make_comments(
                                 .and_then(|v| v.as_str())
                                 .unwrap_or_default()
                                 .to_string();
-                            extra1 = attachment
-                                .get("artist")
-                                .and_then(|v| v.as_str())
-                                .unwrap_or_default()
-                                .to_string();
-                            extra2 = attachment
-                                .get("duration")
-                                .and_then(|v| v.as_f64())
-                                .unwrap_or(0.0)
-                                .to_string();
+
+                            item = if item.starts_with("ipfs://") {
+                                let hash = item.trim_start_matches("ipfs://");
+                                format!("{}/ipfs/{}", INFURA_GATEWAY, hash)
+                            } else {
+                                item.to_string()
+                            };
+
+                            let response = reqwest::get(&item).await?;
+                            let audio_bytes = response.bytes().await?;
+                            item = general_purpose::STANDARD.encode(&audio_bytes)
                         }
                         Some("MediaImage") => {
                             attachment_type = "MediaImage".to_string();
@@ -149,11 +154,17 @@ async fn make_comments(
                                 .and_then(|v| v.as_str())
                                 .unwrap_or_default()
                                 .to_string();
-                            extra1 = attachment
-                                .get("altTag")
-                                .and_then(|v| v.as_str())
-                                .unwrap_or_default()
-                                .to_string();
+
+                            item = if item.starts_with("ipfs://") {
+                                let hash = item.trim_start_matches("ipfs://");
+                                format!("{}/ipfs/{}", INFURA_GATEWAY, hash)
+                            } else {
+                                item.to_string()
+                            };
+
+                            let response = reqwest::get(&item).await?;
+                            let image_bytes = response.bytes().await?;
+                            item = general_purpose::STANDARD.encode(&image_bytes)
                         }
                         Some("MediaVideo") => {
                             attachment_type = "MediaVideo".to_string();
@@ -162,16 +173,42 @@ async fn make_comments(
                                 .and_then(|v| v.as_str())
                                 .unwrap_or_default()
                                 .to_string();
-                            extra1 = attachment
-                                .get("cover")
-                                .and_then(|v| v.as_str())
-                                .unwrap_or_default()
-                                .to_string();
-                            extra2 = attachment
-                                .get("duration")
-                                .and_then(|v| v.as_f64())
-                                .unwrap_or(0.0)
-                                .to_string();
+                            item = if item.starts_with("ipfs://") {
+                                let hash = item.trim_start_matches("ipfs://");
+                                format!("{}/ipfs/{}", INFURA_GATEWAY, hash)
+                            } else {
+                                item.to_string()
+                            };
+
+                            let response = reqwest::get(&item).await?;
+                            let video_bytes = response.bytes().await?;
+
+                            let temp_video_path = "temp_video.mp4";
+                            std::fs::write(temp_video_path, &video_bytes)?;
+
+                            let temp_audio_path = "temp_audio.wav";
+                            let output = std::process::Command::new("ffmpeg")
+                                .args(&[
+                                    "-i",
+                                    temp_video_path,
+                                    "-q:a",
+                                    "0",
+                                    "-map",
+                                    "a",
+                                    temp_audio_path,
+                                ])
+                                .output()?;
+                            if !output.status.success() {
+                                panic!("Failed to extract audio from video");
+                            }
+
+                            let mut file = File::open(temp_audio_path)?;
+                            let mut audio_buffer = Vec::new();
+                            file.read_to_end(&mut audio_buffer)?;
+                            item = general_purpose::STANDARD.encode(&audio_buffer);
+
+                            remove_file(temp_video_path)?;
+                            remove_file(temp_audio_path)?;
                         }
                         _ => {
                             attachment_type = "Unknown".to_string();
@@ -189,8 +226,6 @@ async fn make_comments(
                 &collection.description,
                 &attachment_type,
                 &item,
-                &extra1,
-                &extra2,
             )
             .await
         } else {
@@ -201,15 +236,13 @@ async fn make_comments(
                 &collection.description,
                 &attachment_type,
                 &item,
-                &extra1,
-                &extra2,
             )
             .await
         } {
             Ok((llm_response, image)) => {
-                match format_response(&llm_response, collection, image).await {
+                match format_response(&llm_response, &collection, image).await {
                     Ok(content) => {
-                        make_comment(
+                        let _ = make_comment(
                             &content,
                             private_key,
                             auth_tokens,
@@ -253,8 +286,6 @@ async fn make_quotes(
         let mut content = String::new();
         let mut attachment_type = String::new();
         let mut item = String::new();
-        let mut extra1 = String::new();
-        let mut extra2 = String::new();
 
         if let Some(metadata) = post["metadata"].as_object() {
             content = metadata
@@ -273,16 +304,17 @@ async fn make_quotes(
                                 .and_then(|v| v.as_str())
                                 .unwrap_or_default()
                                 .to_string();
-                            extra1 = attachment
-                                .get("artist")
-                                .and_then(|v| v.as_str())
-                                .unwrap_or_default()
-                                .to_string();
-                            extra2 = attachment
-                                .get("duration")
-                                .and_then(|v| v.as_f64())
-                                .unwrap_or(0.0)
-                                .to_string();
+
+                            item = if item.starts_with("ipfs://") {
+                                let hash = item.trim_start_matches("ipfs://");
+                                format!("{}/ipfs/{}", INFURA_GATEWAY, hash)
+                            } else {
+                                item.to_string()
+                            };
+
+                            let response = reqwest::get(&item).await?;
+                            let audio_bytes = response.bytes().await?;
+                            item = general_purpose::STANDARD.encode(&audio_bytes)
                         }
                         Some("MediaImage") => {
                             attachment_type = "MediaImage".to_string();
@@ -291,11 +323,17 @@ async fn make_quotes(
                                 .and_then(|v| v.as_str())
                                 .unwrap_or_default()
                                 .to_string();
-                            extra1 = attachment
-                                .get("altTag")
-                                .and_then(|v| v.as_str())
-                                .unwrap_or_default()
-                                .to_string();
+
+                            item = if item.starts_with("ipfs://") {
+                                let hash = item.trim_start_matches("ipfs://");
+                                format!("{}/ipfs/{}", INFURA_GATEWAY, hash)
+                            } else {
+                                item.to_string()
+                            };
+
+                            let response = reqwest::get(&item).await?;
+                            let image_bytes = response.bytes().await?;
+                            item = general_purpose::STANDARD.encode(&image_bytes)
                         }
                         Some("MediaVideo") => {
                             attachment_type = "MediaVideo".to_string();
@@ -304,16 +342,42 @@ async fn make_quotes(
                                 .and_then(|v| v.as_str())
                                 .unwrap_or_default()
                                 .to_string();
-                            extra1 = attachment
-                                .get("cover")
-                                .and_then(|v| v.as_str())
-                                .unwrap_or_default()
-                                .to_string();
-                            extra2 = attachment
-                                .get("duration")
-                                .and_then(|v| v.as_f64())
-                                .unwrap_or(0.0)
-                                .to_string();
+                            item = if item.starts_with("ipfs://") {
+                                let hash = item.trim_start_matches("ipfs://");
+                                format!("{}/ipfs/{}", INFURA_GATEWAY, hash)
+                            } else {
+                                item.to_string()
+                            };
+
+                            let response = reqwest::get(&item).await?;
+                            let video_bytes = response.bytes().await?;
+
+                            let temp_video_path = "temp_video.mp4";
+                            std::fs::write(temp_video_path, &video_bytes)?;
+
+                            let temp_audio_path = "temp_audio.wav";
+                            let output = std::process::Command::new("ffmpeg")
+                                .args(&[
+                                    "-i",
+                                    temp_video_path,
+                                    "-q:a",
+                                    "0",
+                                    "-map",
+                                    "a",
+                                    temp_audio_path,
+                                ])
+                                .output()?;
+                            if !output.status.success() {
+                                panic!("Failed to extract audio from video");
+                            }
+
+                            let mut file = File::open(temp_audio_path)?;
+                            let mut audio_buffer = Vec::new();
+                            file.read_to_end(&mut audio_buffer)?;
+                            item = general_purpose::STANDARD.encode(&audio_buffer);
+
+                            remove_file(temp_video_path)?;
+                            remove_file(temp_audio_path)?;
                         }
                         _ => {
                             attachment_type = "Unknown".to_string();
@@ -331,8 +395,6 @@ async fn make_quotes(
                 &collection.description,
                 &attachment_type,
                 &item,
-                &extra1,
-                &extra2,
             )
             .await
         } else {
@@ -343,15 +405,13 @@ async fn make_quotes(
                 &collection.description,
                 &attachment_type,
                 &item,
-                &extra1,
-                &extra2,
             )
             .await
         } {
             Ok((llm_response, image)) => {
-                match format_response(&llm_response, collection, image).await {
+                match format_response(&llm_response, &collection, image).await {
                     Ok(content) => {
-                        make_quote(
+                        let _ = make_quote(
                             &content,
                             private_key,
                             auth_tokens,
@@ -450,7 +510,8 @@ async fn feed_posts(
                         &collection,
                         custom_instructions,
                         collection_instructions,
-                        &description,&title
+                        &description,
+                        &title,
                     )
                     .await
                 } else {
@@ -458,15 +519,21 @@ async fn feed_posts(
                         &collection,
                         custom_instructions,
                         collection_instructions,
-                        &description,&title
+                        &description,
+                        &title,
                     )
                     .await
                 } {
                     Ok(llm_response) => {
-                        match format_response(&llm_response, collection, true).await {
+                        match format_response(&llm_response, &collection, true).await {
                             Ok(content) => {
-                                make_publication(&content, private_key, auth_tokens, Some(feed))
-                                    .await;
+                                let _ = make_publication(
+                                    &content,
+                                    private_key,
+                                    auth_tokens,
+                                    Some(feed),
+                                )
+                                .await;
                             }
                             Err(err) => {
                                 println!("Error with Feed format {:?}", err);

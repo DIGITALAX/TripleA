@@ -120,7 +120,8 @@ contract TripleACollectionManager {
             amountSold: 0,
             collectionType: collectionInput.collectionType,
             fulfillerId: collectionInput.fulfillerId,
-            active: true
+            active: true,
+            remixId: collectionInput.remixId
         });
         for (uint8 i = 0; i < collectionInput.agentIds.length; i++) {
             _agentCustomInstructions[_collectionCounter][
@@ -169,23 +170,16 @@ contract TripleACollectionManager {
             revert TripleAErrors.NotArtist();
         }
 
-        if (
-            agentIds.length != customInstructions.length 
-        ) {
+        if (agentIds.length != customInstructions.length) {
             revert TripleAErrors.BadUserInput();
         }
         for (uint8 i = 0; i < agentIds.length; i++) {
             _agentCustomInstructions[collectionId][
                 agentIds[i]
             ] = customInstructions[i];
-
         }
 
-        emit AgentDetailsUpdated(
-            customInstructions,
-            agentIds,
-            collectionId
-        );
+        emit AgentDetailsUpdated(customInstructions, agentIds, collectionId);
     }
 
     function adjustCollectionPrice(
@@ -246,7 +240,6 @@ contract TripleACollectionManager {
             delete _agentCustomInstructions[collectionId][
                 _collections[collectionId].agentIds[i]
             ];
-        
         }
 
         if (_collections[collectionId].amountSold > 0) {
@@ -414,6 +407,12 @@ contract TripleACollectionManager {
         uint256 collectionId
     ) public view returns (uint256) {
         return _collections[collectionId].amountSold;
+    }
+
+    function getCollectionRemixId(
+        uint256 collectionId
+    ) public view returns (uint256) {
+        return _collections[collectionId].remixId;
     }
 
     function getCollectionIsActive(

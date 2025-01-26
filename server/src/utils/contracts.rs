@@ -21,12 +21,17 @@ use ethers::{
 use reqwest::Client;
 use serde_json::{from_str, Value};
 
+use super::constants::COLLECTION_MANAGER;
+
 static INIT_PROVIDER: Once = Once::new();
 static INIT_LENS: Once = Once::new();
 static ACCESS_CONTROLS_CONTRACT: Mutex<
     Option<Arc<Contract<SignerMiddleware<Arc<Provider<Http>>, LocalWallet>>>>,
 > = Mutex::new(None);
 static AGENTS_CONTRACT: Mutex<
+    Option<Arc<Contract<SignerMiddleware<Arc<Provider<Http>>, LocalWallet>>>>,
+> = Mutex::new(None);
+static COLLECTION_MANAGER_CONTRACT: Mutex<
     Option<Arc<Contract<SignerMiddleware<Arc<Provider<Http>>, LocalWallet>>>>,
 > = Mutex::new(None);
 static PROVIDER: Mutex<Option<Arc<Provider<Http>>>> = Mutex::new(None);
@@ -207,6 +212,7 @@ pub fn initialize_contracts(
 ) -> Option<(
     Arc<Contract<SignerMiddleware<Arc<Provider<Http>>, LocalWallet>>>,
     Arc<Contract<SignerMiddleware<Arc<Provider<Http>>, LocalWallet>>>,
+    Arc<Contract<SignerMiddleware<Arc<Provider<Http>>, LocalWallet>>>,
 )> {
     let provider = initialize_provider();
     dotenv().ok();
@@ -242,6 +248,18 @@ pub fn initialize_contracts(
     let agents_contract = Contract::new(agents_address, agents_abi, client.clone());
     *AGENTS_CONTRACT.lock().unwrap() = Some(Arc::new(agents_contract));
 
+    let collection_manager_address = COLLECTION_MANAGER
+        .parse::<Address>()
+        .expect("Error in parsing COLLECTION_MANAGER");
+    let collection_manager_abi: Abi = from_str(include_str!("./../../abis/CollectionManager.json"))
+        .expect("Error in loading CollectionManager ABI");
+    let collection_manager_contract = Contract::new(
+        collection_manager_address,
+        collection_manager_abi,
+        client.clone(),
+    );
+    *COLLECTION_MANAGER_CONTRACT.lock().unwrap() = Some(Arc::new(collection_manager_contract));
+
     Some((
         ACCESS_CONTROLS_CONTRACT
             .lock()
@@ -253,6 +271,11 @@ pub fn initialize_contracts(
             .unwrap()
             .clone()
             .expect("AGENTS_CONTRACT not initialized"),
+        COLLECTION_MANAGER_CONTRACT
+            .lock()
+            .unwrap()
+            .clone()
+            .expect("COLLECTION_MANAGER_CONTRACT not initialized"),
     ))
 }
 
