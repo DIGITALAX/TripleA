@@ -1,0 +1,360 @@
+type CollectionDeleted @entity(immutable: false) {
+  id: Bytes!
+  artist: Bytes! # address
+  collectionId: BigInt! # uint256
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type CollectionCreated @entity(immutable: false) {
+  id: Bytes!
+  artist: Bytes! # address
+  collectionId: BigInt! # uint256
+  dropId: BigInt! # uint256
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+  uri: String
+  metadata: CollectionMetadata
+  prices: [BigInt!]
+  tokens: [Bytes!]
+  agents: [BigInt!]
+  amountSold: BigInt
+  tokenIds: [BigInt!]
+  amount: BigInt!
+  active: Boolean
+}
+
+type DropCreated @entity(immutable: false) {
+  id: Bytes!
+  artist: Bytes! # address
+  dropId: BigInt! # uint256
+  uri: String
+  metadata: DropMetadata
+  collectionIds: [BigInt!]
+  collections: [CollectionCreated!]
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type DropDeleted @entity(immutable: false) {
+  id: Bytes!
+  artist: Bytes! # address
+  dropId: BigInt! # uint256
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+type AgentCreated @entity(immutable: false) {
+  id: Bytes!
+  wallets: [Bytes!] # address
+  creator: Bytes! # address
+  AAAAgents_id: BigInt! # uint256
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+  owner: Bytes!
+  uri: String
+  metadata: AgentMetadata
+  balances: [Balance!]
+  activeCollectionIds: [AgentCollection!]
+  collectionIdsHistory: [AgentCollection!]
+  rentPaid: [RentPaid!]
+  details: [AgentDetails!]
+}
+
+type AgentDetails @entity(immutable: false) {
+  id: Bytes!
+  collectionId: BigInt!
+  instructions: String
+  cycleFrequency: BigInt!
+}
+
+type RentPaid @entity(immutable: false) {
+  id: Bytes!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+  tokens: [Bytes!]
+  amounts: [BigInt!]
+  collectionIds: [BigInt!]
+  agentId: BigInt!
+}
+
+type AgentCollection @entity(immutable: false) {
+  id: Bytes!
+  metadata: CollectionMetadata
+  collectionId: BigInt!
+  artist: Bytes!
+}
+
+type Balance @entity(immutable: false) {
+  id: Bytes!
+  token: Bytes!
+  activeBalance: BigInt!
+  totalBalance: BigInt!
+  collectionId: BigInt!
+  collection: CollectionCreated
+  instructions: String
+  cycleFrequency: BigInt!
+}
+
+type AgentDeleted @entity(immutable: false) {
+  id: Bytes!
+  AAAAgents_id: BigInt! # uint256
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type AgentEdited @entity(immutable: false) {
+  id: Bytes!
+  AAAAgents_id: BigInt! # uint256
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type BalanceAdded @entity(immutable: false) {
+  id: Bytes!
+  token: Bytes! # address
+  agentId: BigInt! # uint256
+  amount: BigInt! # uint256
+  collectionId: BigInt!
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type BalanceWithdrawn @entity(immutable: false) {
+  id: Bytes!
+  tokens: [Bytes!] # address
+  agentId: BigInt! # uint256
+  amounts: [BigInt!] # uint256
+  collectionIds: [BigInt!]
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+type CollectionPurchased @entity(immutable: false) {
+  id: Bytes!
+  collectionId: BigInt! # uint256
+  buyer: Bytes! # address
+  amount: BigInt! # uint256
+  paymentToken: Bytes! # address
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type CollectionMetadata @entity(immutable: false) {
+  id: ID!
+  title: String
+  description: String
+  image: String
+}
+
+type DropMetadata @entity(immutable: false) {
+  id: ID!
+  title: String
+  cover: String
+}
+
+type AgentMetadata @entity(immutable: false) {
+  id: ID!
+  title: String
+  description: String
+  customInstructions: String
+  cover: String
+}
+
+type Order @entity(immutable: false) {
+  id: Bytes!
+  totalPrice: BigInt!
+  token: Bytes!
+  amount: BigInt!
+  buyer: Bytes!
+  collectionId: BigInt!
+  mintedTokenIds: [BigInt!]
+  blockTimestamp: BigInt!
+  collection: CollectionCreated
+  transactionHash: Bytes!
+}
+
+type AgentActiveCollection @entity(immutable: false) {
+  id: Bytes!
+  agentId: BigInt!
+  collections: [CollectionCreated!]
+}
+
+type AgentOwnerPaid @entity(immutable: false) {
+  id: Bytes!
+  token: Bytes
+  owner: Bytes
+  amount: BigInt
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type FundsReceived @entity(immutable: false) {
+  id: Bytes!
+  buyer: Bytes! # address
+  token: Bytes! # address
+  amount: BigInt! # uint256
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type OrderPayment @entity(immutable: false) {
+  id: Bytes!
+  token: Bytes! # address
+  recipient: Bytes! # address
+  amount: BigInt! # uint256
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type DevTreasury @entity(immutable: false) {
+  id: Bytes!
+  token: Bytes
+  amount: BigInt
+}
+type AcceptedTokenRemoved @entity(immutable: false) {
+  id: Bytes!
+  token: Bytes! # address
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type AcceptedTokenSet @entity(immutable: false) {
+  id: Bytes!
+  token: Bytes! # address
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type AdminAdded @entity(immutable: false) {
+  id: Bytes!
+  admin: Bytes! # address
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type AdminRemoved @entity(immutable: false) {
+  id: Bytes!
+  admin: Bytes! # address
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type AgentAdded @entity(immutable: false) {
+  id: Bytes!
+  agent: Bytes! # address
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type AgentRemoved @entity(immutable: false) {
+  id: Bytes!
+  agent: Bytes! # address
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type FaucetUsed @entity(immutable: false) {
+  id: Bytes!
+  to: Bytes! # address
+  amount: BigInt! # uint256
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type TokenThresholdSet @entity(immutable: false) {
+  id: Bytes!
+  token: Bytes! # address
+  threshold: BigInt! # uint256
+  rent: BigInt! # uint256
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type CollectionActivated @entity(immutable: false) {
+  id: Bytes!
+  collectionId: BigInt! # address
+}
+
+type CollectionDeactivated @entity(immutable: false) {
+  id: Bytes!
+  collectionId: BigInt! # address
+}
+
+type DevTreasuryAdded @entity(immutable: false) {
+  id: Bytes!
+  amount: BigInt! # address
+  token: Bytes!
+}
+
+type AgentPaidRent @entity(immutable: false) {
+  id: Bytes!
+  tokens: [Bytes!]
+  amounts: [BigInt!]
+  bonuses: [BigInt!]
+  collectionIds: [BigInt!]
+  agentId: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type FundsWithdrawnWithoutReceive @entity(immutable: false) {
+  id: Bytes!
+  token: Bytes!
+  amount: BigInt!
+}
+
+type FundsWithdrawnServices @entity(immutable: false) {
+  id: Bytes!
+  token: Bytes!
+  amount: BigInt!
+}
+
+type FundsWithdrawnTreasury @entity(immutable: false) {
+  id: Bytes!
+  token: Bytes!
+  amount: BigInt!
+}
+
+type AgentRecharged @entity(immutable: false) {
+  id: Bytes!
+  recharger: Bytes!
+  token: Bytes!
+  agentId: BigInt!
+  collectionId: BigInt!
+  amount: BigInt!
+}
+
+type AgentDetailsUpdated @entity(immutable: false) {
+  id: Bytes!
+  customInstructions: [String!]
+  cycleFrequency: [BigInt!]
+  agentIds: [BigInt!]
+  collectionId: BigInt!
+}
+
+type CollectionPriceAdjusted @entity(immutable: false) {
+  id: Bytes!
+  token: Bytes!
+  collectionId: BigInt!
+  newPrice: BigInt!
+}

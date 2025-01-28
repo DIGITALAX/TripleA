@@ -21,3 +21,40 @@
 /server/Cargo.lock
 /server/target/
 /server/var/
+
+
+# Graph CLI generated artifacts
+/subgraph/build/
+/subgraph/generated/
+
+# Dependency directories
+/subgraph/node_modules/
+/subgraph/jspm_packages/
+/subgraph/package-lock.json
+
+# Logs
+/subgraph/logs
+/subgraph/*.log
+/subgraph/npm-debug.log*
+/subgraph/yarn-debug.log*
+/subgraph/yarn-error.log*
+
+# Optional npm cache directory
+/subgraph/.npm
+
+# Optional eslint cache
+/subgraph/.eslintcache
+
+# dotenv environment variables file
+/subgraph/.env
+
+# Testing
+/subgraph/coverage
+/subgraph/coverage.json
+
+# Typechain
+/subgraph/typechain
+/subgraph/typechain-types
+
+# Hardhat files
+/subgraph/cache
