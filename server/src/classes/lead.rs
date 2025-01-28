@@ -12,12 +12,7 @@ use crate::utils::{
 use base64::{engine::general_purpose, Engine as _};
 use futures::future::join_all;
 use serde_json::{to_string, Value};
-use std::{
-    error::Error,
-    fs::{remove_file, File},
-    io,
-    io::Read,
-};
+use std::{error::Error, io};
 use uuid::Uuid;
 
 pub async fn lead_generation(
@@ -128,25 +123,6 @@ async fn make_comments(
             if let Some(attachments) = metadata.get("attachments").and_then(|a| a.as_array()) {
                 if let Some(attachment) = attachments.first() {
                     match attachment.get("__typename").and_then(|t| t.as_str()) {
-                        Some("MediaAudio") => {
-                            attachment_type = "MediaAudio".to_string();
-                            item = attachment
-                                .get("item")
-                                .and_then(|v| v.as_str())
-                                .unwrap_or_default()
-                                .to_string();
-
-                            item = if item.starts_with("ipfs://") {
-                                let hash = item.trim_start_matches("ipfs://");
-                                format!("{}/ipfs/{}", INFURA_GATEWAY, hash)
-                            } else {
-                                item.to_string()
-                            };
-
-                            let response = reqwest::get(&item).await?;
-                            let audio_bytes = response.bytes().await?;
-                            item = general_purpose::STANDARD.encode(&audio_bytes)
-                        }
                         Some("MediaImage") => {
                             attachment_type = "MediaImage".to_string();
                             item = attachment
@@ -166,50 +142,7 @@ async fn make_comments(
                             let image_bytes = response.bytes().await?;
                             item = general_purpose::STANDARD.encode(&image_bytes)
                         }
-                        Some("MediaVideo") => {
-                            attachment_type = "MediaVideo".to_string();
-                            item = attachment
-                                .get("item")
-                                .and_then(|v| v.as_str())
-                                .unwrap_or_default()
-                                .to_string();
-                            item = if item.starts_with("ipfs://") {
-                                let hash = item.trim_start_matches("ipfs://");
-                                format!("{}/ipfs/{}", INFURA_GATEWAY, hash)
-                            } else {
-                                item.to_string()
-                            };
 
-                            let response = reqwest::get(&item).await?;
-                            let video_bytes = response.bytes().await?;
-
-                            let temp_video_path = "temp_video.mp4";
-                            std::fs::write(temp_video_path, &video_bytes)?;
-
-                            let temp_audio_path = "temp_audio.wav";
-                            let output = std::process::Command::new("ffmpeg")
-                                .args(&[
-                                    "-i",
-                                    temp_video_path,
-                                    "-q:a",
-                                    "0",
-                                    "-map",
-                                    "a",
-                                    temp_audio_path,
-                                ])
-                                .output()?;
-                            if !output.status.success() {
-                                panic!("Failed to extract audio from video");
-                            }
-
-                            let mut file = File::open(temp_audio_path)?;
-                            let mut audio_buffer = Vec::new();
-                            file.read_to_end(&mut audio_buffer)?;
-                            item = general_purpose::STANDARD.encode(&audio_buffer);
-
-                            remove_file(temp_video_path)?;
-                            remove_file(temp_audio_path)?;
-                        }
                         _ => {
                             attachment_type = "Unknown".to_string();
                         }
@@ -297,25 +230,6 @@ async fn make_quotes(
             if let Some(attachments) = metadata.get("attachments").and_then(|a| a.as_array()) {
                 if let Some(attachment) = attachments.first() {
                     match attachment.get("__typename").and_then(|t| t.as_str()) {
-                        Some("MediaAudio") => {
-                            attachment_type = "MediaAudio".to_string();
-                            item = attachment
-                                .get("item")
-                                .and_then(|v| v.as_str())
-                                .unwrap_or_default()
-                                .to_string();
-
-                            item = if item.starts_with("ipfs://") {
-                                let hash = item.trim_start_matches("ipfs://");
-                                format!("{}/ipfs/{}", INFURA_GATEWAY, hash)
-                            } else {
-                                item.to_string()
-                            };
-
-                            let response = reqwest::get(&item).await?;
-                            let audio_bytes = response.bytes().await?;
-                            item = general_purpose::STANDARD.encode(&audio_bytes)
-                        }
                         Some("MediaImage") => {
                             attachment_type = "MediaImage".to_string();
                             item = attachment
@@ -335,50 +249,7 @@ async fn make_quotes(
                             let image_bytes = response.bytes().await?;
                             item = general_purpose::STANDARD.encode(&image_bytes)
                         }
-                        Some("MediaVideo") => {
-                            attachment_type = "MediaVideo".to_string();
-                            item = attachment
-                                .get("item")
-                                .and_then(|v| v.as_str())
-                                .unwrap_or_default()
-                                .to_string();
-                            item = if item.starts_with("ipfs://") {
-                                let hash = item.trim_start_matches("ipfs://");
-                                format!("{}/ipfs/{}", INFURA_GATEWAY, hash)
-                            } else {
-                                item.to_string()
-                            };
 
-                            let response = reqwest::get(&item).await?;
-                            let video_bytes = response.bytes().await?;
-
-                            let temp_video_path = "temp_video.mp4";
-                            std::fs::write(temp_video_path, &video_bytes)?;
-
-                            let temp_audio_path = "temp_audio.wav";
-                            let output = std::process::Command::new("ffmpeg")
-                                .args(&[
-                                    "-i",
-                                    temp_video_path,
-                                    "-q:a",
-                                    "0",
-                                    "-map",
-                                    "a",
-                                    temp_audio_path,
-                                ])
-                                .output()?;
-                            if !output.status.success() {
-                                panic!("Failed to extract audio from video");
-                            }
-
-                            let mut file = File::open(temp_audio_path)?;
-                            let mut audio_buffer = Vec::new();
-                            file.read_to_end(&mut audio_buffer)?;
-                            item = general_purpose::STANDARD.encode(&audio_buffer);
-
-                            remove_file(temp_video_path)?;
-                            remove_file(temp_audio_path)?;
-                        }
                         _ => {
                             attachment_type = "Unknown".to_string();
                         }

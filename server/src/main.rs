@@ -393,6 +393,16 @@ async fn handle_agents() -> Result<HashMap<u32, AgentManager>, Box<dyn Error + S
                     cover
                     customInstructions
                     description
+                    bio
+                    lore
+                    knowledge
+                    messageDirections
+                    capabilities
+                    additionalInfo
+                    instructions
+                    availableActions
+                    task
+                    actionExamples
                     title
                     feeds
                 }

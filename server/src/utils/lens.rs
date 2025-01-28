@@ -557,20 +557,11 @@ pub async fn search_posts(
                             content
                             attachments {
                                 __typename
-                                ... on MediaAudio {
-                                    item
-                                    artist
-                                    duration
-                                }
                                 ... on MediaImage {
                                     item
                                     altTag
                                 }
-                                ... on MediaVideo {
-                                    item
-                                    duration
-                                    cover
-                                }
+                              
                             }
                         }
                     }
@@ -583,6 +574,9 @@ pub async fn search_posts(
                 "pageSize": "FIFTY",
                 "filter": {
                     "searchQuery": search_query,
+                    "metadata": {
+                        "mainContentFocus": ["IMAGE", "ARTICLE", "TEXT_ONLY", "STORY"]
+                    }
                 },
             }
         }

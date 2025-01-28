@@ -390,10 +390,7 @@ pub async fn call_comment_completion_openai(post_content: &str, custom_instructi
              } else  {
                 
          
-              json!(   { "type": "image_url",
-                 "input_audio": {
-                     "input_audio": item,
-                 }})
+              json!(   { })
          
              }, 
          ]
@@ -557,11 +554,7 @@ pub async fn call_quote_completion_openai(post_content: &str, custom_instruction
              } else  {
                 
          
-              json!(   { "type": "image_url",
-                 "input_audio": {
-                     "input_audio": item,
-                 }})
-         
+                json!(   { })
              }, 
          ]
     }));
