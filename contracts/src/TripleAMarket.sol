@@ -6,7 +6,6 @@ import "./TripleANFT.sol";
 import "./TripleAAccessControls.sol";
 import "./TripleACollectionManager.sol";
 import "./TripleAAgents.sol";
-import "./TripleADevTreasury.sol";
 import "./TripleAFulfillerManager.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
@@ -17,7 +16,6 @@ contract TripleAMarket {
     TripleAFulfillerManager public fulfillerManager;
     TripleAAccessControls public accessControls;
     TripleAAgents public agents;
-    TripleADevTreasury public devTreasury;
 
     mapping(address => uint256[]) private _buyerToOrderIds;
     mapping(uint256 => TripleALibrary.Order) private _orders;
@@ -51,7 +49,7 @@ contract TripleAMarket {
         address _nft,
         address _collectionManager,
         address payable _accessControls,
-        address _agents,
+        address payable _agents,
         address _fulfillerManager
     ) payable {
         nft = TripleANFT(_nft);
@@ -152,14 +150,12 @@ contract TripleAMarket {
             if (
                 !IERC20(paymentToken).transferFrom(
                     msg.sender,
-                    address(devTreasury),
+                    address(agents),
                     _agentShare
                 )
             ) {
                 revert TripleAErrors.PaymentFailed();
             }
-
-            devTreasury.receiveFunds(msg.sender, paymentToken, _agentShare);
 
             _manageAgents(paymentToken, collectionId, _perAgentShare, amount);
         }
@@ -355,12 +351,8 @@ contract TripleAMarket {
         accessControls = TripleAAccessControls(_accessControls);
     }
 
-    function setAgents(address _agents) external onlyAdmin {
+    function setAgents(address payable _agents) external onlyAdmin {
         agents = TripleAAgents(_agents);
-    }
-
-    function setDevTreasury(address payable _devTreasury) external onlyAdmin {
-        devTreasury = TripleADevTreasury(_devTreasury);
     }
 
     function getBuyerToOrderIds(

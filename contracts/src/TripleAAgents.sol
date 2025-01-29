@@ -4,42 +4,60 @@ pragma solidity 0.8.24;
 import "./TripleAErrors.sol";
 import "./TripleALibrary.sol";
 import "./TripleAAccessControls.sol";
-import "./TripleADevTreasury.sol";
 import "./TripleACollectionManager.sol";
+import "./TripleAMarket.sol";
+import "./skyhunters/SkyhuntersAgentManager.sol";
+import "./skyhunters/SkyhuntersAccessControls.sol";
+import "./skyhunters/SkyhuntersPoolManager.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 contract TripleAAgents {
-    uint256 private _agentCounter;
-    address public market;
+    address public rewards;
+    uint256 public ownerAmountPercent;
+    uint256 public distributionAmountPercent;
+    uint256 public devAmountPercent;
     TripleAAccessControls public accessControls;
+    TripleAMarket public market;
+    SkyhuntersAccessControls public skyhuntersAccessControls;
+    SkyhuntersPoolManager public poolManager;
+    SkyhuntersAgentManager public agentManager;
     TripleACollectionManager public collectionManager;
-    TripleADevTreasury public devTreasury;
-    mapping(uint256 => TripleALibrary.Agent) private _agents;
-    mapping(address => mapping(uint256 => bool)) private _isOwner;
-    mapping(address => mapping(uint256 => bool)) private _isWallet;
+
+    mapping(uint256 => TripleALibrary.Agent) private _activatedAgents;
     mapping(uint256 => mapping(address => mapping(uint256 => uint256)))
-        private _agentActiveBalances;
+        private _agentRentBalances;
     mapping(uint256 => mapping(address => mapping(uint256 => uint256)))
-        private _agentTotalBalances;
+        private _agentHistoricalRentBalances;
     mapping(uint256 => mapping(address => mapping(uint256 => uint256)))
         private _agentBonusBalances;
+    mapping(uint256 => mapping(address => mapping(uint256 => uint256)))
+        private _agentHistoricalBonusBalances;
     mapping(uint256 => mapping(uint256 => TripleALibrary.CollectionWorker))
         private _workers;
-    mapping(uint256 => mapping(uint256 => bool)) private _isArtist;
+    mapping(address => uint256) private _services;
+    mapping(address => uint256) private _allTimeServices;
+    mapping(address => mapping(address => mapping(uint256 => uint256)))
+        private _collectorPayment;
+    mapping(address => mapping(address => mapping(uint256 => uint256)))
+        private _ownerPayment;
+    mapping(address => uint256) private _devPayment;
+    mapping(address => uint256) private _currentRewards;
+    mapping(address => uint256) private _rewardsHistory;
 
-    event AgentCreated(address[] wallets, address creator, uint256 indexed id);
-    event AgentDeleted(uint256 indexed id);
-    event AgentEdited(uint256 indexed id);
+    event ActivateAgent(address wallet, uint256 agentId);
     event BalanceAdded(
         address token,
         uint256 agentId,
         uint256 amount,
         uint256 collectionId
     );
-    event BalanceWithdrawn(
+    event RewardsCalculated(address token, uint256 amount);
+    event AgentPaidRent(
         address[] tokens,
         uint256[] collectionIds,
         uint256[] amounts,
-        uint256 agentId
+        uint256[] bonuses,
+        uint256 indexed agentId
     );
     event AgentRecharged(
         address recharger,
@@ -48,25 +66,8 @@ contract TripleAAgents {
         uint256 collectionId,
         uint256 amount
     );
-    event ExcessAgent(
-        address token,
-        uint256 amount,
-        uint256 agentId,
-        uint256 collectionId
-    );
-    event SwapFundsToTreasury(
-        address token,
-        uint256 agentId,
-        uint256 collectionId,
-        uint256 amount
-    );
     event WorkerAdded(uint256 agentId, uint256 collectionId);
     event WorkerUpdated(uint256 agentId, uint256 collectionId);
-    event RevokeOwner(address wallet, uint256 agentId);
-    event AddOwner(address wallet, uint256 agentId);
-    event RevokeAgentWallet(address wallet, uint256 agentId);
-    event AddAgentWallet(address wallet, uint256 agentId);
-    event AgentScored(address scorer, uint256 agentId, uint256 score, bool positive);
 
     modifier onlyAdmin() {
         if (!accessControls.isAdmin(msg.sender)) {
@@ -75,10 +76,17 @@ contract TripleAAgents {
         _;
     }
 
+    modifier onlyRewards() {
+        if (msg.sender != rewards) {
+            revert TripleAErrors.OnlyRewardsContract();
+        }
+        _;
+    }
+
     modifier onlyAgentOwnerOrCreator(uint256 agentId) {
         if (
-            !_isOwner[msg.sender][agentId] &&
-            _agents[agentId].creator != msg.sender
+            !agentManager.getIsAgentOwner(msg.sender, agentId) &&
+            agentManager.getAgentCreator(agentId) != msg.sender
         ) {
             revert TripleAErrors.NotAgentOwner();
         }
@@ -87,14 +95,14 @@ contract TripleAAgents {
     }
 
     modifier onlyAgentCreator(uint256 agentId) {
-        if (_agents[agentId].creator != msg.sender) {
+        if (agentManager.getAgentCreator(agentId) != msg.sender) {
             revert TripleAErrors.NotAgentCreator();
         }
         _;
     }
 
     modifier onlyMarket() {
-        if (market != msg.sender) {
+        if (address(market) != msg.sender) {
             revert TripleAErrors.OnlyMarketContract();
         }
         _;
@@ -109,89 +117,27 @@ contract TripleAAgents {
 
     constructor(
         address payable _accessControls,
-        address payable _devTreasury,
-        address _collectionManager
+        address _collectionManager,
+        address _skyhuntersAccessControls
     ) payable {
         accessControls = TripleAAccessControls(_accessControls);
-        devTreasury = TripleADevTreasury(_devTreasury);
         collectionManager = TripleACollectionManager(_collectionManager);
+        skyhuntersAccessControls = SkyhuntersAccessControls(
+            _skyhuntersAccessControls
+        );
     }
 
-    function createAgent(
-        address[] memory wallets,
-        address[] memory owners,
-        string memory metadata
-    ) external {
-        _agentCounter++;
+    function activateAgent(
+        uint256 agentId
+    ) external onlyAgentOwnerOrCreator(agentId) {
+        agentManager.setAgentActive(agentId);
 
-        for (uint8 i = 0; i < owners.length; i++) {
-            _isOwner[owners[i]][_agentCounter] = true;
-        }
-
-        for (uint8 i = 0; i < wallets.length; i++) {
-            _isWallet[wallets[i]][_agentCounter] = true;
-        }
-
-        _isOwner[msg.sender][_agentCounter] = true;
-
-        _agents[_agentCounter] = TripleALibrary.Agent({
-            id: _agentCounter,
-            metadata: metadata,
-            agentWallets: wallets,
-            owners: owners,
-            creator: msg.sender,
+        _activatedAgents[agentId] = TripleALibrary.Agent({
             collectionIdsHistory: new uint256[](0),
-            activeCollectionIds: new uint256[](0),
-            scorePositive: 0,
-            scoreNegative: 0
+            activeCollectionIds: new uint256[](0)
         });
 
-        for (uint8 i = 0; i < wallets.length; i++) {
-            accessControls.addAgent(wallets[i]);
-        }
-
-        emit AgentCreated(wallets, msg.sender, _agentCounter);
-    }
-
-    function editAgent(
-        string memory metadata,
-        uint256 agentId
-    ) external onlyAgentOwnerOrCreator(agentId) {
-        _agents[agentId].metadata = metadata;
-
-        emit AgentEdited(agentId);
-    }
-
-    function deleteAgent(
-        uint256 agentId
-    ) external onlyAgentOwnerOrCreator(agentId) {
-        if (_agents[agentId].activeCollectionIds.length > 0) {
-            revert TripleAErrors.AgentStillActive();
-        }
-
-        address[] memory _wallets = _agents[agentId].agentWallets;
-        address[] memory _owners = _agents[agentId].owners;
-
-        for (uint8 i = 0; i < _wallets.length; i++) {
-            accessControls.removeAgent(_wallets[i]);
-            _isWallet[_wallets[i]][agentId] = false;
-        }
-
-        for (uint8 i = 0; i < _owners.length; i++) {
-            _isOwner[_owners[i]][agentId] = false;
-        }
-
-        for (
-            uint256 i = 0;
-            i < _agents[agentId].collectionIdsHistory.length;
-            i++
-        ) {
-            delete _workers[agentId][_agents[agentId].collectionIdsHistory[i]];
-        }
-
-        delete _agents[agentId];
-
-        emit AgentDeleted(agentId);
+        emit ActivateAgent(msg.sender, agentId);
     }
 
     function addWorker(
@@ -222,60 +168,6 @@ contract TripleAAgents {
         emit WorkerUpdated(agentId, collectionId);
     }
 
-    function revokeOwner(
-        address wallet,
-        uint256 agentId
-    ) public onlyAgentCreator(agentId) {
-        for (uint8 i = 0; i < _agents[agentId].owners.length; i++) {
-            if (_agents[agentId].owners[i] == wallet) {
-                _agents[agentId].owners[i] = _agents[agentId].owners[
-                    _agents[agentId].owners.length - 1
-                ];
-                _agents[agentId].owners.pop();
-                break;
-            }
-        }
-        _isOwner[wallet][agentId] = false;
-        emit RevokeOwner(wallet, agentId);
-    }
-
-    function addOwner(
-        address wallet,
-        uint256 agentId
-    ) public onlyAgentCreator(agentId) {
-        _agents[agentId].owners.push(wallet);
-        _isOwner[wallet][agentId] = true;
-        emit AddOwner(wallet, agentId);
-    }
-
-    function revokeAgentWallet(
-        address wallet,
-        uint256 agentId
-    ) public onlyAgentOwnerOrCreator(agentId) {
-        for (uint8 i = 0; i < _agents[agentId].agentWallets.length; i++) {
-            if (_agents[agentId].agentWallets[i] == wallet) {
-                _agents[agentId].agentWallets[i] = _agents[agentId]
-                    .agentWallets[_agents[agentId].agentWallets.length - 1];
-                _agents[agentId].agentWallets.pop();
-                break;
-            }
-        }
-        _isWallet[wallet][agentId] = false;
-        accessControls.removeAgent(wallet);
-
-        emit RevokeAgentWallet(wallet, agentId);
-    }
-
-    function addAgentWallet(
-        address wallet,
-        uint256 agentId
-    ) public onlyAgentOwnerOrCreator(agentId) {
-        _agents[agentId].agentWallets.push(wallet);
-        _isWallet[wallet][agentId] = true;
-        accessControls.addAgent(wallet);
-        emit AddAgentWallet(wallet, agentId);
-    }
-
     function addBalance(
         address token,
         uint256 agentId,
@@ -286,19 +178,16 @@ contract TripleAAgents {
         uint256 _bonus = 0;
         uint256 _rent = _handleRent(token, agentId, collectionId);
 
-        // if (soldOut) {
-        //     _bonus = amount;
-        // } else
         if (amount >= _rent) {
             _bonus = amount - _rent;
         }
-        _agentActiveBalances[agentId][token][collectionId] += _rent;
-        _agentTotalBalances[agentId][token][collectionId] += _rent;
-        // }
+        _agentRentBalances[agentId][token][collectionId] += _rent;
+        _agentHistoricalRentBalances[agentId][token][collectionId] += _rent;
 
         _agentBonusBalances[agentId][token][collectionId] += _bonus;
+        _agentHistoricalBonusBalances[agentId][token][collectionId] += _bonus;
 
-        uint256[] storage activeCollections = _agents[agentId]
+        uint256[] storage activeCollections = _activatedAgents[agentId]
             .activeCollectionIds;
 
         bool isCollectionActive = false;
@@ -326,18 +215,20 @@ contract TripleAAgents {
         bool existsInHistory = false;
         for (
             uint8 i = 0;
-            i < _agents[agentId].collectionIdsHistory.length;
+            i < _activatedAgents[agentId].collectionIdsHistory.length;
             i++
         ) {
-            if (_agents[agentId].collectionIdsHistory[i] == collectionId) {
+            if (
+                _activatedAgents[agentId].collectionIdsHistory[i] ==
+                collectionId
+            ) {
                 existsInHistory = true;
                 break;
             }
         }
 
         if (!existsInHistory) {
-            _agents[agentId].collectionIdsHistory.push(collectionId);
-            _isArtist[agentId][collectionId] = true;
+            _activatedAgents[agentId].collectionIdsHistory.push(collectionId);
         }
 
         emit BalanceAdded(token, agentId, amount, collectionId);
@@ -348,28 +239,17 @@ contract TripleAAgents {
         uint256[] memory collectionIds,
         uint256 agentId
     ) external {
-        bool _isAgent = false;
-
         if (collectionIds.length != tokens.length) {
             revert TripleAErrors.BadUserInput();
         }
 
-        if (accessControls.isAgent(msg.sender)) {
-            for (uint8 i = 0; i < _agents[agentId].agentWallets.length; i++) {
-                if (_agents[agentId].agentWallets[i] == msg.sender) {
-                    _isAgent = true;
-                    break;
-                }
-            }
-        }
-
-        if (!_isAgent) {
+        if (skyhuntersAccessControls.isAgent(msg.sender)) {
             revert TripleAErrors.NotAgent();
         }
 
         for (uint8 i = 0; i < collectionIds.length; i++) {
             if (
-                _agentActiveBalances[agentId][tokens[i]][collectionIds[i]] <
+                _agentRentBalances[agentId][tokens[i]][collectionIds[i]] <
                 _handleRent(tokens[i], agentId, collectionIds[i])
             ) {
                 revert TripleAErrors.InsufficientBalance();
@@ -379,7 +259,8 @@ contract TripleAAgents {
                 revert TripleAErrors.CollectionNotActive();
             }
 
-            uint256[] memory _ids = _agents[agentId].activeCollectionIds;
+            uint256[] memory _ids = _activatedAgents[agentId]
+                .activeCollectionIds;
             if (_ids.length < 1) {
                 revert TripleAErrors.NoActiveAgents();
             } else {
@@ -401,7 +282,7 @@ contract TripleAAgents {
         uint256[] memory _bonuses = new uint256[](collectionIds.length);
         for (uint8 i = 0; i < collectionIds.length; i++) {
             _amounts[i] = _handleRent(tokens[i], agentId, collectionIds[i]);
-            _agentActiveBalances[agentId][tokens[i]][
+            _agentRentBalances[agentId][tokens[i]][
                 collectionIds[i]
             ] -= _handleRent(tokens[i], agentId, collectionIds[i]);
             _bonuses[i] = _agentBonusBalances[agentId][tokens[i]][
@@ -410,15 +291,16 @@ contract TripleAAgents {
             _agentBonusBalances[agentId][tokens[i]][collectionIds[i]] = 0;
         }
 
-        devTreasury.agentPayRent(
-            tokens,
-            collectionIds,
-            _amounts,
-            _bonuses,
-            agentId
-        );
+        for (uint8 i = 0; i < collectionIds.length; i++) {
+            _services[tokens[i]] += _amounts[i];
+            _allTimeServices[tokens[i]] += _amounts[i];
 
-        emit BalanceWithdrawn(tokens, collectionIds, _amounts, agentId);
+            if (_bonuses[i] > 0) {
+                _handleBonus(tokens[i], agentId, _bonuses[i], collectionIds[i]);
+            }
+        }
+
+        emit AgentPaidRent(tokens, collectionIds, _amounts, _bonuses, agentId);
     }
 
     function _handleRent(
@@ -443,24 +325,50 @@ contract TripleAAgents {
         return _rent;
     }
 
-    function sendFundsToTreasury(
+    function _handleBonus(
         address token,
         uint256 agentId,
-        uint256 amount,
+        uint256 bonus,
         uint256 collectionId
-    ) external onlyAdmin {
-        if (amount > _agentActiveBalances[agentId][token][collectionId]) {
-            revert TripleAErrors.InsufficientBalance();
+    ) internal {
+        address[] memory _owners = agentManager.getAgentOwners(agentId);
+        _currentRewards[token] += bonus;
+        _rewardsHistory[token] += bonus;
+
+        uint256 _ownerAmount = (bonus * ownerAmountPercent) / 100;
+        uint256 _devAmount = (bonus * devAmountPercent) / 100;
+        uint256 _distributionAmount = (bonus * distributionAmountPercent) / 100;
+
+        address[] memory _collectors = market.getAllCollectorsByCollectionId(
+            collectionId
+        );
+
+        uint256 totalWeight = 0;
+        for (uint256 j = 1; j <= _collectors.length; j++) {
+            totalWeight += 1e18 / j;
         }
 
-        _agentActiveBalances[agentId][token][collectionId] -= amount;
+        for (uint256 j = 0; j < _collectors.length; j++) {
+            if (_collectors[j] != address(0)) {
+                uint256 weight = 1e18 / (j + 1);
+                uint256 payment = (_distributionAmount * weight) / totalWeight;
 
-        devTreasury.receiveTreasury(token, amount);
+                _collectorPayment[token][_collectors[j]][
+                    collectionId
+                ] += payment;
+            }
+        }
 
-        emit SwapFundsToTreasury(token, agentId, collectionId, amount);
+        for (uint8 i = 0; i < _owners.length; i++) {
+            _ownerPayment[token][_owners[i]][collectionId] +=
+                _ownerAmount /
+                _owners.length;
+        }
+
+        _devPayment[token] += _devAmount;
     }
 
-    function rechargeAgentActiveBalance(
+    function rechargeAgentRentBalance(
         address token,
         uint256 agentId,
         uint256 collectionId,
@@ -507,21 +415,15 @@ contract TripleAAgents {
             revert TripleAErrors.TokenNotAccepted();
         }
 
-        if (
-            !IERC20(token).transferFrom(
-                msg.sender,
-                address(devTreasury),
-                amount
-            )
-        ) {
+        if (!IERC20(token).transferFrom(msg.sender, address(this), amount)) {
             revert TripleAErrors.PaymentFailed();
         } else {
-            devTreasury.receiveFunds(msg.sender, token, amount);
+            _agentRentBalances[agentId][token][collectionId] += amount;
+            _agentHistoricalRentBalances[agentId][token][
+                collectionId
+            ] += amount;
 
-            _agentActiveBalances[agentId][token][collectionId] += amount;
-            _agentTotalBalances[agentId][token][collectionId] += amount;
-
-            uint256[] storage activeCollections = _agents[agentId]
+            uint256[] storage activeCollections = _activatedAgents[agentId]
                 .activeCollectionIds;
 
             bool isCollectionActive = false;
@@ -537,18 +439,22 @@ contract TripleAAgents {
             bool existsInHistory = false;
             for (
                 uint8 i = 0;
-                i < _agents[agentId].collectionIdsHistory.length;
+                i < _activatedAgents[agentId].collectionIdsHistory.length;
                 i++
             ) {
-                if (_agents[agentId].collectionIdsHistory[i] == collectionId) {
+                if (
+                    _activatedAgents[agentId].collectionIdsHistory[i] ==
+                    collectionId
+                ) {
                     existsInHistory = true;
                     break;
                 }
             }
 
             if (!existsInHistory) {
-                _agents[agentId].collectionIdsHistory.push(collectionId);
-                _isArtist[agentId][collectionId] = true;
+                _activatedAgents[agentId].collectionIdsHistory.push(
+                    collectionId
+                );
             }
 
             emit AgentRecharged(
@@ -561,68 +467,42 @@ contract TripleAAgents {
         }
     }
 
-    function scoreAgent(uint256 agentId, uint256 collectionId, uint256 score, bool positive) public {
+    function handleRewardsCalc() external onlyRewards {
+        address[] memory _tokens = skyhuntersAccessControls.getAllTokens();
 
-        if (!_isArtist[agentId][collectionId] || collectionManager.getCollectionArtist(collectionId) != msg.sender){
-             revert TripleAErrors.NotArtist();
+        for (uint8 i = 0; i < _tokens.length; i++) {
+            IERC20(_tokens[i]).transfer(
+                address(poolManager),
+                _currentRewards[_tokens[i]]
+            );
+            poolManager.receiveRewards(_tokens[i], _currentRewards[_tokens[i]]);
+            _currentRewards[_tokens[i]] = 0;
+            emit RewardsCalculated(_tokens[i], _currentRewards[_tokens[i]]);
         }
-
-        if (score > 1) { 
-            revert TripleAErrors.InvalidScore();
-        }
-
-        if (positive) {
-            _agents[agentId].scorePositive += score;
-        } else {
-            _agents[agentId].scoreNegative += score;
-        }
-
-        emit AgentScored(msg.sender, agentId, score, positive);
     }
 
-    function excessAgent(
-        address token,
-        uint256 agentId,
-        uint256 collectionId
-    ) external onlyAdmin {
-        uint256 _amount = _agentActiveBalances[agentId][token][collectionId];
-        _agentActiveBalances[agentId][token][collectionId] = 0;
-
-        devTreasury.addToServices(token, _amount);
-
-        emit ExcessAgent(token, _amount, agentId, collectionId);
-    }
-
-    function getAgentCounter() public view returns (uint256) {
-        return _agentCounter;
-    }
-
-    function getAgentWallets(
-        uint256 agentId
-    ) public view returns (address[] memory) {
-        return _agents[agentId].agentWallets;
-    }
-
-    function getAgentMetadata(
-        uint256 agentId
-    ) public view returns (string memory) {
-        return _agents[agentId].metadata;
-    }
-
-    function getAgentActiveBalance(
+    function getAgentRentBalance(
         address token,
         uint256 agentId,
         uint256 collectionId
     ) public view returns (uint256) {
-        return _agentActiveBalances[agentId][token][collectionId];
+        return _agentRentBalances[agentId][token][collectionId];
     }
 
-    function getAgentTotalBalance(
+    function getAgentHistoricalRentBalance(
         address token,
         uint256 agentId,
         uint256 collectionId
     ) public view returns (uint256) {
-        return _agentTotalBalances[agentId][token][collectionId];
+        return _agentHistoricalRentBalances[agentId][token][collectionId];
+    }
+
+    function getAgentHistoricalBonusBalance(
+        address token,
+        uint256 agentId,
+        uint256 collectionId
+    ) public view returns (uint256) {
+        return _agentHistoricalBonusBalances[agentId][token][collectionId];
     }
 
     function getAgentBonusBalance(
@@ -633,48 +513,46 @@ contract TripleAAgents {
         return _agentBonusBalances[agentId][token][collectionId];
     }
 
+    function getAllTimeServices(address token) public view returns (uint256) {
+        return _allTimeServices[token];
+    }
+
+    function getServicesPaidByToken(
+        address token
+    ) public view returns (uint256) {
+        return _services[token];
+    }
+
     function getAgentCollectionIdsHistory(
         uint256 agentId
     ) public view returns (uint256[] memory) {
-        return _agents[agentId].collectionIdsHistory;
-    }
-
-    function getAgentScorePositive(uint256 agentId) public view returns (uint256) {
-        return _agents[agentId].scorePositive;
-    }
-
-        function getAgentScoreNegative(uint256 agentId) public view returns (uint256) {
-        return _agents[agentId].scoreNegative;
-    }
-
-    function getAgentOwners(
-        uint256 agentId
-    ) public view returns (address[] memory) {
-        return _agents[agentId].owners;
-    }
-
-    function getAgentCreator(uint256 agentId) public view returns (address) {
-        return _agents[agentId].creator;
+        return _activatedAgents[agentId].collectionIdsHistory;
     }
 
     function getAgentActiveCollectionIds(
         uint256 agentId
     ) public view returns (uint256[] memory) {
-        return _agents[agentId].activeCollectionIds;
+        return _activatedAgents[agentId].activeCollectionIds;
     }
 
-    function getIsWallet(
-        address wallet,
-        uint256 agentId
-    ) public view returns (bool) {
-        return _isWallet[wallet][agentId];
+    function getCollectorPaymentByToken(
+        address token,
+        address collector,
+        uint256 collectionId
+    ) public view returns (uint256) {
+        return _collectorPayment[token][collector][collectionId];
     }
 
-    function getIsOwner(
+    function getAgentOwnerPaymentByToken(
+        address token,
         address owner,
-        uint256 agentId
-    ) public view returns (bool) {
-        return _isOwner[owner][agentId];
+        uint256 collectionId
+    ) public view returns (uint256) {
+        return _ownerPayment[token][owner][collectionId];
+    }
+
+    function getDevPaymentByToken(address token) public view returns (uint256) {
+        return _devPayment[token];
     }
 
     function setAccessControls(
@@ -683,12 +561,20 @@ contract TripleAAgents {
         accessControls = TripleAAccessControls(_accessControls);
     }
 
-    function setDevTreasury(address payable _devTreasury) external onlyAdmin {
-        devTreasury = TripleADevTreasury(_devTreasury);
+    function setSkyhuntersRewards(address _rewards) external onlyAdmin {
+        rewards = _rewards;
+    }
+
+    function setSkyhuntersAccessControls(
+        address _skyhuntersAccessControls
+    ) external onlyAdmin {
+        skyhuntersAccessControls = SkyhuntersAccessControls(
+            _skyhuntersAccessControls
+        );
     }
 
     function setMarket(address _market) external onlyAdmin {
-        market = _market;
+        market = TripleAMarket(_market);
     }
 
     function setCollectionManager(
@@ -696,4 +582,30 @@ contract TripleAAgents {
     ) external onlyAdmin {
         collectionManager = TripleACollectionManager(_collectionManager);
     }
+
+    function setSkyhuntersPoolManager(
+        address payable _poolManager
+    ) external onlyAdmin {
+        poolManager = SkyhuntersPoolManager(_poolManager);
+    }
+
+    function setAmounts(
+        uint256 _ownerAmountPercent,
+        uint256 _distributionAmountPercent,
+        uint256 _devAmountPercent
+    ) external onlyAdmin {
+        if (
+            ownerAmountPercent + distributionAmountPercent + devAmountPercent !=
+            100
+        ) {
+            revert TripleAErrors.BadUserInput();
+        }
+        ownerAmountPercent = _ownerAmountPercent;
+        distributionAmountPercent = _distributionAmountPercent;
+        devAmountPercent = _devAmountPercent;
+    }
+
+    receive() external payable {}
+
+    fallback() external payable {}
 }

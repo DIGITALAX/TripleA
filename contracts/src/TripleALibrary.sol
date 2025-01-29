@@ -46,13 +46,6 @@ contract TripleALibrary {
     struct Agent {
         uint256[] collectionIdsHistory;
         uint256[] activeCollectionIds;
-        address[] agentWallets;
-        address[] owners;
-        string metadata;
-        address creator;
-        uint256 id;
-        uint256 scorePositive;
-        uint256 scoreNegative;
     }
 
     struct CollectionWorker {

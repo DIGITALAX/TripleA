@@ -19,7 +19,7 @@ contract SkyhuntersReceiver {
         _;
     }
 
-    modifier onlyContract() {
+    modifier onlyVerifiedContract() {
         if (!accessControls.isVerifiedContract(msg.sender)) {
             revert SkyhuntersErrors.NotVerifiedContract();
         }
@@ -40,7 +40,7 @@ contract SkyhuntersReceiver {
         address token,
         address user,
         uint256 amount
-    ) external onlyContract returns (bool) {
+    ) external onlyVerifiedContract returns (bool) {
         _userDeposited[user][token] += amount;
         emit TokensReceived(token, user, amount);
 

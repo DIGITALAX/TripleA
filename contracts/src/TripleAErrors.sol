@@ -5,14 +5,10 @@ contract TripleAErrors {
     error NotAdmin();
     error AlreadyAdmin();
     error CannotRemoveSelf();
-    error AgentDoesntExist();
     error AdminDoesntExist();
     error AdminAlreadyExists();
-    error AgentAlreadyExists();
-    error OnlyAgentContract();
     error TokenAlreadyExists();
     error TokenDoesntExist();
-    error NotAgentOrAdmin();
     error InsufficientFunds();
     error TransferFailed();
     error FulfillerAlreadyExists();
@@ -29,27 +25,26 @@ contract TripleAErrors {
     error CantDeleteSoldCollection();
     error PriceTooLow();
     error OnlyFulfillerManager();
+    error OnlyPoolManagerContract();
+    error BadUserInput();
 
     error NotAvailable();
     error TokenNotAccepted();
     error PaymentFailed();
 
     error OnlyAgentsContract();
-
-    error NotAgent();
-    error InsufficientBalance();
     error NotAgentOwner();
     error NotAgentCreator();
-    error AgentStillActive();
-    error BadUserInput();
+    error InvalidWorker();
+    error NotAgent();
+    error InsufficientBalance();
     error NoActiveAgents();
     error CollectionSoldOut();
-    error InvalidWorker();
-    error InvalidScore();
 
     error CollectionAlreadyDeactivated();
     error CollectionAlreadyActive();
     error CollectionNotActive();
+    error OnlyRewardsContract();
 
     error NotFulfiller();
     error ActiveOrders();

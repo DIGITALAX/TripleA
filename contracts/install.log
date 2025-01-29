@@ -1,5 +1,0 @@
-Installing foundryup-zksync...
-
-Detected your preferred shell is zsh and added foundryup-zksync to PATH.
-Run 'source /Users/devdesign/.zshenv' or start a new terminal session to use foundryup-zksync.
-Then, simply run 'foundryup-zksync' to install foundry-zksync.

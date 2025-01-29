@@ -5,6 +5,7 @@ import "./TripleALibrary.sol";
 import "./TripleAErrors.sol";
 import "./TripleAAccessControls.sol";
 import "./TripleAAgents.sol";
+import "./skyhunters/SkyhuntersAccessControls.sol";
 
 contract TripleACollectionManager {
     mapping(address => uint256[]) private _dropIdsByArtist;
@@ -18,6 +19,7 @@ contract TripleACollectionManager {
     address public market;
     TripleAAccessControls public accessControls;
     TripleAAgents public agents;
+    SkyhuntersAccessControls public skyhuntersAccessControls;
 
     event CollectionCreated(
         address artist,
@@ -62,8 +64,14 @@ contract TripleACollectionManager {
         _;
     }
 
-    constructor(address payable _accessControls) payable {
+    constructor(
+        address payable _accessControls,
+        address payable _skyhuntersAccessControls
+    ) payable {
         accessControls = TripleAAccessControls(_accessControls);
+        skyhuntersAccessControls = SkyhuntersAccessControls(
+            _skyhuntersAccessControls
+        );
     }
 
     function create(
@@ -85,6 +93,16 @@ contract TripleACollectionManager {
             collectionInput.collectionType == TripleALibrary.CollectionType.IRL
         ) {
             _checkTokens(collectionInput.tokens, collectionInput.prices);
+        }
+
+        for (uint8 i = 0; i < collectionInput.tokens.length; i++) {
+            if (
+                !skyhuntersAccessControls.isAcceptedToken(
+                    collectionInput.tokens[i]
+                )
+            ) {
+                revert TripleAErrors.TokenNotAccepted();
+            }
         }
 
         if (_dropValue == 0) {
@@ -438,7 +456,15 @@ contract TripleACollectionManager {
         accessControls = TripleAAccessControls(_accessControls);
     }
 
-    function setAgents(address _agents) external onlyAdmin {
+    function setSkyhuntersAccessControls(
+        address payable _skyhuntersAccessControls
+    ) external onlyAdmin {
+        skyhuntersAccessControls = SkyhuntersAccessControls(
+            _skyhuntersAccessControls
+        );
+    }
+
+    function setAgents(address payable _agents) external onlyAdmin {
         agents = TripleAAgents(_agents);
     }
 }
