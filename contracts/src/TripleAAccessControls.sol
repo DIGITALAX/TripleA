@@ -193,6 +193,10 @@ contract TripleAAccessControls {
         );
     }
 
+    function emergencyWithdraw(uint256 amount) external onlyAdmin {
+        payable(msg.sender).transfer(amount);
+    }
+
     receive() external payable {}
 
     fallback() external payable {}

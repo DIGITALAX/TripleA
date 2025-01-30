@@ -9,6 +9,7 @@ import "./TripleAMarket.sol";
 import "./skyhunters/SkyhuntersAgentManager.sol";
 import "./skyhunters/SkyhuntersAccessControls.sol";
 import "./skyhunters/SkyhuntersPoolManager.sol";
+import "./skyhunters/pools/IPool.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 contract TripleAAgents {
@@ -16,6 +17,7 @@ contract TripleAAgents {
     uint256 public ownerAmountPercent;
     uint256 public distributionAmountPercent;
     uint256 public devAmountPercent;
+    address public agentActivityPool;
     TripleAAccessControls public accessControls;
     TripleAMarket public market;
     SkyhuntersAccessControls public skyhuntersAccessControls;
@@ -291,13 +293,19 @@ contract TripleAAgents {
             _agentBonusBalances[agentId][tokens[i]][collectionIds[i]] = 0;
         }
 
+        address[] memory _owners = agentManager.getAgentOwners(agentId);
+
         for (uint8 i = 0; i < collectionIds.length; i++) {
             _services[tokens[i]] += _amounts[i];
             _allTimeServices[tokens[i]] += _amounts[i];
 
             if (_bonuses[i] > 0) {
-                _handleBonus(tokens[i], agentId, _bonuses[i], collectionIds[i]);
+                _handleBonus(_owners, tokens[i], _bonuses[i], collectionIds[i]);
             }
+        }
+
+        for (uint8 i = 0; i < _owners.length; i++) {
+            IPool(agentActivityPool).setCycleUser(_owners[i]);
         }
 
         emit AgentPaidRent(tokens, collectionIds, _amounts, _bonuses, agentId);
@@ -326,12 +334,11 @@ contract TripleAAgents {
     }
 
     function _handleBonus(
+        address[] memory owners,
         address token,
-        uint256 agentId,
         uint256 bonus,
         uint256 collectionId
     ) internal {
-        address[] memory _owners = agentManager.getAgentOwners(agentId);
         _currentRewards[token] += bonus;
         _rewardsHistory[token] += bonus;
 
@@ -359,10 +366,10 @@ contract TripleAAgents {
             }
         }
 
-        for (uint8 i = 0; i < _owners.length; i++) {
-            _ownerPayment[token][_owners[i]][collectionId] +=
+        for (uint8 i = 0; i < owners.length; i++) {
+            _ownerPayment[token][owners[i]][collectionId] +=
                 _ownerAmount /
-                _owners.length;
+                owners.length;
         }
 
         _devPayment[token] += _devAmount;
@@ -415,9 +422,10 @@ contract TripleAAgents {
             revert TripleAErrors.TokenNotAccepted();
         }
 
-        if (!IERC20(token).transferFrom(msg.sender, address(this), amount)) {
+        if (!IERC20(token).transfer(address(poolManager), amount)) {
             revert TripleAErrors.PaymentFailed();
         } else {
+            poolManager.receiveRewards(token, amount);
             _agentRentBalances[agentId][token][collectionId] += amount;
             _agentHistoricalRentBalances[agentId][token][
                 collectionId
@@ -464,20 +472,6 @@ contract TripleAAgents {
                 collectionId,
                 amount
             );
-        }
-    }
-
-    function handleRewardsCalc() external onlyRewards {
-        address[] memory _tokens = skyhuntersAccessControls.getAllTokens();
-
-        for (uint8 i = 0; i < _tokens.length; i++) {
-            IERC20(_tokens[i]).transfer(
-                address(poolManager),
-                _currentRewards[_tokens[i]]
-            );
-            poolManager.receiveRewards(_tokens[i], _currentRewards[_tokens[i]]);
-            _currentRewards[_tokens[i]] = 0;
-            emit RewardsCalculated(_tokens[i], _currentRewards[_tokens[i]]);
         }
     }
 
@@ -589,6 +583,12 @@ contract TripleAAgents {
         poolManager = SkyhuntersPoolManager(_poolManager);
     }
 
+    function setSkyhuntersAgentActivityPool(
+        address payable _agentActivityPool
+    ) external onlyAdmin {
+        agentActivityPool = _agentActivityPool;
+    }
+
     function setAmounts(
         uint256 _ownerAmountPercent,
         uint256 _distributionAmountPercent,
@@ -603,6 +603,10 @@ contract TripleAAgents {
         ownerAmountPercent = _ownerAmountPercent;
         distributionAmountPercent = _distributionAmountPercent;
         devAmountPercent = _devAmountPercent;
+    }
+
+    function emergencyWithdraw(uint256 amount) external onlyAdmin {
+        payable(msg.sender).transfer(amount);
     }
 
     receive() external payable {}

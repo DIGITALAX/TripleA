@@ -25,4 +25,16 @@ contract SkyhuntersErrors {
     error AgentStillActive();
     error InvalidScore();
     error InvalidAmount();
+
+    error TokenNotAccepted();
+    error UseNotAllowed();
+    error InvalidUseAmount();
+    error NotVerifiedPool();
+    error InvalidPercents();
+    error OnlyMonaAccepted();
+    error PoolDepositFailed();
+
+    error InsufficientCycleBalance();
+    error NoCycleRewards();
+    error RewardClaimFailed();
 }

@@ -6,6 +6,7 @@ import "./SkyhuntersErrors.sol";
 contract SkyhuntersAccessControls {
     address public agentsContract;
     address[] private _verifiedContractsList;
+    address[] private _verifiedPoolsList;
     address[] private _allTokens;
 
     mapping(address => bool) private _admins;
@@ -108,12 +109,23 @@ contract SkyhuntersAccessControls {
             revert SkyhuntersErrors.PoolAlreadyExists();
         }
         _verifiedPools[verifiedPool] = true;
+        _verifiedPoolsList.push(verifiedPool);
         emit VerifiedPoolAdded(verifiedPool);
     }
 
     function removeVerifiedPool(address verifiedPool) external onlyAdmin {
         if (!_verifiedPools[verifiedPool]) {
             revert SkyhuntersErrors.PoolDoesntExist();
+        }
+
+        for (uint8 i = 0; i < _verifiedPoolsList.length; i++) {
+            if (_verifiedPoolsList[i] == verifiedPool) {
+                _verifiedPoolsList[i] = _verifiedPoolsList[
+                    _verifiedPoolsList.length - 1
+                ];
+                _verifiedPoolsList.pop();
+                break;
+            }
         }
 
         _verifiedPools[verifiedPool] = false;
@@ -179,8 +191,16 @@ contract SkyhuntersAccessControls {
         return _acceptedTokens[token];
     }
 
+    function isPool(address token) public view returns (bool) {
+        return _verifiedPools[token];
+    }
+
     function getVerifiedContracts() public view returns (address[] memory) {
         return _verifiedContractsList;
+    }
+
+    function getVerifiedPools() public view returns (address[] memory) {
+        return _verifiedPoolsList;
     }
 
     function getAllTokens() public view returns (address[] memory) {

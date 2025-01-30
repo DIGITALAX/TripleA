@@ -6,7 +6,6 @@ import "src/TripleAAgents.sol";
 import "src/TripleAErrors.sol";
 import "src/TripleALibrary.sol";
 import "src/TripleAAccessControls.sol";
-import "src/TripleADevTreasury.sol";
 import "src/TripleACollectionManager.sol";
 import "src/TripleANFT.sol";
 import "src/TripleAMarket.sol";
@@ -42,7 +41,6 @@ contract TripleAAgentsTest is Test {
     TripleAAgents private agents;
     TripleAAccessControls private accessControls;
     TripleACollectionManager private collectionManager;
-    TripleADevTreasury private devTreasury;
     TripleAMarket private market;
     TripleANFT private nft;
     TripleAFulfillerManager private fulfillerManager;
