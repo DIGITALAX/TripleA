@@ -177,7 +177,7 @@ contract TripleACollectionManagerTest is Test {
         );
 
         assertEq(
-            collectionManager.getCollectionPrices(collectionIds[0])[0],
+            collectionManager.getCollectionTokenPrice(collectionIds[0]),
             10000000000000000000
         );
         assertEq(

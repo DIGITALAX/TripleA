@@ -2,12 +2,13 @@
 pragma solidity ^0.8.24;
 
 import "./SkyhuntersErrors.sol";
+import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 
 contract SkyhuntersAccessControls {
+    using EnumerableSet for EnumerableSet.AddressSet;
     address public agentsContract;
-    address[] private _verifiedContractsList;
-    address[] private _verifiedPoolsList;
-    address[] private _allTokens;
+    EnumerableSet.AddressSet private _verifiedContractsList;
+    EnumerableSet.AddressSet private _verifiedPoolsList;
 
     mapping(address => bool) private _admins;
     mapping(address => bool) private _verifiedContracts;
@@ -77,7 +78,7 @@ contract SkyhuntersAccessControls {
             revert SkyhuntersErrors.ContractAlreadyExists();
         }
         _verifiedContracts[verifiedContract] = true;
-        _verifiedContractsList.push(verifiedContract);
+        _verifiedContractsList.add(verifiedContract);
         emit VerifiedContractAdded(verifiedContract);
     }
 
@@ -88,18 +89,7 @@ contract SkyhuntersAccessControls {
             revert SkyhuntersErrors.ContractDoesntExist();
         }
 
-        _verifiedContractsList.push(verifiedContract);
-
-        for (uint8 i = 0; i < _verifiedContractsList.length; i++) {
-            if (_verifiedContractsList[i] == verifiedContract) {
-                _verifiedContractsList[i] = _verifiedContractsList[
-                    _verifiedContractsList.length - 1
-                ];
-                _verifiedContractsList.pop();
-                break;
-            }
-        }
-
+        _verifiedContractsList.remove(verifiedContract);
         _verifiedContracts[verifiedContract] = false;
         emit VerifiedContractRemoved(verifiedContract);
     }
@@ -109,7 +99,7 @@ contract SkyhuntersAccessControls {
             revert SkyhuntersErrors.PoolAlreadyExists();
         }
         _verifiedPools[verifiedPool] = true;
-        _verifiedPoolsList.push(verifiedPool);
+        _verifiedPoolsList.add(verifiedPool);
         emit VerifiedPoolAdded(verifiedPool);
     }
 
@@ -118,15 +108,7 @@ contract SkyhuntersAccessControls {
             revert SkyhuntersErrors.PoolDoesntExist();
         }
 
-        for (uint8 i = 0; i < _verifiedPoolsList.length; i++) {
-            if (_verifiedPoolsList[i] == verifiedPool) {
-                _verifiedPoolsList[i] = _verifiedPoolsList[
-                    _verifiedPoolsList.length - 1
-                ];
-                _verifiedPoolsList.pop();
-                break;
-            }
-        }
+        _verifiedPoolsList.remove(verifiedPool);
 
         _verifiedPools[verifiedPool] = false;
         emit VerifiedPoolRemoved(verifiedPool);
@@ -196,14 +178,10 @@ contract SkyhuntersAccessControls {
     }
 
     function getVerifiedContracts() public view returns (address[] memory) {
-        return _verifiedContractsList;
+        return _verifiedContractsList.values();
     }
 
     function getVerifiedPools() public view returns (address[] memory) {
-        return _verifiedPoolsList;
-    }
-
-    function getAllTokens() public view returns (address[] memory) {
-        return _allTokens;
+        return _verifiedPoolsList.values();
     }
 }

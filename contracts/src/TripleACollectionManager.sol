@@ -6,13 +6,18 @@ import "./TripleAErrors.sol";
 import "./TripleAAccessControls.sol";
 import "./TripleAAgents.sol";
 import "./skyhunters/SkyhuntersAccessControls.sol";
+import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 
 contract TripleACollectionManager {
-    mapping(address => uint256[]) private _dropIdsByArtist;
+    using EnumerableSet for EnumerableSet.AddressSet;
+    using EnumerableSet for EnumerableSet.UintSet;
+
+    mapping(address => EnumerableSet.UintSet) private _dropIdsByArtist;
     mapping(uint256 => TripleALibrary.Collection) private _collections;
     mapping(uint256 => TripleALibrary.Drop) private _drops;
     mapping(uint256 => mapping(uint256 => string))
         private _agentCustomInstructions;
+    mapping(uint256 => mapping(address => uint256)) private _collectionPrices;
 
     uint256 private _collectionCounter;
     uint256 private _dropCounter;
@@ -85,7 +90,8 @@ contract TripleACollectionManager {
         if (
             collectionInput.agentIds.length !=
             collectionInput.customInstructions.length ||
-            collectionInput.agentIds.length != workers.length
+            collectionInput.agentIds.length != workers.length ||
+            collectionInput.tokens.length != collectionInput.prices.length
         ) {
             revert TripleAErrors.BadUserInput();
         }
@@ -116,7 +122,7 @@ contract TripleACollectionManager {
                 metadata: dropMetadata
             });
 
-            _dropIdsByArtist[msg.sender].push(_dropValue);
+            _dropIdsByArtist[msg.sender].add(_dropValue);
             emit DropCreated(msg.sender, _dropValue);
         } else {
             if (_drops[_dropValue].id != _dropValue) {
@@ -125,22 +131,19 @@ contract TripleACollectionManager {
         }
         _collectionCounter++;
 
-        _collections[_collectionCounter] = TripleALibrary.Collection({
-            id: _collectionCounter,
-            dropId: _dropValue,
-            erc20Tokens: collectionInput.tokens,
-            prices: collectionInput.prices,
-            agentIds: collectionInput.agentIds,
-            metadata: collectionInput.metadata,
-            artist: msg.sender,
-            amount: collectionInput.amount,
-            tokenIds: new uint256[](0),
-            amountSold: 0,
-            collectionType: collectionInput.collectionType,
-            fulfillerId: collectionInput.fulfillerId,
-            active: true,
-            remixId: collectionInput.remixId
-        });
+        _collections[_collectionCounter].id = _collectionCounter;
+        _collections[_collectionCounter].dropId = _dropValue;
+        _collections[_collectionCounter].agentIds = collectionInput.agentIds;
+        _collections[_collectionCounter].metadata = collectionInput.metadata;
+        _collections[_collectionCounter].artist = msg.sender;
+        _collections[_collectionCounter].amount = collectionInput.amount;
+        _collections[_collectionCounter].collectionType = collectionInput
+            .collectionType;
+        _collections[_collectionCounter].fulfillerId = collectionInput
+            .fulfillerId;
+        _collections[_collectionCounter].remixId = collectionInput.remixId;
+        _collections[_collectionCounter].active = true;
+
         for (uint8 i = 0; i < collectionInput.agentIds.length; i++) {
             _agentCustomInstructions[_collectionCounter][
                 collectionInput.agentIds[i]
@@ -151,6 +154,12 @@ contract TripleACollectionManager {
                 collectionInput.agentIds[i],
                 _collectionCounter
             );
+        }
+
+        for (uint8 i = 0; i < collectionInput.prices.length; i++) {
+            _collectionPrices[_collectionCounter][
+                collectionInput.tokens[i]
+            ] = collectionInput.prices[i];
         }
 
         _drops[_dropValue].collectionIds.push(_collectionCounter);
@@ -205,26 +214,13 @@ contract TripleACollectionManager {
         uint256 collectionId,
         uint256 newPrice
     ) external onlyArtist(collectionId) {
-        uint256 _index = 0;
-        bool _tokenFound = false;
-
-        for (
-            uint8 i = 0;
-            i < _collections[collectionId].erc20Tokens.length;
-            i++
-        ) {
-            if (_collections[collectionId].erc20Tokens[i] == token) {
-                _index = i;
-                _tokenFound = true;
-                break;
-            }
+        if (!_collections[collectionId].erc20Tokens.contains(token)) {
+            revert TripleAErrors.TokenNotAccepted();
         }
 
-        if (_tokenFound) {
-            _collections[collectionId].prices[_index] = newPrice;
+        _collectionPrices[collectionId][token] = newPrice;
 
-            emit CollectionPriceAdjusted(token, collectionId, newPrice);
-        }
+        emit CollectionPriceAdjusted(token, collectionId, newPrice);
     }
 
     function deactivateCollection(
@@ -266,27 +262,17 @@ contract TripleACollectionManager {
 
         uint256 _dropId = _collections[collectionId].dropId;
 
-        uint256[] storage _collectionIds = _drops[_dropId].collectionIds;
-        for (uint8 i = 0; i < _collectionIds.length; i++) {
-            if (_collectionIds[i] == collectionId) {
-                _collectionIds[i] = _collectionIds[_collectionIds.length - 1];
-                _collectionIds.pop();
-                break;
-            }
-        }
+        _dropIdsByArtist[_drops[_dropId].artist].remove(_dropId);
+        delete _drops[_dropId];
 
-        if (_collectionIds.length == 0) {
-            address _artist = _drops[_dropId].artist;
-            uint256[] storage _dropIds = _dropIdsByArtist[_artist];
-            for (uint8 i = 0; i < _dropIds.length; i++) {
-                if (_dropIds[i] == _dropId) {
-                    _dropIds[i] = _dropIds[_dropIds.length - 1];
-                    _dropIds.pop();
-                    break;
-                }
-            }
-
-            delete _drops[_dropId];
+        for (
+            uint8 i = 0;
+            i < _collections[collectionId].erc20Tokens.length();
+            i++
+        ) {
+            delete _collectionPrices[collectionId][
+                _collections[collectionId].erc20Tokens.at(i)
+            ];
         }
 
         delete _collections[collectionId];
@@ -309,18 +295,9 @@ contract TripleACollectionManager {
             delete _collections[collectionId];
         }
 
+        _dropIdsByArtist[_drops[dropId].artist].remove(dropId);
         delete _drops[dropId];
 
-        uint256[] storage _dropIds = _dropIdsByArtist[msg.sender];
-        for (uint8 i = 0; i < _dropIds.length; i++) {
-            if (_dropIds[i] == dropId) {
-                if (i != _dropIds.length - 1) {
-                    _dropIds[i] = _dropIds[_dropIds.length - 1];
-                }
-                _dropIds.pop();
-                break;
-            }
-        }
         emit DropDeleted(msg.sender, dropId);
     }
 
@@ -358,19 +335,27 @@ contract TripleACollectionManager {
     function getDropIdsByArtist(
         address artist
     ) public view returns (uint256[] memory) {
-        return _dropIdsByArtist[artist];
+        return _dropIdsByArtist[artist].values();
     }
 
     function getCollectionERC20Tokens(
         uint256 collectionId
     ) public view returns (address[] memory) {
-        return _collections[collectionId].erc20Tokens;
+        return _collections[collectionId].erc20Tokens.values();
     }
 
-    function getCollectionPrices(
+    function getCollectionERC20TokensSet(
+        address token,
         uint256 collectionId
-    ) public view returns (uint256[] memory) {
-        return _collections[collectionId].prices;
+    ) public view returns (bool) {
+        return _collections[collectionId].erc20Tokens.contains(token);
+    }
+
+    function getCollectionTokenPrice(
+        address token,
+        uint256 collectionId
+    ) public view returns (uint256) {
+        return _collectionPrices[collectionId][token];
     }
 
     function getCollectionTokenIds(

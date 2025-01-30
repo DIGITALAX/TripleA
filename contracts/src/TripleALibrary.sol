@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: UNLICENSE
 pragma solidity 0.8.24;
 
+import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
+
 contract TripleALibrary {
     enum CollectionType {
         Digital,
@@ -8,8 +10,7 @@ contract TripleALibrary {
     }
 
     struct Collection {
-        address[] erc20Tokens;
-        uint256[] prices;
+        EnumerableSet.AddressSet erc20Tokens;
         uint256[] agentIds;
         uint256[] tokenIds;
         string metadata;
@@ -44,8 +45,8 @@ contract TripleALibrary {
     }
 
     struct Agent {
-        uint256[] collectionIdsHistory;
-        uint256[] activeCollectionIds;
+        EnumerableSet.UintSet collectionIdsHistory;
+        EnumerableSet.UintSet activeCollectionIds;
     }
 
     struct CollectionWorker {
@@ -74,8 +75,8 @@ contract TripleALibrary {
     }
 
     struct Fulfiller {
+        EnumerableSet.UintSet activeOrders;
         uint256[] orderHistory;
-        uint256[] activeOrders;
         string metadata;
         address wallet;
         uint256 id;

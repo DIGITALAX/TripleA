@@ -6,8 +6,11 @@ import "./TripleAAccessControls.sol";
 import "./TripleALibrary.sol";
 import "./TripleAMarket.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 
 contract TripleAFulfillerManager {
+    using EnumerableSet for EnumerableSet.UintSet;
+
     TripleAAccessControls public accessControls;
     TripleAMarket public market;
     uint256 private _fulfillerCounter;
@@ -52,13 +55,9 @@ contract TripleAFulfillerManager {
     ) public onlyFulfiller {
         _fulfillerCounter++;
 
-        _fulfillers[_fulfillerCounter] = TripleALibrary.Fulfiller({
-            id: _fulfillerCounter,
-            wallet: input.wallet,
-            activeOrders: new uint256[](0),
-            orderHistory: new uint256[](0),
-            metadata: input.metadata
-        });
+        _fulfillers[_fulfillerCounter].id = _fulfillerCounter;
+        _fulfillers[_fulfillerCounter].wallet = input.wallet;
+        _fulfillers[_fulfillerCounter].metadata = input.metadata;
 
         emit FulfillerCreated(input.wallet, _fulfillerCounter);
     }
@@ -68,7 +67,7 @@ contract TripleAFulfillerManager {
             revert TripleAErrors.NotFulfiller();
         }
 
-        if (_fulfillers[fulfillerId].activeOrders.length > 0) {
+        if (_fulfillers[fulfillerId].activeOrders.length() > 0) {
             revert TripleAErrors.ActiveOrders();
         }
 
@@ -81,7 +80,7 @@ contract TripleAFulfillerManager {
         uint256 fulfillerId,
         uint256 orderId
     ) external onlyAdminOrMarket {
-        _fulfillers[fulfillerId].activeOrders.push(orderId);
+        _fulfillers[fulfillerId].activeOrders.add(orderId);
         _fulfillers[fulfillerId].orderHistory.push(orderId);
 
         emit OrderAdded(fulfillerId, orderId);
@@ -92,21 +91,7 @@ contract TripleAFulfillerManager {
             revert TripleAErrors.NotFulfiller();
         }
 
-        for (
-            uint8 i = 0;
-            i < _fulfillers[fulfillerId].activeOrders.length;
-            i++
-        ) {
-            if (_fulfillers[fulfillerId].activeOrders[i] == orderId) {
-                _fulfillers[fulfillerId].activeOrders[i] = _fulfillers[
-                    fulfillerId
-                ].activeOrders[
-                        _fulfillers[fulfillerId].activeOrders.length - 1
-                    ];
-                _fulfillers[fulfillerId].activeOrders.pop();
-                break;
-            }
-        }
+        _fulfillers[fulfillerId].activeOrders.remove(orderId);
 
         market.fulfillIRLOrder(orderId);
 
@@ -116,7 +101,7 @@ contract TripleAFulfillerManager {
     function getFulfillerActiveOrders(
         uint256 fulfillerId
     ) public view returns (uint256[] memory) {
-        return _fulfillers[fulfillerId].activeOrders;
+        return _fulfillers[fulfillerId].activeOrders.values();
     }
 
     function getFulfillerOrderHistory(

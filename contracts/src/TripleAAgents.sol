@@ -9,10 +9,12 @@ import "./TripleAMarket.sol";
 import "./skyhunters/SkyhuntersAgentManager.sol";
 import "./skyhunters/SkyhuntersAccessControls.sol";
 import "./skyhunters/SkyhuntersPoolManager.sol";
-import "./skyhunters/pools/IPool.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 
 contract TripleAAgents {
+    using EnumerableSet for EnumerableSet.UintSet;
+
     address public rewards;
     uint256 public ownerAmountPercent;
     uint256 public distributionAmountPercent;
@@ -134,11 +136,6 @@ contract TripleAAgents {
     ) external onlyAgentOwnerOrCreator(agentId) {
         agentManager.setAgentActive(agentId);
 
-        _activatedAgents[agentId] = TripleALibrary.Agent({
-            collectionIdsHistory: new uint256[](0),
-            activeCollectionIds: new uint256[](0)
-        });
-
         emit ActivateAgent(msg.sender, agentId);
     }
 
@@ -189,48 +186,22 @@ contract TripleAAgents {
         _agentBonusBalances[agentId][token][collectionId] += _bonus;
         _agentHistoricalBonusBalances[agentId][token][collectionId] += _bonus;
 
-        uint256[] storage activeCollections = _activatedAgents[agentId]
-            .activeCollectionIds;
-
-        bool isCollectionActive = false;
-        for (uint8 i = 0; i < activeCollections.length; i++) {
-            if (activeCollections[i] == collectionId) {
-                isCollectionActive = true;
-                break;
-            }
-        }
-
-        if (!isCollectionActive && !soldOut) {
-            activeCollections.push(collectionId);
-        } else if (soldOut) {
-            for (uint8 i = 0; i < activeCollections.length; i++) {
-                if (activeCollections[i] == collectionId) {
-                    activeCollections[i] = activeCollections[
-                        activeCollections.length - 1
-                    ];
-                    activeCollections.pop();
-                    break;
-                }
-            }
-        }
-
-        bool existsInHistory = false;
-        for (
-            uint8 i = 0;
-            i < _activatedAgents[agentId].collectionIdsHistory.length;
-            i++
-        ) {
-            if (
-                _activatedAgents[agentId].collectionIdsHistory[i] ==
+        if (
+            !_activatedAgents[agentId].activeCollectionIds.contains(
                 collectionId
-            ) {
-                existsInHistory = true;
-                break;
-            }
+            ) && !soldOut
+        ) {
+            _activatedAgents[agentId].activeCollectionIds.add(collectionId);
+        } else if (soldOut) {
+            _activatedAgents[agentId].activeCollectionIds.remove(collectionId);
         }
 
-        if (!existsInHistory) {
-            _activatedAgents[agentId].collectionIdsHistory.push(collectionId);
+        if (
+            !_activatedAgents[agentId].collectionIdsHistory.contains(
+                collectionId
+            )
+        ) {
+            _activatedAgents[agentId].collectionIdsHistory.add(collectionId);
         }
 
         emit BalanceAdded(token, agentId, amount, collectionId);
@@ -261,22 +232,13 @@ contract TripleAAgents {
                 revert TripleAErrors.CollectionNotActive();
             }
 
-            uint256[] memory _ids = _activatedAgents[agentId]
-                .activeCollectionIds;
-            if (_ids.length < 1) {
+            if (
+                _activatedAgents[agentId].activeCollectionIds.length() < 1 ||
+                !_activatedAgents[agentId].activeCollectionIds.contains(
+                    collectionIds[i]
+                )
+            ) {
                 revert TripleAErrors.NoActiveAgents();
-            } else {
-                bool _notCollection = false;
-
-                for (uint256 j = 0; j < _ids.length; j++) {
-                    if (_ids[j] == collectionIds[i]) {
-                        _notCollection = true;
-                    }
-                }
-
-                if (!_notCollection) {
-                    revert TripleAErrors.NoActiveAgents();
-                }
             }
         }
 
@@ -302,10 +264,6 @@ contract TripleAAgents {
             if (_bonuses[i] > 0) {
                 _handleBonus(_owners, tokens[i], _bonuses[i], collectionIds[i]);
             }
-        }
-
-        for (uint8 i = 0; i < _owners.length; i++) {
-            IPool(agentActivityPool).setCycleUser(_owners[i]);
         }
 
         emit AgentPaidRent(tokens, collectionIds, _amounts, _bonuses, agentId);
@@ -407,18 +365,9 @@ contract TripleAAgents {
             }
         }
 
-        address[] memory _tokens = collectionManager.getCollectionERC20Tokens(
-            collectionId
-        );
-        bool _exists = false;
-
-        for (uint8 i = 0; i < _tokens.length; i++) {
-            if (_tokens[i] == token) {
-                _exists = true;
-                break;
-            }
-        }
-        if (!_exists) {
+        if (
+            !collectionManager.getCollectionERC20TokensSet(token, collectionId)
+        ) {
             revert TripleAErrors.TokenNotAccepted();
         }
 
@@ -431,36 +380,20 @@ contract TripleAAgents {
                 collectionId
             ] += amount;
 
-            uint256[] storage activeCollections = _activatedAgents[agentId]
-                .activeCollectionIds;
-
-            bool isCollectionActive = false;
-            for (uint8 i = 0; i < activeCollections.length; i++) {
-                if (activeCollections[i] == collectionId) {
-                    isCollectionActive = true;
-                    break;
-                }
-            }
-
-            activeCollections.push(collectionId);
-
-            bool existsInHistory = false;
-            for (
-                uint8 i = 0;
-                i < _activatedAgents[agentId].collectionIdsHistory.length;
-                i++
-            ) {
-                if (
-                    _activatedAgents[agentId].collectionIdsHistory[i] ==
+            if (
+                !_activatedAgents[agentId].activeCollectionIds.contains(
                     collectionId
-                ) {
-                    existsInHistory = true;
-                    break;
-                }
+                )
+            ) {
+                _activatedAgents[agentId].activeCollectionIds.add(collectionId);
             }
 
-            if (!existsInHistory) {
-                _activatedAgents[agentId].collectionIdsHistory.push(
+            if (
+                !_activatedAgents[agentId].collectionIdsHistory.contains(
+                    collectionId
+                )
+            ) {
+                _activatedAgents[agentId].collectionIdsHistory.add(
                     collectionId
                 );
             }
@@ -520,13 +453,13 @@ contract TripleAAgents {
     function getAgentCollectionIdsHistory(
         uint256 agentId
     ) public view returns (uint256[] memory) {
-        return _activatedAgents[agentId].collectionIdsHistory;
+        return _activatedAgents[agentId].collectionIdsHistory.values();
     }
 
     function getAgentActiveCollectionIds(
         uint256 agentId
     ) public view returns (uint256[] memory) {
-        return _activatedAgents[agentId].activeCollectionIds;
+        return _activatedAgents[agentId].activeCollectionIds.values();
     }
 
     function getCollectorPaymentByToken(

@@ -94,7 +94,10 @@ contract TripleAMarket {
         } else {
             if (
                 collectionManager.getCollectionAmount(collectionId) > 2 &&
-                collectionManager.getCollectionPrices(collectionId)[0] >
+                collectionManager.getCollectionTokenPrice(
+                    paymentToken,
+                    collectionId
+                ) >
                 accessControls.getTokenThreshold(paymentToken) &&
                 collectionManager.getCollectionAgentIds(collectionId).length >
                 0 &&
@@ -309,26 +312,13 @@ contract TripleAMarket {
         address token,
         uint256 collectionId
     ) internal view returns (uint256) {
-        bool _isTokenAccepted = false;
-        uint256 _tokenPrice;
-        address[] memory _erc20Tokens = collectionManager
-            .getCollectionERC20Tokens(collectionId);
-        uint256[] memory _prices = collectionManager.getCollectionPrices(
-            collectionId
-        );
-        for (uint8 i = 0; i < _erc20Tokens.length; i++) {
-            if (_erc20Tokens[i] == token) {
-                _isTokenAccepted = true;
-                _tokenPrice = _prices[i];
-                break;
-            }
-        }
-
-        if (!_isTokenAccepted) {
+        if (
+            !collectionManager.getCollectionERC20TokensSet(token, collectionId)
+        ) {
             revert TripleAErrors.TokenNotAccepted();
         }
 
-        return _tokenPrice;
+        return collectionManager.getCollectionTokenPrice(token, collectionId);
     }
 
     function fulfillIRLOrder(uint256 orderId) external onlyFulfillerManager {
