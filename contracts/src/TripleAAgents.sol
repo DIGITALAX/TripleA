@@ -15,7 +15,6 @@ import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 contract TripleAAgents {
     using EnumerableSet for EnumerableSet.UintSet;
 
-    address public rewards;
     uint256 public ownerAmountPercent;
     uint256 public distributionAmountPercent;
     uint256 public devAmountPercent;
@@ -80,12 +79,7 @@ contract TripleAAgents {
         _;
     }
 
-    modifier onlyRewards() {
-        if (msg.sender != rewards) {
-            revert TripleAErrors.OnlyRewardsContract();
-        }
-        _;
-    }
+ 
 
     modifier onlyAgentOwnerOrCreator(uint256 agentId) {
         if (
@@ -486,10 +480,6 @@ contract TripleAAgents {
         address payable _accessControls
     ) external onlyAdmin {
         accessControls = TripleAAccessControls(_accessControls);
-    }
-
-    function setSkyhuntersRewards(address _rewards) external onlyAdmin {
-        rewards = _rewards;
     }
 
     function setSkyhuntersAccessControls(

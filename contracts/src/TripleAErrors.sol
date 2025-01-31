@@ -16,6 +16,7 @@ contract TripleAErrors {
     error OnlyCollectionContract();
 
     error DropInvalid();
+    error CannotRemix();
 
     error OnlyMarketContract();
     error OnlyMarketOrAgentContract();
@@ -44,7 +45,6 @@ contract TripleAErrors {
     error CollectionAlreadyDeactivated();
     error CollectionAlreadyActive();
     error CollectionNotActive();
-    error OnlyRewardsContract();
 
     error NotFulfiller();
     error ActiveOrders();

@@ -23,6 +23,7 @@ contract TripleALibrary {
         uint256 remixId;
         CollectionType collectionType;
         bool active;
+        bool remixable;
     }
 
     struct Drop {
@@ -42,6 +43,7 @@ contract TripleALibrary {
         uint256 amount;
         uint256 fulfillerId;
         uint256 remixId;
+        bool remixable;
     }
 
     struct Agent {

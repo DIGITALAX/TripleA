@@ -46,6 +46,7 @@ contract TripleACollectionManager {
     );
     event CollectionDeactivated(uint256 collectionId);
     event CollectionActivated(uint256 collectionId);
+    event Remixable(uint256 collectionId, bool remixable);
 
     modifier onlyMarket() {
         if (market != msg.sender) {
@@ -85,7 +86,12 @@ contract TripleACollectionManager {
         string memory dropMetadata,
         uint256 dropId
     ) external {
-        uint256 _dropValue = dropId;
+        if (
+            collectionInput.remixId > 0 &&
+            !_collections[collectionInput.remixId].remixable
+        ) {
+            revert TripleAErrors.CannotRemix();
+        }
 
         if (
             collectionInput.agentIds.length !=
@@ -110,6 +116,8 @@ contract TripleACollectionManager {
                 revert TripleAErrors.TokenNotAccepted();
             }
         }
+
+        uint256 _dropValue = dropId;
 
         if (_dropValue == 0) {
             _dropCounter++;
@@ -143,6 +151,7 @@ contract TripleACollectionManager {
             .fulfillerId;
         _collections[_collectionCounter].remixId = collectionInput.remixId;
         _collections[_collectionCounter].active = true;
+        _collections[_collectionCounter].remixable = collectionInput.remixable;
 
         for (uint8 i = 0; i < collectionInput.agentIds.length; i++) {
             _agentCustomInstructions[_collectionCounter][
@@ -312,6 +321,15 @@ contract TripleACollectionManager {
         }
     }
 
+    function changeRemixable(
+        uint256 collectionId,
+        bool remixable
+    ) external onlyArtist(collectionId) {
+        _collections[collectionId].remixable = remixable;
+
+        emit Remixable(collectionId, remixable);
+    }
+
     function getCollectionCount() public view returns (uint256) {
         return _collectionCounter;
     }
@@ -422,6 +440,12 @@ contract TripleACollectionManager {
         uint256 collectionId
     ) public view returns (bool) {
         return _collections[collectionId].active;
+    }
+
+    function getCollectionIsRemixable(
+        uint256 collectionId
+    ) public view returns (bool) {
+        return _collections[collectionId].remixable;
     }
 
     function getAgentCollectionCustomInstructions(
