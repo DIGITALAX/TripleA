@@ -17,7 +17,7 @@ use crate::utils::{
     lens::make_publication,
     models::{
         call_drop_details_claude, call_drop_details_openai, call_image_details_claude,
-        call_prompt_claude, call_prompt_openai,
+        call_image_details_openai, call_prompt_claude, call_prompt_openai,
     },
     types::{Collection, CollectionInput, CollectionWorker, TripleAAgent},
 };
@@ -264,7 +264,7 @@ pub async fn receive_comfy(
     match if agent.model == "Claude" {
         call_image_details_claude(&image).await
     } else {
-        call_image_details_claude(&image).await
+        call_image_details_openai(&image).await
     } {
         Ok((title, description, amount, prices)) => {
             let _ = mint_collection(

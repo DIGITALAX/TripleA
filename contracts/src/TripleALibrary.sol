@@ -24,6 +24,7 @@ contract TripleALibrary {
         CollectionType collectionType;
         bool active;
         bool remixable;
+        bool agent;
     }
 
     struct Drop {

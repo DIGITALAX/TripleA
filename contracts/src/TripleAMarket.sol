@@ -87,10 +87,20 @@ contract TripleAMarket {
         uint256 _agentShare = 0;
         uint256 _remixId = collectionManager.getCollectionRemixId(collectionId);
         address _artist = collectionManager.getCollectionArtist(collectionId);
+        address _remixArtist = address(0);
+        uint256 _remixShare = 0;
         if (_remixId > 0) {
-            _artistShare = (_tokenPrice * 50) / 100;
-            _agentShare = (_tokenPrice * 50) / 100;
-            _artist = collectionManager.getCollectionArtist(_remixId);
+            _remixArtist = collectionManager.getCollectionArtist(_remixId);
+
+            if (collectionManager.getCollectionIsByAgent(collectionId)) {
+                _artistShare = 0;
+                _agentShare = (_artistShare * 50) / 100;
+                _remixShare = (_artistShare * 50) / 100;
+            } else {
+                _artistShare = (_artistShare * 70) / 100;
+                _agentShare = (_artistShare * 10) / 100;
+                _remixShare = (_artistShare * 20) / 10;
+            }
         } else {
             if (
                 collectionManager.getCollectionAmount(collectionId) > 2 &&
@@ -110,10 +120,9 @@ contract TripleAMarket {
                     0 &&
                     amount > 1
                 ) {
-                    _artistShare = _tokenPrice;
                     uint256 _additionalUnits = amount - 1;
 
-                    _agentShare = (_additionalUnits * _tokenPrice * 10) / 100;
+                    _agentShare = (_additionalUnits * _artistShare * 10) / 100;
 
                     _perAgentShare =
                         _agentShare /
@@ -122,7 +131,7 @@ contract TripleAMarket {
                             .length;
 
                     uint256 _artistShareForAdditionalUnits = (_additionalUnits *
-                        _tokenPrice *
+                        _artistShare *
                         90) / 100;
                     _artistShare += _artistShareForAdditionalUnits;
                 } else if (
@@ -130,7 +139,7 @@ contract TripleAMarket {
                         amount >
                     1
                 ) {
-                    _agentShare = (_totalPrice * 10) / 100;
+                    _agentShare = (_artistShare * 10) / 100;
 
                     _perAgentShare =
                         _agentShare /
@@ -138,8 +147,8 @@ contract TripleAMarket {
                             .getCollectionAgentIds(collectionId)
                             .length;
 
-                    if (_agentShare < _totalPrice) {
-                        _artistShare = _totalPrice - _agentShare;
+                    if (_agentShare < _artistShare) {
+                        _artistShare = _artistShare - _agentShare;
                     }
                 }
             }
@@ -163,14 +172,28 @@ contract TripleAMarket {
             _manageAgents(paymentToken, collectionId, _perAgentShare, amount);
         }
 
-        if (
-            !IERC20(paymentToken).transferFrom(
-                msg.sender,
-                _artist,
-                _artistShare
-            )
-        ) {
-            revert TripleAErrors.PaymentFailed();
+        if (_remixArtist != address(0)) {
+            if (
+                !IERC20(paymentToken).transferFrom(
+                    msg.sender,
+                    _remixArtist,
+                    _remixShare
+                )
+            ) {
+                revert TripleAErrors.PaymentFailed();
+            }
+        }
+
+        if (_artistShare > 0) {
+            if (
+                !IERC20(paymentToken).transferFrom(
+                    msg.sender,
+                    _artist,
+                    _artistShare
+                )
+            ) {
+                revert TripleAErrors.PaymentFailed();
+            }
         }
 
         if (_fulfiller != address(0) && _fulfillerShare > 0) {
@@ -203,8 +226,6 @@ contract TripleAMarket {
             _fulfillerShare
         );
     }
-
-    function _handleRemix(uint256 remixId) internal {}
 
     function _manageCollectionType(
         address token,

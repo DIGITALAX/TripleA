@@ -153,6 +153,10 @@ contract TripleACollectionManager {
         _collections[_collectionCounter].active = true;
         _collections[_collectionCounter].remixable = collectionInput.remixable;
 
+        if (skyhuntersAccessControls.isAgent(msg.sender)) {
+            _collections[_collectionCounter].agent = true;
+        }
+
         for (uint8 i = 0; i < collectionInput.agentIds.length; i++) {
             _agentCustomInstructions[_collectionCounter][
                 collectionInput.agentIds[i]
@@ -446,6 +450,12 @@ contract TripleACollectionManager {
         uint256 collectionId
     ) public view returns (bool) {
         return _collections[collectionId].remixable;
+    }
+
+    function getCollectionIsByAgent(
+        uint256 collectionId
+    ) public view returns (bool) {
+        return _collections[collectionId].agent;
     }
 
     function getAgentCollectionCustomInstructions(
