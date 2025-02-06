@@ -7,6 +7,8 @@ import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 contract SkyhuntersAccessControls {
     using EnumerableSet for EnumerableSet.AddressSet;
     address public agentsContract;
+    string public symbol;
+    string public name;
     EnumerableSet.AddressSet private _verifiedContractsList;
     EnumerableSet.AddressSet private _verifiedPoolsList;
 
@@ -50,6 +52,8 @@ contract SkyhuntersAccessControls {
 
     constructor() {
         _admins[msg.sender] = true;
+        name = "SkyhuntersAccessControls";
+        symbol = "SAC";
     }
 
     function addAdmin(address admin) external onlyAdmin {

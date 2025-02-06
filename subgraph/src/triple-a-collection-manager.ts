@@ -1,0 +1,376 @@
+import {
+  Address,
+  BigInt,
+  ByteArray,
+  Bytes,
+  store,
+} from "@graphprotocol/graph-ts";
+import {
+  AgentDetailsUpdated as AgentDetailsUpdatedEvent,
+  CollectionActivated as CollectionActivatedEvent,
+  CollectionCreated as CollectionCreatedEvent,
+  CollectionDeactivated as CollectionDeactivatedEvent,
+  CollectionDeleted as CollectionDeletedEvent,
+  CollectionPriceAdjusted as CollectionPriceAdjustedEvent,
+  DropCreated as DropCreatedEvent,
+  DropDeleted as DropDeletedEvent,
+  Remixable as RemixableEvent,
+  TripleACollectionManager,
+} from "../generated/TripleACollectionManager/TripleACollectionManager";
+import {
+  AgentDetailsUpdated,
+  CollectionActivated,
+  CollectionCreated,
+  CollectionDeactivated,
+  CollectionDeleted,
+  CollectionPriceAdjusted,
+  DropCreated,
+  DropDeleted,
+  Price,
+  Remixable,
+} from "../generated/schema";
+import { CollectionMetadata, DropMetadata } from "../generated/templates";
+
+export function handleAgentDetailsUpdated(
+  event: AgentDetailsUpdatedEvent
+): void {
+  let entity = new AgentDetailsUpdated(
+    event.transaction.hash.concatI32(event.logIndex.toI32())
+  );
+  entity.customInstructions = event.params.customInstructions;
+  entity.agentIds = event.params.agentIds;
+  entity.collectionId = event.params.collectionId;
+
+  entity.blockNumber = event.block.number;
+  entity.blockTimestamp = event.block.timestamp;
+  entity.transactionHash = event.transaction.hash;
+
+  entity.save();
+}
+
+export function handleCollectionActivated(
+  event: CollectionActivatedEvent
+): void {
+  let entity = new CollectionActivated(
+    event.transaction.hash.concatI32(event.logIndex.toI32())
+  );
+  entity.collectionId = event.params.collectionId;
+
+  entity.blockNumber = event.block.number;
+  entity.blockTimestamp = event.block.timestamp;
+  entity.transactionHash = event.transaction.hash;
+
+  entity.save();
+
+  let entityCollection = CollectionCreated.load(
+    Bytes.fromByteArray(ByteArray.fromBigInt(event.params.collectionId))
+  );
+
+  if (entityCollection) {
+    entityCollection.active = true;
+
+    entityCollection.save();
+  }
+}
+
+export function handleCollectionCreated(event: CollectionCreatedEvent): void {
+  let entity = new CollectionCreated(
+    Bytes.fromByteArray(ByteArray.fromBigInt(event.params.collectionId))
+  );
+  entity.artist = event.params.artist;
+  entity.collectionId = event.params.collectionId;
+  entity.dropId = event.params.dropId;
+
+  entity.blockNumber = event.block.number;
+  entity.blockTimestamp = event.block.timestamp;
+  entity.transactionHash = event.transaction.hash;
+
+  let collectionManager = TripleACollectionManager.bind(
+    Address.fromString("0xE112A7Eb684Ae26a01C301A3df4b049BECAEF7E1")
+  );
+
+  entity.amount = collectionManager.getCollectionAmount(entity.collectionId);
+  entity.agentIds = collectionManager.getCollectionAgentIds(
+    entity.collectionId
+  );
+  let customInstructions: string[] = [];
+  for (let i = 0; i < (entity.agentIds as BigInt[]).length; i++) {
+    customInstructions.push(
+      collectionManager.getAgentCollectionCustomInstructions(
+        event.params.collectionId,
+        (entity.agentIds as BigInt[])[i]
+      )
+    );
+  }
+  entity.customInstructions = customInstructions;
+  entity.active = true;
+  entity.uri = collectionManager.getCollectionMetadata(entity.collectionId);
+  let ipfsHash = (entity.uri as String).split("/").pop();
+  if (ipfsHash != null) {
+    entity.metadata = ipfsHash;
+    CollectionMetadata.create(ipfsHash);
+  }
+
+  let prices: Bytes[] = [];
+
+  let tokens: Bytes[] = collectionManager
+    .getCollectionERC20Tokens(entity.collectionId)
+    .map<Bytes>((target: Bytes) => target);
+  for (let i = 0; i < (tokens as Bytes[]).length; i++) {
+    let price = collectionManager.getCollectionTokenPrice(
+      (tokens as Bytes[])[i] as Address,
+      entity.collectionId
+    );
+
+    let tokenHex = (tokens as Bytes[])[i].toHexString();
+    let priceHex = price.toHexString();
+    let combinedHex = tokenHex + priceHex;
+    if (combinedHex.length % 2 !== 0) {
+      combinedHex = "0" + combinedHex;
+    }
+
+    let entityPrice = new Price(Bytes.fromHexString(combinedHex));
+    entityPrice.token = (tokens as Bytes[])[i];
+    entityPrice.price = price;
+    entityPrice.save();
+
+    prices.push(Bytes.fromHexString(combinedHex));
+  }
+
+  entity.prices = prices;
+
+  entity.fulfillerId = collectionManager.getCollectionFulfillerId(
+    entity.collectionId
+  );
+  entity.remixable = collectionManager.getCollectionIsRemixable(
+    entity.collectionId
+  );
+  entity.remixId = collectionManager.getCollectionRemixId(entity.collectionId);
+  entity.isAgent = collectionManager.getCollectionIsByAgent(
+    entity.collectionId
+  );
+  entity.remixCollection = Bytes.fromByteArray(
+    ByteArray.fromBigInt(entity.remixId as BigInt)
+  );
+  entity.collectionType = BigInt.fromI32(
+    collectionManager.getCollectionType(entity.collectionId)
+  );
+
+  entity.dropUri = collectionManager.getDropMetadata(entity.dropId);
+  let ipfsHashDrop = (entity.dropUri as String).split("/").pop();
+  if (ipfsHashDrop != null) {
+    entity.drop = ipfsHashDrop;
+    DropMetadata.create(ipfsHashDrop);
+  }
+
+  entity.save();
+}
+
+export function handleCollectionDeactivated(
+  event: CollectionDeactivatedEvent
+): void {
+  let entity = new CollectionDeactivated(
+    event.transaction.hash.concatI32(event.logIndex.toI32())
+  );
+  entity.collectionId = event.params.collectionId;
+
+  entity.blockNumber = event.block.number;
+  entity.blockTimestamp = event.block.timestamp;
+  entity.transactionHash = event.transaction.hash;
+
+  entity.save();
+
+  let entityCollection = CollectionCreated.load(
+    Bytes.fromByteArray(ByteArray.fromBigInt(event.params.collectionId))
+  );
+
+  if (entityCollection) {
+    entityCollection.active = false;
+
+    entityCollection.save();
+  }
+}
+
+export function handleCollectionDeleted(event: CollectionDeletedEvent): void {
+  let entity = new CollectionDeleted(
+    event.transaction.hash.concatI32(event.logIndex.toI32())
+  );
+  entity.artist = event.params.artist;
+  entity.collectionId = event.params.collectionId;
+
+  entity.blockNumber = event.block.number;
+  entity.blockTimestamp = event.block.timestamp;
+  entity.transactionHash = event.transaction.hash;
+
+  entity.save();
+
+  let entityCollection = CollectionCreated.load(
+    Bytes.fromByteArray(ByteArray.fromBigInt(event.params.collectionId))
+  );
+
+  if (entityCollection) {
+    store.remove(
+      "CollectionCreated",
+      Bytes.fromByteArray(
+        ByteArray.fromBigInt(event.params.collectionId)
+      ).toHexString()
+    );
+  }
+}
+
+export function handleCollectionPriceAdjusted(
+  event: CollectionPriceAdjustedEvent
+): void {
+  let entity = new CollectionPriceAdjusted(
+    event.transaction.hash.concatI32(event.logIndex.toI32())
+  );
+  entity.token = event.params.token;
+  entity.collectionId = event.params.collectionId;
+  entity.newPrice = event.params.newPrice;
+
+  entity.blockNumber = event.block.number;
+  entity.blockTimestamp = event.block.timestamp;
+  entity.transactionHash = event.transaction.hash;
+
+  entity.save();
+
+  let entityCollection = CollectionCreated.load(
+    Bytes.fromByteArray(ByteArray.fromBigInt(event.params.collectionId))
+  );
+
+  let collectionManager = TripleACollectionManager.bind(
+    Address.fromString("0xE112A7Eb684Ae26a01C301A3df4b049BECAEF7E1")
+  );
+
+  if (entityCollection) {
+    let prices: Bytes[] = [];
+
+    let tokens: Bytes[] = collectionManager
+      .getCollectionERC20Tokens(entity.collectionId)
+      .map<Bytes>((target: Bytes) => target);
+    for (let i = 0; i < (tokens as Bytes[]).length; i++) {
+      let price = collectionManager.getCollectionTokenPrice(
+        (tokens as Bytes[])[i] as Address,
+        entity.collectionId
+      );
+
+      let tokenHex = (tokens as Bytes[])[i].toHexString();
+      let priceHex = price.toHexString();
+      let combinedHex = tokenHex + priceHex;
+      if (combinedHex.length % 2 !== 0) {
+        combinedHex = "0" + combinedHex;
+      }
+
+      let entityPrice = new Price(Bytes.fromHexString(combinedHex));
+      entityPrice.token = (tokens as Bytes[])[i];
+      entityPrice.price = price;
+      entityPrice.save();
+
+      prices.push(Bytes.fromHexString(combinedHex));
+    }
+
+    entityCollection.prices = prices;
+
+    entityCollection.save();
+  }
+}
+
+export function handleDropCreated(event: DropCreatedEvent): void {
+  let entity = new DropCreated(
+    Bytes.fromByteArray(ByteArray.fromBigInt(event.params.dropId))
+  );
+  entity.artist = event.params.artist;
+  entity.dropId = event.params.dropId;
+
+  entity.blockNumber = event.block.number;
+  entity.blockTimestamp = event.block.timestamp;
+  entity.transactionHash = event.transaction.hash;
+
+  let collectionManager = TripleACollectionManager.bind(
+    Address.fromString("0xE112A7Eb684Ae26a01C301A3df4b049BECAEF7E1")
+  );
+
+  entity.collectionIds = collectionManager.getDropCollectionIds(entity.dropId);
+  entity.uri = collectionManager.getDropMetadata(entity.dropId);
+  let ipfsHashDrop = (entity.uri as String).split("/").pop();
+  if (ipfsHashDrop != null) {
+    entity.metadata = ipfsHashDrop;
+    DropMetadata.create(ipfsHashDrop);
+  }
+
+  let collections: Bytes[] = [];
+  for (let i = 0; i < (entity.collectionIds as BigInt[]).length; i++) {
+    collections.push(
+      Bytes.fromByteArray(ByteArray.fromBigInt((entity.collectionIds as BigInt[])[i]))
+    );
+  }
+  entity.collections = collections;
+
+  entity.save();
+}
+
+export function handleDropDeleted(event: DropDeletedEvent): void {
+  let entity = new DropDeleted(
+    Bytes.fromByteArray(ByteArray.fromBigInt(event.params.dropId))
+  );
+  entity.artist = event.params.artist;
+  entity.dropId = event.params.dropId;
+
+  entity.blockNumber = event.block.number;
+  entity.blockTimestamp = event.block.timestamp;
+  entity.transactionHash = event.transaction.hash;
+
+  entity.save();
+
+  let entityDrop = DropCreated.load(
+    Bytes.fromByteArray(ByteArray.fromBigInt(event.params.dropId))
+  );
+
+  if (entityDrop) {
+    if (entityDrop.collections) {
+      for (let i = 0; i < (entityDrop.collections as Bytes[]).length; i++) {
+        let entityCollection = CollectionCreated.load(
+          (entityDrop.collections as Bytes[])[i]
+        );
+
+        if (entityCollection) {
+          store.remove(
+            "CollectionCreated",
+            (entityDrop.collections as Bytes[])[i].toHexString()
+          );
+        }
+      }
+    }
+
+    store.remove(
+      "DropCreated",
+      Bytes.fromByteArray(
+        ByteArray.fromBigInt(event.params.dropId)
+      ).toHexString()
+    );
+  }
+}
+
+export function handleRemixable(event: RemixableEvent): void {
+  let entity = new Remixable(
+    event.transaction.hash.concatI32(event.logIndex.toI32())
+  );
+  entity.collectionId = event.params.collectionId;
+  entity.remixable = event.params.remixable;
+
+  entity.blockNumber = event.block.number;
+  entity.blockTimestamp = event.block.timestamp;
+  entity.transactionHash = event.transaction.hash;
+
+  entity.save();
+
+  let entityCollection = CollectionCreated.load(
+    Bytes.fromByteArray(ByteArray.fromBigInt(event.params.collectionId))
+  );
+
+  if (entityCollection) {
+    entityCollection.remixable = entity.remixable;
+
+    entityCollection.save();
+  }
+}

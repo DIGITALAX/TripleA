@@ -28,8 +28,11 @@ contract TripleAMarket {
         uint256 collectionId,
         uint256 amount,
         uint256 artistShare,
-        uint256 fulfillerShare
+        uint256 fulfillerShare,
+        uint256 agentShare,
+        uint256 remixShare
     );
+    event FulfillmentUpdated(string fulfillment, uint256 orderId);
 
     modifier onlyAdmin() {
         if (!accessControls.isAdmin(msg.sender)) {
@@ -223,8 +226,19 @@ contract TripleAMarket {
             collectionId,
             amount,
             _artistShare,
-            _fulfillerShare
+            _fulfillerShare,
+            _agentShare,
+            _remixShare
         );
+    }
+
+    function updateFulfillmentDetails(
+        string memory fulfillment,
+        uint256 orderId
+    ) public {
+        _orders[orderId].fulfillmentDetails = fulfillment;
+
+        emit FulfillmentUpdated(fulfillment, orderId);
     }
 
     function _manageCollectionType(
@@ -370,6 +384,16 @@ contract TripleAMarket {
         address buyer
     ) public view returns (uint256[] memory) {
         return _buyerToOrderIds[buyer];
+    }
+
+    function getOrderIsFulfilled(uint256 orderId) public view returns (bool) {
+        return _orders[orderId].fulfilled;
+    }
+
+    function getOrderFulfillmentDetails(
+        uint256 orderId
+    ) public view returns (string memory) {
+        return _orders[orderId].fulfillmentDetails;
     }
 
     function getOrderAmount(uint256 orderId) public view returns (uint256) {

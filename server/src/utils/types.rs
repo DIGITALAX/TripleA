@@ -11,10 +11,26 @@ use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct Text {
+    pub text: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct MessageExample {
+    pub user: String,
+    pub content: Text,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct TripleAAgent {
     pub id: u32,
     pub name: String,
-    pub description: String,
+    pub bio: String,
+    pub lore: String,
+    pub style: String,
+    pub knowledge: String,
+    pub adjectives: String,
+    pub message_examples: Vec<Vec<MessageExample>>,
     pub model: String,
     pub cover: String,
     pub custom_instructions: String,

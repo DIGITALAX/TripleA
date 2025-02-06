@@ -37,8 +37,7 @@ contract SkyhuntersErrors {
     error InsufficientCycleBalance();
     error NoCycleRewards();
     error RewardClaimFailed();
-
-    error InvalidReward();
-
     error BadUserInput();
+
+    error TransferFailed();
 }

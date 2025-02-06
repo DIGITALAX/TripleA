@@ -79,8 +79,6 @@ contract TripleAAgents {
         _;
     }
 
- 
-
     modifier onlyAgentOwnerOrCreator(uint256 agentId) {
         if (
             !agentManager.getIsAgentOwner(msg.sender, agentId) &&
@@ -472,6 +470,60 @@ contract TripleAAgents {
         return _ownerPayment[token][owner][collectionId];
     }
 
+    function getCurrentRewardsByToken(
+        address token
+    ) public view returns (uint256) {
+        return _currentRewards[token];
+    }
+
+    function getRewardsHistoryByToken(
+        address token
+    ) public view returns (uint256) {
+        return _rewardsHistory[token];
+    }
+
+    function getWorkerPublish(
+        uint256 agentId,
+        uint256 collectionId
+    ) public view returns (bool) {
+        return _workers[agentId][collectionId].publish;
+    }
+
+    function getWorkerLead(
+        uint256 agentId,
+        uint256 collectionId
+    ) public view returns (bool) {
+        return _workers[agentId][collectionId].lead;
+    }
+
+    function getWorkerRemix(
+        uint256 agentId,
+        uint256 collectionId
+    ) public view returns (bool) {
+        return _workers[agentId][collectionId].remix;
+    }
+
+    function getWorkerPublishFrequency(
+        uint256 agentId,
+        uint256 collectionId
+    ) public view returns (uint256) {
+        return _workers[agentId][collectionId].publishFrequency;
+    }
+
+    function getWorkerLeadFrequency(
+        uint256 agentId,
+        uint256 collectionId
+    ) public view returns (uint256) {
+        return _workers[agentId][collectionId].leadFrequency;
+    }
+
+    function getWorkerRemixFrequency(
+        uint256 agentId,
+        uint256 collectionId
+    ) public view returns (uint256) {
+        return _workers[agentId][collectionId].remixFrequency;
+    }
+
     function getDevPaymentByToken(address token) public view returns (uint256) {
         return _devPayment[token];
     }
@@ -528,8 +580,17 @@ contract TripleAAgents {
         devAmountPercent = _devAmountPercent;
     }
 
-    function emergencyWithdraw(uint256 amount) external onlyAdmin {
-        payable(msg.sender).transfer(amount);
+    function emergencyWithdraw(
+        uint256 amount,
+        uint256 gasAmount
+    ) external onlyAdmin {
+        (bool success, ) = payable(msg.sender).call{
+            value: amount,
+            gas: gasAmount
+        }("");
+        if (!success) {
+            revert SkyhuntersErrors.TransferFailed();
+        }
     }
 
     receive() external payable {}

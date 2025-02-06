@@ -1,0 +1,274 @@
+specVersion: 1.0.0
+indexerHints:
+  prune: auto
+schema:
+  file: ./schema.graphql
+dataSources:
+  - kind: ethereum
+    name: TripleAAccessControls
+    network: lens-testnet
+    source:
+      address: "0x317ed314b5Acf661b40Fb4A568530D1DF3af00fd"
+      abi: TripleAAccessControls
+      startBlock: 103090
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - AdminAdded
+        - AdminRemoved
+        - FaucetUsed
+        - FulfillerAdded
+        - FulfillerRemoved
+        - TokenDetailsRemoved
+        - TokenDetailsSet
+      abis:
+        - name: TripleAAccessControls
+          file: ./abis/TripleAAccessControls.json
+      eventHandlers:
+        - event: AdminAdded(indexed address)
+          handler: handleAdminAdded
+        - event: AdminRemoved(indexed address)
+          handler: handleAdminRemoved
+        - event: FaucetUsed(address,uint256)
+          handler: handleFaucetUsed
+        - event: FulfillerAdded(indexed address)
+          handler: handleFulfillerAdded
+        - event: FulfillerRemoved(indexed address)
+          handler: handleFulfillerRemoved
+        - event: TokenDetailsRemoved(address)
+          handler: handleTokenDetailsRemoved
+        - event: TokenDetailsSet(address,uint256,uint256,uint256,uint256,uint256,uint256)
+          handler: handleTokenDetailsSet
+      file: ./src/triple-a-access-controls.ts
+  - kind: ethereum
+    name: TripleACollectionManager
+    network: lens-testnet
+    source:
+      address: "0xE112A7Eb684Ae26a01C301A3df4b049BECAEF7E1"
+      abi: TripleACollectionManager
+      startBlock: 103090
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - AgentDetailsUpdated
+        - CollectionActivated
+        - CollectionCreated
+        - CollectionDeactivated
+        - CollectionDeleted
+        - CollectionPriceAdjusted
+        - DropCreated
+        - DropDeleted
+        - Remixable
+      abis:
+        - name: TripleACollectionManager
+          file: ./abis/TripleACollectionManager.json
+      eventHandlers:
+        - event: AgentDetailsUpdated(string[],uint256[],uint256)
+          handler: handleAgentDetailsUpdated
+        - event: CollectionActivated(uint256)
+          handler: handleCollectionActivated
+        - event: CollectionCreated(address,uint256,indexed uint256)
+          handler: handleCollectionCreated
+        - event: CollectionDeactivated(uint256)
+          handler: handleCollectionDeactivated
+        - event: CollectionDeleted(address,indexed uint256)
+          handler: handleCollectionDeleted
+        - event: CollectionPriceAdjusted(address,uint256,uint256)
+          handler: handleCollectionPriceAdjusted
+        - event: DropCreated(address,indexed uint256)
+          handler: handleDropCreated
+        - event: DropDeleted(address,indexed uint256)
+          handler: handleDropDeleted
+        - event: Remixable(uint256,bool)
+          handler: handleRemixable
+      file: ./src/triple-a-collection-manager.ts
+  - kind: ethereum
+    name: TripleAAgents
+    network: lens-testnet
+    source:
+      address: "0xcDE1629239f0050ba8501D2bCc552F17128e4388"
+      abi: TripleAAgents
+      startBlock: 103090
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - ActivateAgent
+        - AgentPaidRent
+        - AgentRecharged
+        - BalanceAdded
+        - RewardsCalculated
+        - WorkerAdded
+        - WorkerUpdated
+      abis:
+        - name: TripleAAgents
+          file: ./abis/TripleAAgents.json
+      eventHandlers:
+        - event: ActivateAgent(address,uint256)
+          handler: handleActivateAgent
+        - event: AgentPaidRent(address[],uint256[],uint256[],uint256[],indexed uint256)
+          handler: handleAgentPaidRent
+        - event: AgentRecharged(address,address,uint256,uint256,uint256)
+          handler: handleAgentRecharged
+        - event: BalanceAdded(address,uint256,uint256,uint256)
+          handler: handleBalanceAdded
+        - event: RewardsCalculated(address,uint256)
+          handler: handleRewardsCalculated
+        - event: WorkerAdded(uint256,uint256)
+          handler: handleWorkerAdded
+        - event: WorkerUpdated(uint256,uint256)
+          handler: handleWorkerUpdated
+      file: ./src/triple-a-agents.ts
+  - kind: ethereum
+    name: TripleAMarket
+    network: lens-testnet
+    source:
+      address: "0x0Cd2c3144EaD91606A190DEc6c112871020DAE0c"
+      abi: TripleAMarket
+      startBlock: 103090
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - CollectionPurchased
+        - FulfillmentUpdated
+      abis:
+        - name: TripleAMarket
+          file: ./abis/TripleAMarket.json
+      eventHandlers:
+        - event: CollectionPurchased(address,address,uint256,uint256,uint256,uint256,uint256,uint256,uint256)
+          handler: handleCollectionPurchased
+        - event: FulfillmentUpdated(string,uint256)
+          handler: handleFulfillmentUpdated
+      file: ./src/triple-a-market.ts
+  - kind: ethereum
+    name: SkyhuntersAgentManager
+    network: lens-testnet
+    source:
+      address: "0x0Cd2c3144EaD91606A190DEc6c112871020DAE0c"
+      abi: SkyhuntersAgentManager
+      startBlock: 103090
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - AddAgentWallet
+        - AddOwner
+        - AgentCreated
+        - AgentDeleted
+        - AgentEdited
+        - AgentScored
+        - AgentSetActive
+        - AgentSetInactive
+        - RevokeAgentWallet
+        - RevokeOwner
+      abis:
+        - name: SkyhuntersAgentManager
+          file: ./abis/SkyhuntersAgentManager.json
+      eventHandlers:
+        - event: AddAgentWallet(address,uint256)
+          handler: handleAddAgentWallet
+        - event: AddOwner(address,uint256)
+          handler: handleAddOwner
+        - event: AgentCreated(address[],address,indexed uint256)
+          handler: handleAgentCreated
+        - event: AgentDeleted(indexed uint256)
+          handler: handleAgentDeleted
+        - event: AgentEdited(indexed uint256)
+          handler: handleAgentEdited
+        - event: AgentScored(address,uint256,uint256,bool)
+          handler: handleAgentScored
+        - event: AgentSetActive(address,uint256)
+          handler: handleAgentSetActive
+        - event: AgentSetInactive(address,uint256)
+          handler: handleAgentSetInactive
+        - event: RevokeAgentWallet(address,uint256)
+          handler: handleRevokeAgentWallet
+        - event: RevokeOwner(address,uint256)
+          handler: handleRevokeOwner
+      file: ./src/skyhunters-agent-manager.ts
+  - kind: ethereum
+    name: TripleAFulfillerManager
+    network: lens-testnet
+    source:
+      address: "0x0Cd2c3144EaD91606A190DEc6c112871020DAE0c"
+      abi: TripleAFulfillerManager
+      startBlock: 103090
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - FulfillerCreated
+        - FulfillerDeleted
+        - OrderAdded
+        - OrderFulfilled
+      abis:
+        - name: TripleAFulfillerManager
+          file: ./abis/TripleAFulfillerManager.json
+      eventHandlers:
+        - event: FulfillerCreated(address,uint256)
+          handler: handleFulfillerCreated
+        - event: FulfillerDeleted(uint256)
+          handler: handleFulfillerDeleted
+        - event: OrderAdded(uint256,uint256)
+          handler: handleOrderAdded
+        - event: OrderFulfilled(uint256,uint256)
+          handler: handleOrderFulfilled
+      file: ./src/triple-a-fulfiller-manager.ts
+templates:
+  - name: AgentMetadata
+    kind: file/ipfs
+    mapping:
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      file: ./src/ds-handlers.ts
+      handler: handleAgentMetadata
+      entities:
+        - AgentMetadata
+      abis:
+        - name: TripleACollectionManager
+          file: ./abis/TripleACollectionManager.json
+  - name: CollectionMetadata
+    kind: file/ipfs
+    mapping:
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      file: ./src/ds-handlers.ts
+      handler: handleCollectionMetadata
+      entities:
+        - CollectionMetadata
+      abis:
+        - name: TripleACollectionManager
+          file: ./abis/TripleACollectionManager.json
+  - name: DropMetadata
+    kind: file/ipfs
+    mapping:
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      file: ./src/ds-handlers.ts
+      handler: handleDropMetadata
+      entities:
+        - DropMetadata
+      abis:
+        - name: TripleACollectionManager
+          file: ./abis/TripleACollectionManager.json
+  - name: FulfillerMetadata
+    kind: file/ipfs
+    mapping:
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      file: ./src/ds-handlers.ts
+      handler: handleFulfillerMetadata
+      entities:
+        - FulfillerMetadata
+      abis:
+        - name: TripleACollectionManager
+          file: ./abis/TripleACollectionManager.json

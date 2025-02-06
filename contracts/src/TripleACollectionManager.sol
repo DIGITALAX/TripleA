@@ -193,30 +193,30 @@ contract TripleACollectionManager {
         }
     }
 
-    function updateCollectionWorker(
-        TripleALibrary.CollectionWorker memory worker,
-        uint256 agentId,
-        uint256 collectionId
-    ) public onlyArtist(collectionId) {
-        agents.updateWorker(worker, agentId, collectionId);
-    }
-
-    function updateAgentCollectionDetails(
+    function updateCollectionWorkerAndDetails(
+        TripleALibrary.CollectionWorker[] memory workers,
         string[] memory customInstructions,
         uint256[] memory agentIds,
         uint256 collectionId
-    ) external {
+    ) public onlyArtist(collectionId) {
         if (_collections[collectionId].artist != msg.sender) {
             revert TripleAErrors.NotArtist();
         }
 
-        if (agentIds.length != customInstructions.length) {
+        if (
+            agentIds.length != customInstructions.length ||
+            workers.length != customInstructions.length
+        ) {
             revert TripleAErrors.BadUserInput();
         }
         for (uint8 i = 0; i < agentIds.length; i++) {
             _agentCustomInstructions[collectionId][
                 agentIds[i]
             ] = customInstructions[i];
+        }
+
+        for (uint8 i = 0; i < workers.length; i++) {
+            agents.updateWorker(workers[i], agentIds[i], collectionId);
         }
 
         emit AgentDetailsUpdated(customInstructions, agentIds, collectionId);

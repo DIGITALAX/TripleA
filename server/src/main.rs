@@ -145,7 +145,12 @@ async fn handle_connection(
                                 Some(encryption_details),
                                 Some(id),
                                 Some(title),
-                                Some(description),
+                                Some(bio),
+                                Some(lore),
+                                Some(knowledge),
+                                Some(adjectives),
+                                Some(message_examples),
+                                Some(style),
                                 Some(cover),
                                 Some(custom_instructions),
                                 Some(account_address),
@@ -156,7 +161,12 @@ async fn handle_connection(
                                 parsed["encryptionDetails"].as_str(),
                                 parsed["id"].as_u64().map(|v| v.to_string()),
                                 parsed["title"].as_str(),
-                                parsed["description"].as_str(),
+                                parsed["bio"].as_str(),
+                                parsed["lore"].as_str(),
+                                parsed["knowledge"].as_str(),
+                                parsed["adjectives"].as_str(),
+                                parsed["messageExamples"].as_array(),
+                                parsed["style"].as_str(),
                                 parsed["model"].as_str(),
                                 parsed["cover"].as_str(),
                                 parsed["customInstructions"].as_str(),
@@ -266,7 +276,32 @@ async fn handle_connection(
                                         let new_agent = AgentManager::new(&TripleAAgent {
                                             id: new_id,
                                             name: title.to_string(),
-                                            description: description.to_string(),
+                                            bio: bio.to_string(),
+                                            lore: lore.to_string(),
+                                            adjectives: adjectives.to_string(),
+                                            style: style.to_string(),
+                                            knowledge: knowledge.to_string(),
+                                            message_examples: message_examples
+                                                .iter()
+                                                .map(|v| {
+                                                    v.as_array()
+                                                        .unwrap_or(&vec![])
+                                                        .iter()
+                                                        .map(|msg| MessageExample {
+                                                            user: msg["user"]
+                                                                .as_str()
+                                                                .unwrap_or("")
+                                                                .to_string(),
+                                                            content: Text {
+                                                                text: msg["content"]["text"]
+                                                                    .as_str()
+                                                                    .unwrap_or("")
+                                                                    .to_string(),
+                                                            },
+                                                        })
+                                                        .collect::<Vec<MessageExample>>()
+                                                })
+                                                .collect::<Vec<Vec<MessageExample>>>(),
                                             model: model.to_string(),
                                             cover: cover.to_string(),
                                             custom_instructions: custom_instructions.to_string(),
@@ -480,10 +515,49 @@ async fn handle_agents() -> Result<HashMap<u32, AgentManager>, Box<dyn Error + S
                         .as_str()
                         .unwrap_or("Unknown")
                         .to_string(),
-                    description: agent_created["metadata"]["description"]
+                    bio: agent_created["metadata"]["bio"]
                         .as_str()
                         .unwrap_or("")
                         .to_string(),
+                    lore: agent_created["metadata"]["lore"]
+                        .as_str()
+                        .unwrap_or("")
+                        .to_string(),
+                    adjectives: agent_created["metadata"]["adjectives"]
+                        .as_str()
+                        .unwrap_or("")
+                        .to_string(),
+                    style: agent_created["metadata"]["style"]
+                        .as_str()
+                        .unwrap_or("")
+                        .to_string(),
+                    knowledge: agent_created["metadata"]["knowledge"]
+                        .as_str()
+                        .unwrap_or("")
+                        .to_string(),
+                    message_examples: agent_created["metadata"]["message_examples"]
+                        .as_array()
+                        .unwrap_or(&vec![])
+                        .iter()
+                        .map(|v| {
+                            v.as_array()
+                                .unwrap_or(&vec![])
+                                .iter()
+                                .map(|con| {
+                                    let parsed_con: MessageExample =
+                                        serde_json::from_str(con.as_str().unwrap_or("{}"))
+                                            .unwrap_or(MessageExample {
+                                                user: "".to_string(),
+                                                content: Text {
+                                                    text: "".to_string(),
+                                                },
+                                            });
+
+                                    parsed_con
+                                })
+                                .collect::<Vec<MessageExample>>()
+                        })
+                        .collect::<Vec<Vec<MessageExample>>>(),
                     model: agent_created["metadata"]["model"]
                         .as_str()
                         .unwrap_or("")

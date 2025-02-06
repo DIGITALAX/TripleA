@@ -193,8 +193,11 @@ contract TripleAAccessControls {
         );
     }
 
-    function emergencyWithdraw(uint256 amount) external onlyAdmin {
-        payable(msg.sender).transfer(amount);
+    function emergencyWithdraw(uint256 amount, uint256 gasAmount) external onlyAdmin {
+        (bool success, ) = payable(msg.sender).call{value: amount, gas: gasAmount}("");
+        if (!success) {
+            revert SkyhuntersErrors.TransferFailed();
+        }
     }
 
     receive() external payable {}
