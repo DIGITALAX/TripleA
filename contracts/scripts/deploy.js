@@ -117,6 +117,13 @@ const skyhuntersAcAddress = "0x0512d639c0b32E29a06d95221899288152295aE6";
         outputs: [],
         stateMutability: "nonpayable",
       },
+      {
+        type: "function",
+        name: "setAgentsContract",
+        inputs: [{ name: "token", type: "address", internalType: "address" }],
+        outputs: [],
+        stateMutability: "nonpayable",
+      },
     ],
     wallet
   );
@@ -290,4 +297,6 @@ const skyhuntersAcAddress = "0x0512d639c0b32E29a06d95221899288152295aE6";
   await agentsContract.setMarket("0x703A1F27c2ae703044F2896435b9e340bEaa95dF");
   await fmContract.setMarket("0x703A1F27c2ae703044F2896435b9e340bEaa95dF");
   await nftContract.setMarket("0x703A1F27c2ae703044F2896435b9e340bEaa95dF");
+
+  await skyhuntersAcContract.setAgentsContract("0x77c64743E42A99FA0c916C12Ab17B85c8c8458c7");
 })();

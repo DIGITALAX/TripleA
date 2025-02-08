@@ -1,38 +1,22 @@
 {
   "lens-testnet": {
-    "AAACollectionManager": {
-      "address": "0xE112A7Eb684Ae26a01C301A3df4b049BECAEF7E1",
-      "startBlock": 81629
-    },
-    "AAAAgents": {
-      "address": "0xcDE1629239f0050ba8501D2bCc552F17128e4388"
-    },
-    "AAAMarket": {
-      "address": "0x0Cd2c3144EaD91606A190DEc6c112871020DAE0c"
-    },
-    "AAADevTreasury": {
-      "address": "0xc343A3DD6f1A0220e3a90dd7C30ceB58a6c98DaB"
-    },
-    "AAAAccessControls": {
-      "address": "0x317ed314b5Acf661b40Fb4A568530D1DF3af00fd"
-    },
     "TripleAAccessControls": {
-      "address": "0x317ed314b5Acf661b40Fb4A568530D1DF3af00fd"
+      "address": "0x852FcD7a7782d3609e61E0A5fDe9A3328D8c0303"
     },
     "TripleACollectionManager": {
-      "address": "0xE112A7Eb684Ae26a01C301A3df4b049BECAEF7E1"
+      "address": "0xf29244D172dc0e54deB100D4E180e6A643bc76f3"
     },
     "TripleAAgents": {
-      "address": "0xcDE1629239f0050ba8501D2bCc552F17128e4388"
+      "address": "0x93f12014B6bE2121b451536B05bD5c8ae65D173E"
     },
     "TripleAMarket": {
-      "address": "0x0Cd2c3144EaD91606A190DEc6c112871020DAE0c"
+      "address": "0x703A1F27c2ae703044F2896435b9e340bEaa95dF"
     },
     "SkyhuntersAgentManager": {
-      "address": "0x0Cd2c3144EaD91606A190DEc6c112871020DAE0c"
+      "address": "0x77c64743E42A99FA0c916C12Ab17B85c8c8458c7"
     },
     "TripleAFulfillerManager": {
-      "address": "0x0Cd2c3144EaD91606A190DEc6c112871020DAE0c"
+      "address": "0x58DAA5A71F900FFb727E9902A07Eb0835f4C03c1"
     }
   }
 }
