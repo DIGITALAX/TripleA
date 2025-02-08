@@ -91,7 +91,7 @@ async fn mint_collection(
                         "create",
                         (
                             CollectionInput {
-                                customInstructions: vec![agent.description.to_string()],
+                                customInstructions: vec![agent.custom_instructions.to_string()],
                                 tokens: vec![
                                     MONA.to_string(),
                                     GRASS.to_string(),

@@ -31,9 +31,7 @@ export function handleCollectionPurchased(
   entity.blockTimestamp = event.block.timestamp;
   entity.transactionHash = event.transaction.hash;
 
-  let market = TripleAMarket.bind(
-    Address.fromString("0x0Cd2c3144EaD91606A190DEc6c112871020DAE0c")
-  );
+  let market = TripleAMarket.bind(event.address);
 
   entity.mintedTokens = market.getOrderMintedTokens(event.params.orderId);
   entity.totalPrice = market.getOrderTotalPrice(event.params.orderId);
@@ -45,7 +43,7 @@ export function handleCollectionPurchased(
   entity.save();
 
   let collectionManager = TripleACollectionManager.bind(
-    Address.fromString("0xE112A7Eb684Ae26a01C301A3df4b049BECAEF7E1")
+    Address.fromString("0xf29244D172dc0e54deB100D4E180e6A643bc76f3")
   );
 
   let entityCollection = CollectionCreated.load(

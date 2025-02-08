@@ -262,7 +262,7 @@ contract TripleAMarket {
             uint256 _vig = accessControls.getTokenVig(token);
             uint256 _base = accessControls.getTokenBase(token);
 
-            uint256 _fulfillerShare = (totalPrice * _vig) + _base;
+            uint256 _fulfillerShare = (totalPrice * (_vig / 100)) + _base;
 
             return (
                 totalPrice - _fulfillerShare,

@@ -173,6 +173,9 @@ contract TripleACollectionManager {
             _collectionPrices[_collectionCounter][
                 collectionInput.tokens[i]
             ] = collectionInput.prices[i];
+            _collections[_collectionCounter].erc20Tokens.add(
+                collectionInput.tokens[i]
+            );
         }
 
         _drops[_dropValue].collectionIds.push(_collectionCounter);
@@ -185,9 +188,9 @@ contract TripleACollectionManager {
     ) internal view {
         for (uint8 i = 0; i < tokens.length; i++) {
             uint256 _base = accessControls.getTokenBase(tokens[i]);
-            uint256 _vig = accessControls.getTokenBase(tokens[i]);
+            uint256 _vig = accessControls.getTokenVig(tokens[i]);
 
-            if (prices[i] < _base + prices[i] * _vig) {
+            if (prices[i] < _base + (prices[i] * (_vig / 100))) {
                 revert TripleAErrors.PriceTooLow();
             }
         }

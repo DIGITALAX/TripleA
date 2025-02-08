@@ -29,6 +29,25 @@ export function handleCollectionMetadata(content: Bytes): void {
       metadata.description = description.toString();
     }
 
+    let sizes = value.get("sizes");
+    if (sizes && sizes.kind === JSONValueKind.ARRAY) {
+      metadata.sizes = sizes
+        .toArray()
+        .map<string>((target: JSONValue) => target.toString());
+    }
+
+    let colors = value.get("colors");
+    if (colors && colors.kind === JSONValueKind.ARRAY) {
+      metadata.colors = colors
+        .toArray()
+        .map<string>((target: JSONValue) => target.toString());
+    }
+
+    let format = value.get("format");
+    if (format && format.kind === JSONValueKind.STRING) {
+      metadata.format = format.toString();
+    }
+
     metadata.save();
   }
 }

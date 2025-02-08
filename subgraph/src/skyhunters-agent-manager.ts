@@ -44,9 +44,7 @@ export function handleAddAgentWallet(event: AddAgentWalletEvent): void {
   );
 
   if (entityAgent) {
-    let agents = SkyhuntersAgentManager.bind(
-      Address.fromString("0xcDE1629239f0050ba8501D2bCc552F17128e4388")
-    );
+    let agents = SkyhuntersAgentManager.bind(event.address);
 
     entityAgent.wallets = agents
       .getAgentWallets(event.params.agentId)
@@ -73,9 +71,7 @@ export function handleAddOwner(event: AddOwnerEvent): void {
   );
 
   if (entityAgent) {
-    let agents = SkyhuntersAgentManager.bind(
-      Address.fromString("0xcDE1629239f0050ba8501D2bCc552F17128e4388")
-    );
+    let agents = SkyhuntersAgentManager.bind(event.address);
 
     entityAgent.owners = agents
       .getAgentOwners(event.params.agentId)
@@ -96,9 +92,7 @@ export function handleAgentCreated(event: AgentCreatedEvent): void {
   entity.blockTimestamp = event.block.timestamp;
   entity.transactionHash = event.transaction.hash;
 
-  let agents = SkyhuntersAgentManager.bind(
-    Address.fromString("0xcDE1629239f0050ba8501D2bCc552F17128e4388")
-  );
+  let agents = SkyhuntersAgentManager.bind(event.address);
   entity.owners = agents
     .getAgentOwners(event.params.id)
     .map<Bytes>((target: Bytes) => target);
@@ -155,9 +149,7 @@ export function handleAgentEdited(event: AgentEditedEvent): void {
   );
 
   if (entityAgent) {
-    let agents = SkyhuntersAgentManager.bind(
-      Address.fromString("0xcDE1629239f0050ba8501D2bCc552F17128e4388")
-    );
+    let agents = SkyhuntersAgentManager.bind(event.address);
 
     entityAgent.uri = agents.getAgentMetadata(event.params.id);
 
@@ -191,9 +183,7 @@ export function handleAgentScored(event: AgentScoredEvent): void {
   );
 
   if (entityAgent) {
-    let agents = SkyhuntersAgentManager.bind(
-      Address.fromString("0xcDE1629239f0050ba8501D2bCc552F17128e4388")
-    );
+    let agents = SkyhuntersAgentManager.bind(event.address);
 
     entityAgent.scorePositive = agents.getAgentScorePositive(
       event.params.agentId
@@ -224,9 +214,7 @@ export function handleAgentSetActive(event: AgentSetActiveEvent): void {
   );
 
   if (entityAgent) {
-    let agents = SkyhuntersAgentManager.bind(
-      Address.fromString("0xcDE1629239f0050ba8501D2bCc552F17128e4388")
-    );
+    let agents = SkyhuntersAgentManager.bind(event.address);
     entityAgent.active = agents.getAgentActive(event.params.agentId);
     entityAgent.save();
   }
@@ -250,9 +238,7 @@ export function handleAgentSetInactive(event: AgentSetInactiveEvent): void {
   );
 
   if (entityAgent) {
-    let agents = SkyhuntersAgentManager.bind(
-      Address.fromString("0xcDE1629239f0050ba8501D2bCc552F17128e4388")
-    );
+    let agents = SkyhuntersAgentManager.bind(event.address);
     entityAgent.active = agents.getAgentActive(event.params.agentId);
 
     entityAgent.save();
@@ -277,9 +263,7 @@ export function handleRevokeAgentWallet(event: RevokeAgentWalletEvent): void {
   );
 
   if (entityAgent) {
-    let agents = SkyhuntersAgentManager.bind(
-      Address.fromString("0xcDE1629239f0050ba8501D2bCc552F17128e4388")
-    );
+    let agents = SkyhuntersAgentManager.bind(event.address);
 
     entityAgent.wallets = agents
       .getAgentWallets(event.params.agentId)
@@ -306,9 +290,7 @@ export function handleRevokeOwner(event: RevokeOwnerEvent): void {
   );
 
   if (entityAgent) {
-    let agents = SkyhuntersAgentManager.bind(
-      Address.fromString("0xcDE1629239f0050ba8501D2bCc552F17128e4388")
-    );
+    let agents = SkyhuntersAgentManager.bind(event.address);
 
     entityAgent.owners = agents
       .getAgentOwners(event.params.agentId)

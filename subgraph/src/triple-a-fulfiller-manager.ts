@@ -26,9 +26,7 @@ export function handleFulfillerCreated(event: FulfillerCreatedEvent): void {
   entity.blockTimestamp = event.block.timestamp;
   entity.transactionHash = event.transaction.hash;
 
-  let fulfillerManager = TripleAFulfillerManager.bind(
-    Address.fromString("0xE112A7Eb684Ae26a01C301A3df4b049BECAEF7E1")
-  );
+  let fulfillerManager = TripleAFulfillerManager.bind(event.address);
 
   entity.uri = fulfillerManager.getFulfillerMetadata(event.params.fulfillerId);
   let ipfsHash = (entity.uri as String).split("/").pop();
@@ -82,9 +80,7 @@ export function handleOrderAdded(event: OrderAddedEvent): void {
   let entityFulfiller = FulfillerCreated.load(
     Bytes.fromByteArray(ByteArray.fromBigInt(event.params.fulfillerId))
   );
-  let fulfillerManager = TripleAFulfillerManager.bind(
-    Address.fromString("0xE112A7Eb684Ae26a01C301A3df4b049BECAEF7E1")
-  );
+  let fulfillerManager = TripleAFulfillerManager.bind(event.address);
 
   if (entityFulfiller) {
     entityFulfiller.activeOrders = fulfillerManager.getFulfillerActiveOrders(

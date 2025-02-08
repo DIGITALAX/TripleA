@@ -85,9 +85,7 @@ export function handleCollectionCreated(event: CollectionCreatedEvent): void {
   entity.blockTimestamp = event.block.timestamp;
   entity.transactionHash = event.transaction.hash;
 
-  let collectionManager = TripleACollectionManager.bind(
-    Address.fromString("0xE112A7Eb684Ae26a01C301A3df4b049BECAEF7E1")
-  );
+  let collectionManager = TripleACollectionManager.bind(event.address);
 
   entity.amount = collectionManager.getCollectionAmount(entity.collectionId);
   entity.agentIds = collectionManager.getCollectionAgentIds(
@@ -113,16 +111,17 @@ export function handleCollectionCreated(event: CollectionCreatedEvent): void {
 
   let prices: Bytes[] = [];
 
-  let tokens: Bytes[] = collectionManager
-    .getCollectionERC20Tokens(entity.collectionId)
-    .map<Bytes>((target: Bytes) => target);
-  for (let i = 0; i < (tokens as Bytes[]).length; i++) {
+  let tokens: Address[] = collectionManager.getCollectionERC20Tokens(
+    entity.collectionId
+  );
+
+  for (let i = 0; i < (tokens as Address[]).length; i++) {
     let price = collectionManager.getCollectionTokenPrice(
-      (tokens as Bytes[])[i] as Address,
+      (tokens as Address[])[i],
       entity.collectionId
     );
 
-    let tokenHex = (tokens as Bytes[])[i].toHexString();
+    let tokenHex = (tokens as Address[])[i].toHexString();
     let priceHex = price.toHexString();
     let combinedHex = tokenHex + priceHex;
     if (combinedHex.length % 2 !== 0) {
@@ -130,7 +129,7 @@ export function handleCollectionCreated(event: CollectionCreatedEvent): void {
     }
 
     let entityPrice = new Price(Bytes.fromHexString(combinedHex));
-    entityPrice.token = (tokens as Bytes[])[i];
+    entityPrice.token = (tokens as Address[])[i];
     entityPrice.price = price;
     entityPrice.save();
 
@@ -238,23 +237,21 @@ export function handleCollectionPriceAdjusted(
     Bytes.fromByteArray(ByteArray.fromBigInt(event.params.collectionId))
   );
 
-  let collectionManager = TripleACollectionManager.bind(
-    Address.fromString("0xE112A7Eb684Ae26a01C301A3df4b049BECAEF7E1")
-  );
+  let collectionManager = TripleACollectionManager.bind(event.address);
 
   if (entityCollection) {
     let prices: Bytes[] = [];
 
-    let tokens: Bytes[] = collectionManager
-      .getCollectionERC20Tokens(entity.collectionId)
-      .map<Bytes>((target: Bytes) => target);
-    for (let i = 0; i < (tokens as Bytes[]).length; i++) {
+    let tokens: Address[] = collectionManager.getCollectionERC20Tokens(
+      entity.collectionId
+    );
+    for (let i = 0; i < (tokens as Address[]).length; i++) {
       let price = collectionManager.getCollectionTokenPrice(
-        (tokens as Bytes[])[i] as Address,
+        (tokens as Address[])[i],
         entity.collectionId
       );
 
-      let tokenHex = (tokens as Bytes[])[i].toHexString();
+      let tokenHex = (tokens as Address[])[i].toHexString();
       let priceHex = price.toHexString();
       let combinedHex = tokenHex + priceHex;
       if (combinedHex.length % 2 !== 0) {
@@ -262,7 +259,7 @@ export function handleCollectionPriceAdjusted(
       }
 
       let entityPrice = new Price(Bytes.fromHexString(combinedHex));
-      entityPrice.token = (tokens as Bytes[])[i];
+      entityPrice.token = (tokens as Address[])[i];
       entityPrice.price = price;
       entityPrice.save();
 
@@ -286,9 +283,7 @@ export function handleDropCreated(event: DropCreatedEvent): void {
   entity.blockTimestamp = event.block.timestamp;
   entity.transactionHash = event.transaction.hash;
 
-  let collectionManager = TripleACollectionManager.bind(
-    Address.fromString("0xE112A7Eb684Ae26a01C301A3df4b049BECAEF7E1")
-  );
+  let collectionManager = TripleACollectionManager.bind(event.address);
 
   entity.collectionIds = collectionManager.getDropCollectionIds(entity.dropId);
   entity.uri = collectionManager.getDropMetadata(entity.dropId);
@@ -301,7 +296,9 @@ export function handleDropCreated(event: DropCreatedEvent): void {
   let collections: Bytes[] = [];
   for (let i = 0; i < (entity.collectionIds as BigInt[]).length; i++) {
     collections.push(
-      Bytes.fromByteArray(ByteArray.fromBigInt((entity.collectionIds as BigInt[])[i]))
+      Bytes.fromByteArray(
+        ByteArray.fromBigInt((entity.collectionIds as BigInt[])[i])
+      )
     );
   }
   entity.collections = collections;
