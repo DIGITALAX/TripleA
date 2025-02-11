@@ -30,6 +30,7 @@ import {
   Remixable,
 } from "../generated/schema";
 import { CollectionMetadata, DropMetadata } from "../generated/templates";
+import { TripleAAgents } from "../generated/TripleAAgents/TripleAAgents";
 
 export function handleAgentDetailsUpdated(
   event: AgentDetailsUpdatedEvent
@@ -86,21 +87,24 @@ export function handleCollectionCreated(event: CollectionCreatedEvent): void {
   entity.transactionHash = event.transaction.hash;
 
   let collectionManager = TripleACollectionManager.bind(event.address);
+  let agents = TripleAAgents.bind(
+    Address.fromString("0xF880C84F7EF0E49039B87Dbd534aD88545FC2D29")
+  );
 
   entity.amount = collectionManager.getCollectionAmount(entity.collectionId);
   entity.agentIds = collectionManager.getCollectionAgentIds(
     entity.collectionId
   );
+
   let customInstructions: string[] = [];
   for (let i = 0; i < (entity.agentIds as BigInt[]).length; i++) {
     customInstructions.push(
-      collectionManager.getAgentCollectionCustomInstructions(
-        event.params.collectionId,
-        (entity.agentIds as BigInt[])[i]
+      agents.getWorkerInstructions(
+        (entity.agentIds as BigInt[])[i],
+        event.params.collectionId
       )
     );
   }
-  entity.customInstructions = customInstructions;
   entity.active = true;
   entity.uri = collectionManager.getCollectionMetadata(entity.collectionId);
   let ipfsHash = (entity.uri as String).split("/").pop();

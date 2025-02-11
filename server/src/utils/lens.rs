@@ -1,13 +1,7 @@
-use std::{
-    error::Error,
-    sync::Arc,
-    time::{SystemTime, UNIX_EPOCH},
-};
-
-use super::constants::LENS_API;
-use crate::{
-    utils::contracts::{initialize_api, initialize_provider, initialize_wallet},
-    LensTokens, SavedTokens,
+use crate::utils::{
+    constants::LENS_API,
+    contracts::{initialize_api, initialize_provider, initialize_wallet},
+    types::{LensTokens, SavedTokens},
 };
 use ethers::{
     middleware::Middleware,
@@ -18,6 +12,11 @@ use ethers::{
 use futures::future::join_all;
 use reqwest::Client;
 use serde_json::{json, Value};
+use std::{
+    error::Error,
+    sync::Arc,
+    time::{SystemTime, UNIX_EPOCH},
+};
 
 async fn refresh(
     client: Arc<Client>,
@@ -301,7 +300,7 @@ pub async fn make_publication(
         "variables": {
                 "request": {
                     "contentUri": content,
-                    "feed": feed
+                    "feed": feed,
                 }
         }
     });
@@ -555,14 +554,6 @@ pub async fn search_posts(
                         metadata {
                             __typename
                             content
-                            attachments {
-                                __typename
-                                ... on MediaImage {
-                                    item
-                                    altTag
-                                }
-                              
-                            }
                         }
                     }
                 }
@@ -575,7 +566,7 @@ pub async fn search_posts(
                 "filter": {
                     "searchQuery": search_query,
                     "metadata": {
-                        "mainContentFocus": ["IMAGE", "ARTICLE", "TEXT_ONLY", "STORY"]
+                        "mainContentFocus": ["ARTICLE", "TEXT_ONLY", "STORY"]
                     }
                 },
             }
@@ -678,7 +669,7 @@ pub async fn follow_profiles(
                 if let Some(follow_response) = json["data"]["follow"].as_object() {
                     if let Some(hash) = follow_response.get("hash").and_then(|v| v.as_str()) {
                         println!("Follow Hash for {}: {:?}", profile, hash);
-                        let _  = poll(hash, &auth_tokens).await;
+                        let _ = poll(hash, &auth_tokens).await;
                     }
                 } else {
                     println!("Unexpected structure for profile: {}", profile);

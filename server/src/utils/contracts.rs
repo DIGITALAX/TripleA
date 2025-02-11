@@ -2,8 +2,7 @@ use std::{
     error::Error,
     sync::{Arc, Mutex, Once},
 };
-
-use crate::utils::constants::{ACCESS_CONTROLS, AGENTS, LENS_CHAIN_ID, LENS_RPC_URL};
+use crate::utils::constants::{ACCESS_CONTROLS, AGENTS, LENS_CHAIN_ID, LENS_RPC_URL, COLLECTION_MANAGER};
 use aes_gcm::{
     aead::{Aead, KeyInit},
     {Aes256Gcm, Nonce},
@@ -20,8 +19,6 @@ use ethers::{
 };
 use reqwest::Client;
 use serde_json::{from_str, Value};
-
-use super::constants::COLLECTION_MANAGER;
 
 static INIT_PROVIDER: Once = Once::new();
 static INIT_LENS: Once = Once::new();
@@ -108,8 +105,8 @@ pub fn initialize_wallet(private_key: u32) -> Option<LocalWallet> {
             );
 
             match std::fs::
-            read_to_string("/var/data/data.json")
-            // read_to_string("var/data/data.json")  
+            // read_to_string("/var/data/data.json")
+            read_to_string("var/data/data.json")  
              {
                 Ok(json_data) => {
                     let parsed_json: Value =

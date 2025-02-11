@@ -71,6 +71,7 @@ contract TripleAAgents {
     );
     event WorkerAdded(uint256 agentId, uint256 collectionId);
     event WorkerUpdated(uint256 agentId, uint256 collectionId);
+    event WorkerRemoved(uint256 agentId, uint256 collectionId);
 
     modifier onlyAdmin() {
         if (!accessControls.isAdmin(msg.sender)) {
@@ -157,6 +158,16 @@ contract TripleAAgents {
         _workers[agentId][collectionId] = worker;
 
         emit WorkerUpdated(agentId, collectionId);
+    }
+
+     function removeWorker(
+        uint256 agentId,
+        uint256 collectionId
+    ) external onlyCollectionManager {
+   
+        delete _workers[agentId][collectionId];
+
+        emit WorkerRemoved(agentId, collectionId);
     }
 
     function addBalance(
@@ -522,6 +533,13 @@ contract TripleAAgents {
         uint256 collectionId
     ) public view returns (uint256) {
         return _workers[agentId][collectionId].remixFrequency;
+    }
+
+    function getWorkerInstructions(
+        uint256 agentId,
+        uint256 collectionId
+    ) public view returns (string memory) {
+        return _workers[agentId][collectionId].instructions;
     }
 
     function getDevPaymentByToken(address token) public view returns (uint256) {

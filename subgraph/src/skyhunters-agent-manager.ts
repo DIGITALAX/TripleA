@@ -97,7 +97,6 @@ export function handleAgentCreated(event: AgentCreatedEvent): void {
     .getAgentOwners(event.params.id)
     .map<Bytes>((target: Bytes) => target);
   entity.uri = agents.getAgentMetadata(event.params.id);
-  entity.active = agents.getAgentActive(event.params.id);
 
   let ipfsHash = (entity.uri as String).split("/").pop();
   if (ipfsHash != null) {
@@ -209,15 +208,15 @@ export function handleAgentSetActive(event: AgentSetActiveEvent): void {
 
   entity.save();
 
-  let entityAgent = AgentCreated.load(
-    Bytes.fromByteArray(ByteArray.fromBigInt(event.params.agentId))
-  );
+  // let entityAgent = AgentCreated.load(
+  //   Bytes.fromByteArray(ByteArray.fromBigInt(event.params.agentId))
+  // );
 
-  if (entityAgent) {
-    let agents = SkyhuntersAgentManager.bind(event.address);
-    entityAgent.active = agents.getAgentActive(event.params.agentId);
-    entityAgent.save();
-  }
+  // if (entityAgent) {
+  //   let agents = SkyhuntersAgentManager.bind(event.address);
+  //   entityAgent.active = agents.getAgentActive(event.params.agentId);
+  //   entityAgent.save();
+  // }
 }
 
 export function handleAgentSetInactive(event: AgentSetInactiveEvent): void {
@@ -233,16 +232,16 @@ export function handleAgentSetInactive(event: AgentSetInactiveEvent): void {
 
   entity.save();
 
-  let entityAgent = AgentCreated.load(
-    Bytes.fromByteArray(ByteArray.fromBigInt(event.params.agentId))
-  );
+  // let entityAgent = AgentCreated.load(
+  //   Bytes.fromByteArray(ByteArray.fromBigInt(event.params.agentId))
+  // );
 
-  if (entityAgent) {
-    let agents = SkyhuntersAgentManager.bind(event.address);
-    entityAgent.active = agents.getAgentActive(event.params.agentId);
+  // if (entityAgent) {
+  //   let agents = SkyhuntersAgentManager.bind(event.address);
+  //   entityAgent.active = agents.getAgentActive(event.params.agentId);
 
-    entityAgent.save();
-  }
+  //   entityAgent.save();
+  // }
 }
 
 export function handleRevokeAgentWallet(event: RevokeAgentWalletEvent): void {

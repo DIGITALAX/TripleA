@@ -24,7 +24,7 @@ use tokio_tungstenite::{
 };
 use tungstenite::http::method;
 use utils::{
-    constants::{AGENT_INTERFACE_URL, COMFY_INTERFACE_URL, TRIPLEA_URI},
+    constants::{AGENT_INTERFACE_URL, TRIPLEA_URI},
     contracts::configure_key,
     lens::handle_lens_account,
     types::*,
@@ -97,9 +97,7 @@ async fn handle_connection(
                         if let Some(origen) = origen {
                             match origen.to_str() {
                                 Ok(origen_str) => {
-                                    if origen_str == AGENT_INTERFACE_URL
-                                        || origen_str == COMFY_INTERFACE_URL
-                                    {
+                                    if origen_str == AGENT_INTERFACE_URL {
                                         return Ok(respuesta);
                                     } else {
                                         return Err(ErrorResponse::new(Some(
@@ -232,10 +230,8 @@ async fn handle_connection(
                                     .expect("Error writing to the .env");
 
                                 let mut existing_data = Map::new();
-                                if let Ok(mut file) =
-                                    File::
-                                // open("var/data/data.json")
-                                 open("/var/data/data.json")
+                                if let Ok(mut file) = File::open("var/data/data.json")
+                                    //  open("/var/data/data.json")
                                     .await
                                 {
                                     let mut content = String::new();
@@ -256,8 +252,8 @@ async fn handle_connection(
                                 let file = OpenOptions::new()
                                     .write(true)
                                     .create(true)
-                                    // .open("var/data/data.json")
-                                    .open("/var/data/data.json")
+                                    .open("var/data/data.json")
+                                    // .open("/var/data/data.json")
                                     .await;
 
                                 match file {
@@ -335,22 +331,6 @@ async fn handle_connection(
                             } else {
                                 eprintln!("Agent data not parsed");
                             }
-                        } else if message_type == "comfy_response" {
-                            if let (Some(agent_id), Some(image), Some(remix_collection_id)) = (
-                                parsed["agentId"].as_str(),
-                                parsed["image"].as_str(),
-                                parsed["remixCollectionId"].as_str(),
-                            ) {
-                                let mut agents_write = agents.write().await;
-
-                                let id: u32 =
-                                    agent_id.parse().expect("Error converting agent id to u32");
-                                if let Some(agent) = agents_write.get_mut(&id) {
-                                    let _ = agent.comfy_remix(image, remix_collection_id).await;
-                                }
-                            } else {
-                                eprintln!("Comfy data not parsed");
-                            }
                         } else {
                             eprintln!("Type not found.");
                         }
@@ -422,42 +402,20 @@ async fn handle_agents() -> Result<HashMap<u32, AgentManager>, Box<dyn Error + S
         query {
             agentCreateds(first: 100) {
                 wallets
-                TripleAAgents_id
-                owner
+                SkyhuntersAgentManager_id
+                creator
                 metadata {
-                    cover
-                    customInstructions
-                    description
+                    title
                     bio
                     lore
+                    adjectives
+                    style
                     knowledge
-                    messageDirections
-                    capabilities
-                    additionalInfo
-                    instructions
-                    availableActions
-                    task
-                    actionExamples
-                    title
+                    messageExamples
+                    model
+                    cover
+                    customInstructions
                     feeds
-                }
-                balances {
-                    collection {
-                        artist
-                        collectionId
-                        metadata {
-                            description
-                            image
-                            title
-                            model
-                        }
-                        prices
-                        tokens
-                    }
-                    collectionId
-                    token
-                    totalBalance
-                    activeBalance
                 }
             }
         }
@@ -469,6 +427,7 @@ async fn handle_agents() -> Result<HashMap<u32, AgentManager>, Box<dyn Error + S
     match res {
         Ok(response) => {
             let parsed: Value = response.json().await?;
+            println!("parsed {:?}", parsed);
             let empty_vec = vec![];
             let agent_createds = parsed["data"]["agentCreateds"]
                 .as_array()
@@ -477,7 +436,7 @@ async fn handle_agents() -> Result<HashMap<u32, AgentManager>, Box<dyn Error + S
             let mut agents_snapshot: HashMap<u32, AgentManager> = HashMap::new();
 
             for agent_created in agent_createds {
-                let new_id: u32 = agent_created["TripleAAgents_id"]
+                let new_id: u32 = agent_created["SkyhuntersAgentManager_id"]
                     .as_str()
                     .unwrap_or("0")
                     .parse()
@@ -513,7 +472,7 @@ async fn handle_agents() -> Result<HashMap<u32, AgentManager>, Box<dyn Error + S
                     id: new_id,
                     name: agent_created["metadata"]["title"]
                         .as_str()
-                        .unwrap_or("Unknown")
+                        .unwrap_or("")
                         .to_string(),
                     bio: agent_created["metadata"]["bio"]
                         .as_str()

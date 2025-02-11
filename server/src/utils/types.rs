@@ -49,6 +49,7 @@ pub struct TripleAWorker {
     pub lead_frequency: U256,
     pub publish_frequency: U256,
     pub remix_frequency: U256,
+    pub instructions: String,
 }
 
 #[derive(Debug, Clone)]
@@ -84,8 +85,13 @@ pub struct Collection {
     pub artist: String,
     pub username: String,
     pub collection_id: U256,
-    pub prices: Vec<U256>,
-    pub tokens: Vec<String>,
+    pub prices: Vec<Price>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
+pub struct Price {
+    pub price: U256,
+    pub token: String,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
@@ -93,10 +99,14 @@ pub struct AgentActivity {
     pub collection: Collection,
     pub token: String,
     pub worker: TripleAWorker,
-    pub active_balance: U256,
-    pub total_balance: U256,
+    pub balance: Balance,
     pub collection_id: U256,
-    pub custom_instructions: String,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
+pub struct Balance {
+    pub rent_balance: U256,
+    pub bonus_balance: U256,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -153,7 +163,6 @@ pub enum ActivityType {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct CollectionInput {
     pub remix: bool,
-    pub customInstructions: Vec<String>,
     pub tokens: Vec<String>,
     pub prices: Vec<U256>,
     pub agentIds: Vec<U256>,
@@ -163,8 +172,10 @@ pub struct CollectionInput {
     pub fulfillerId: U256,
 }
 
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct CollectionWorker {
+    pub instructions: String,
     pub publishFrequency: U256,
     pub remixFrequency: U256,
     pub leadFrequency: U256,
@@ -178,13 +189,6 @@ impl Tokenizable for CollectionInput {
         match token {
             Token::Tuple(tokens) if tokens.len() == 9 => Ok(Self {
                 remix: tokens[0].clone().into_bool().unwrap(),
-                customInstructions: tokens[1]
-                    .clone()
-                    .into_array()
-                    .unwrap()
-                    .into_iter()
-                    .map(|t| t.into_string().unwrap())
-                    .collect(),
                 tokens: tokens[2]
                     .clone()
                     .into_array()
@@ -218,12 +222,6 @@ impl Tokenizable for CollectionInput {
     fn into_token(self) -> Token {
         Token::Tuple(vec![
             Token::Bool(self.remix),
-            Token::Array(
-                self.customInstructions
-                    .into_iter()
-                    .map(Token::String)
-                    .collect(),
-            ),
             Token::Array(self.tokens.into_iter().map(Token::String).collect()),
             Token::Array(self.prices.into_iter().map(Token::Uint).collect()),
             Token::Array(self.agentIds.into_iter().map(Token::Uint).collect()),
@@ -239,12 +237,13 @@ impl Tokenizable for CollectionWorker {
     fn from_token(token: Token) -> Result<Self, InvalidOutputType> {
         match token {
             Token::Tuple(tokens) if tokens.len() == 6 => Ok(Self {
-                publishFrequency: tokens[0].clone().into_uint().unwrap(),
-                remixFrequency: tokens[1].clone().into_uint().unwrap(),
-                leadFrequency: tokens[2].clone().into_uint().unwrap(),
-                publish: tokens[3].clone().into_bool().unwrap(),
-                remix: tokens[4].clone().into_bool().unwrap(),
-                lead: tokens[5].clone().into_bool().unwrap(),
+                instructions: tokens[0].clone().into_string().unwrap(),
+                publishFrequency: tokens[1].clone().into_uint().unwrap(),
+                remixFrequency: tokens[2].clone().into_uint().unwrap(),
+                leadFrequency: tokens[3].clone().into_uint().unwrap(),
+                publish: tokens[4].clone().into_bool().unwrap(),
+                remix: tokens[5].clone().into_bool().unwrap(),
+                lead: tokens[6].clone().into_bool().unwrap(),
             }),
             _ => Err(InvalidOutputType(String::from("conversion error"))),
         }

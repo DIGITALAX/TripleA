@@ -7,7 +7,7 @@ import "./TripleAAccessControls.sol";
 
 contract TripleANFT is ERC721 {
     uint256 private _tokenCounter;
-    address public marketplace;
+    address public market;
     TripleAAccessControls public accessControls;
     mapping(uint256 => string) private _tokenURIs;
 
@@ -25,7 +25,7 @@ contract TripleANFT is ERC721 {
     );
 
     modifier onlyMarket() {
-        if (msg.sender != marketplace) {
+        if (msg.sender != market) {
             revert TripleAErrors.OnlyMarketContract();
         }
         _;
@@ -78,8 +78,8 @@ contract TripleANFT is ERC721 {
         return _tokenCounter;
     }
 
-    function setMarket(address _marketplace) external onlyAdmin {
-        marketplace = _marketplace;
+    function setMarket(address _market) external onlyAdmin {
+        market = _market;
     }
 
     function setAccessControls(

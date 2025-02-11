@@ -60,6 +60,7 @@ type TokenDetailsSet @entity(immutable: false) {
   blockTimestamp: BigInt!
   transactionHash: Bytes!
 }
+
 type AgentDetailsUpdated @entity(immutable: false) {
   id: Bytes!
   customInstructions: [String!]! # string[]
@@ -91,7 +92,6 @@ type CollectionCreated @entity(immutable: false) {
   active: Boolean!
   amount: BigInt!
   agentIds: [BigInt!]
-  customInstructions: [String!]
   prices: [Price!]
   tokenIds: [BigInt!]
   collectionType: BigInt
@@ -296,7 +296,6 @@ type AgentCreated @entity(immutable: false) {
   owners: [Bytes!]
   uri: String!
   metadata: AgentMetadata
-  active: BigInt
   scorePositive: BigInt
   scoreNegative: BigInt
   workers: [CollectionWorker!]
@@ -343,6 +342,10 @@ type CollectionWorker @entity(immutable: false) {
   publish: Boolean
   remix: Boolean
   lead: Boolean
+  instructions: String
+  collectionId: BigInt
+  tokens: [Bytes!]
+  collection: CollectionCreated
 }
 
 type AgentDeleted @entity(immutable: false) {
@@ -417,7 +420,6 @@ type Balance @entity(immutable: false) {
   historicalBonusBalance: BigInt!
   collectionId: BigInt!
   collection: CollectionCreated
-  instructions: String
   worker: CollectionWorker
 }
 type FulfillerCreated @entity(immutable: true) {

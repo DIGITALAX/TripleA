@@ -1,4 +1,5 @@
 use crate::classes::{lead::lead_generation, publish::publish, remix::remix};
+use crate::utils::types::{Balance, Price};
 use crate::utils::{
     constants::{ACCESS_CONTROLS, AGENTS, LENS_CHAIN_ID, TRIPLEA_URI},
     contracts::{initialize_api, initialize_contracts},
@@ -7,6 +8,9 @@ use crate::utils::{
 };
 use crate::ActivityType;
 use chrono::{Timelike, Utc};
+use ethers::contract::ContractInstance;
+use ethers::core::k256::ecdsa::SigningKey;
+use ethers::signers::Wallet;
 use ethers::{
     contract::{self, FunctionCall},
     middleware::{Middleware, SignerMiddleware},
@@ -18,8 +22,6 @@ use reqwest::Client;
 use serde_json::{json, Value};
 use std::{error::Error, io, str::FromStr, sync::Arc, time::Duration};
 use tokio::time;
-
-use super::remix::receive_comfy;
 
 impl AgentManager {
     pub fn new(agent: &TripleAAgent) -> Option<Self> {
@@ -69,7 +71,8 @@ impl AgentManager {
 
                 match self.pay_rent().await {
                     Ok(_) => {
-                        let _ = self.queue_lens_activity().await;
+                        println!("aqui con agent {}", self.agent.id);
+                        // let _ = self.queue_lens_activity().await;
                     }
                     Err(err) => {
                         eprintln!("Error paying rent: {:?}", err);
@@ -201,11 +204,11 @@ impl AgentManager {
         let _ = self.get_faucet_grass().await;
 
         for collection in &self.current_queue {
-            for token in &collection.collection.tokens {
+            for price in &collection.collection.prices {
                 let method = self.agents_contract.method::<_, U256>(
                     "getAgentActiveBalance",
                     (
-                        H160::from_str(token).unwrap(),
+                        H160::from_str(&price.token).unwrap(),
                         self.agent.id,
                         collection.collection.collection_id,
                     ),
@@ -224,10 +227,10 @@ impl AgentManager {
                             Ok(balance) => {
                                 println!("Balance: {}\n", balance);
 
-                                match self.calculate_rent(collection, token).await {
+                                match self.calculate_rent(collection, &price.token).await {
                                     Ok(cycle_rent) => {
                                         if balance >= (cycle_rent) {
-                                            rent_tokens.push(H160::from_str(token).unwrap());
+                                            rent_tokens.push(H160::from_str(&price.token).unwrap());
                                             rent_collection_ids.push(collection.collection_id);
                                             break;
                                         }
@@ -355,39 +358,40 @@ impl AgentManager {
         let client = Client::new();
         let query = json!({
             "query": r#"
-            query ($TripleAAgents_id: Int!) {
-                agentCreateds(where: { TripleAAgents_id: $TripleAAgents_id }, first: 1) {
+            query ($SkyhuntersAgentManager_id: Int!) {
+                agentCreateds(where: { SkyhuntersAgentManager_id: $SkyhuntersAgentManager_id }, first: 1) {
                     balances {
-                        collection {
-                            artist
-                            collectionId
-                            metadata {
-                                description
-                                image
-                                title
-                            }
-                            prices
-                            tokens
-                        }
-                        worker {
-                            publish
-                            remix
-                            lead
-                            leadFrequency
-                            publishFrequency
-                            leadFrequency
-                        }
+                     rentBalance
+                     bonusBalance
+                     collectionId
+                     collection {
+                        artist
                         collectionId
-                        token
-                        totalBalance
-                        activeBalance
-                        instructions
+                        metadata {
+                            description
+                            title
+                            image
+                        }
+                        prices {
+                            price
+                            token
+                        }  
+                      }
+                    }
+                    workers {
+                        publish
+                        remix
+                        lead
+                        leadFrequency
+                        publishFrequency
+                        leadFrequency
+                        collectionId
                     }
                 }
             }
             "#,
             "variables": {
-                "TripleAAgents_id": self.agent.id
+                "SkyhuntersAgentManager_id": self.agent.id
             }
         });
 
@@ -408,8 +412,38 @@ impl AgentManager {
                     let mut activities = Vec::new();
 
                     for agent_created in agent_createds {
-                        for balance in agent_created["balances"].as_array().unwrap_or(&vec![]) {
-                            let artist = balance["collection"]["artist"]
+                        let balances = agent_created["balances"]
+                            .as_array()
+                            .unwrap_or(&vec![])
+                            .iter()
+                            .map(|balance| {
+                                let collection_id = U256::from_dec_str(
+                                    balance["collectionId"].as_str().unwrap_or("0"),
+                                )
+                                .unwrap_or_default();
+
+                                (
+                                    collection_id,
+                                    Balance {
+                                        rent_balance: U256::from_dec_str(
+                                            balance["rentBalance"].as_str().unwrap_or("0"),
+                                        )
+                                        .unwrap_or_default(),
+                                        bonus_balance: U256::from_dec_str(
+                                            balance["bonusBalance"].as_str().unwrap_or("0"),
+                                        )
+                                        .unwrap_or_default(),
+                                    },
+                                )
+                            })
+                            .collect::<std::collections::HashMap<_, _>>();
+
+                        for worker in agent_created["workers"].as_array().unwrap_or(&vec![]) {
+                            let collection_id =
+                                U256::from_dec_str(worker["collectionId"].as_str().unwrap_or("0"))
+                                    .unwrap_or_default();
+
+                            let artist = worker["collection"]["artist"]
                                 .as_str()
                                 .unwrap_or_default()
                                 .to_string();
@@ -417,79 +451,68 @@ impl AgentManager {
                             let username =
                                 handle_lens_account(&artist, true).await.unwrap_or_default();
 
+                            let default_balance = Balance {
+                                rent_balance: U256::zero(),
+                                bonus_balance: U256::zero(),
+                            };
+                            let balance = balances.get(&collection_id).unwrap_or(&default_balance);
+
                             activities.push(AgentActivity {
                                 collection: Collection {
-                                    collection_id: U256::from_dec_str(
-                                        balance["collection"]["collectionId"]
-                                            .as_str()
-                                            .unwrap_or("0"),
-                                    )
-                                    .unwrap_or_default(),
+                                    collection_id,
                                     artist,
                                     username,
-                                    image: balance["collection"]["metadata"]["image"]
+                                    image: worker["collection"]["metadata"]["image"]
                                         .as_str()
                                         .unwrap_or_default()
                                         .to_string(),
-                                    title: balance["collection"]["metadata"]["title"]
+                                    title: worker["collection"]["metadata"]["title"]
                                         .as_str()
                                         .unwrap_or_default()
                                         .to_string(),
-                                    description: balance["collection"]["metadata"]["description"]
+                                    description: worker["collection"]["metadata"]["description"]
                                         .as_str()
                                         .unwrap_or_default()
                                         .to_string(),
-                                    prices: balance["collection"]["prices"]
+                                    prices: worker["collection"]["prices"]
                                         .as_array()
                                         .unwrap_or(&vec![])
                                         .iter()
                                         .filter_map(|v| {
-                                            v.as_str().and_then(|s| U256::from_dec_str(s).ok())
+                                            Some(Price {
+                                                price: v["price"]
+                                                    .as_str()
+                                                    .and_then(|s| U256::from_dec_str(s).ok())
+                                                    .unwrap_or_default(),
+                                                token: v["token"]
+                                                    .as_str()
+                                                    .unwrap_or_default()
+                                                    .to_string(),
+                                            })
                                         })
                                         .collect(),
-                                    tokens: balance["collection"]["tokens"]
-                                        .as_array()
-                                        .unwrap_or(&vec![])
-                                        .iter()
-                                        .filter_map(|v| v.as_str().map(|s| s.to_string()))
-                                        .collect(),
                                 },
-                                custom_instructions: balance["instructions"]
-                                    .as_str()
-                                    .unwrap_or_default()
-                                    .to_string(),
-                                token: balance["token"].as_str().unwrap_or_default().to_string(),
-                                active_balance: U256::from_dec_str(
-                                    balance["activeBalance"].as_str().unwrap_or("0"),
-                                )
-                                .unwrap_or_default(),
-                                total_balance: U256::from_dec_str(
-                                    balance["totalBalance"].as_str().unwrap_or("0"),
-                                )
-                                .unwrap_or_default(),
-                                collection_id: U256::from_dec_str(
-                                    balance["collectionId"].as_str().unwrap_or("0"),
-                                )
-                                .unwrap_or_default(),
+                                token: worker["token"].as_str().unwrap_or_default().to_string(),
+                                balance: balance.clone(),
+                                collection_id,
                                 worker: TripleAWorker {
-                                    lead: balance["worker"]["lead"].as_bool().unwrap_or_default(),
-                                    publish: balance["worker"]["publish"]
-                                        .as_bool()
-                                        .unwrap_or_default(),
-                                    remix: balance["worker"]["remix"].as_bool().unwrap_or_default(),
+                                    instructions: worker["instructions"]
+                                        .as_str()
+                                        .unwrap_or_default()
+                                        .to_string(),
+                                    lead: worker["lead"].as_bool().unwrap_or_default(),
+                                    publish: worker["publish"].as_bool().unwrap_or_default(),
+                                    remix: worker["remix"].as_bool().unwrap_or_default(),
                                     lead_frequency: U256::from_dec_str(
-                                        balance["worker"]["leadFrequency"].as_str().unwrap_or("0"),
+                                        worker["leadFrequency"].as_str().unwrap_or("0"),
                                     )
                                     .unwrap_or_default(),
-
                                     publish_frequency: U256::from_dec_str(
-                                        balance["worker"]["publishFrequency"]
-                                            .as_str()
-                                            .unwrap_or("0"),
+                                        worker["publishFrequency"].as_str().unwrap_or("0"),
                                     )
                                     .unwrap_or_default(),
                                     remix_frequency: U256::from_dec_str(
-                                        balance["worker"]["remixFrequency"].as_str().unwrap_or("0"),
+                                        worker["remixFrequency"].as_str().unwrap_or("0"),
                                     )
                                     .unwrap_or_default(),
                                 },
@@ -555,9 +578,10 @@ impl AgentManager {
 
                     let agent = self.agent.clone();
                     let tokens = self.tokens.clone();
+                    let contract = self.collection_manager_contract.clone();
 
                     tokio::spawn(async move {
-                        cycle_activity(&agent, tokens, &activity, interval).await;
+                        cycle_activity(&agent, tokens, &activity, interval, contract).await;
                     });
                 }
 
@@ -668,21 +692,6 @@ impl AgentManager {
 
         Ok(rent_total)
     }
-
-    pub async fn comfy_remix(
-        &self,
-        image: &str,
-        remix_collection_id: &str,
-    ) -> Result<(), Box<dyn Error + Send + Sync>> {
-        receive_comfy(
-            image,
-            remix_collection_id,
-            &self.agent,
-            self.collection_manager_contract.clone(),
-            &self.tokens.as_ref().unwrap().tokens.access_token,
-        )
-        .await
-    }
 }
 
 async fn cycle_activity(
@@ -690,6 +699,12 @@ async fn cycle_activity(
     tokens: Option<SavedTokens>,
     activity: &AgentActivity,
     interval: i64,
+    collection_manager_contract: Arc<
+        ContractInstance<
+            Arc<SignerMiddleware<Arc<Provider<Http>>, Wallet<SigningKey>>>,
+            SignerMiddleware<Arc<Provider<Http>>, Wallet<SigningKey>>,
+        >,
+    >,
 ) {
     let total_activities = activity.worker.lead_frequency.as_u64()
         + activity.worker.publish_frequency.as_u64()
@@ -716,7 +731,8 @@ async fn cycle_activity(
             let agent = agent.clone();
             let tokens = tokens.clone();
             let collection = activity.collection.clone();
-            let instructions = activity.custom_instructions.clone();
+            let instructions = activity.worker.instructions.clone();
+            let collection_contract = collection_manager_contract.clone();
             tokio::spawn(async move {
                 tokio::time::sleep(std::time::Duration::from_secs(
                     (i as i64 * activity_interval) as u64,
@@ -731,7 +747,7 @@ async fn cycle_activity(
                         let _ = publish(&agent, tokens, &collection, &instructions).await;
                     }
                     ActivityType::Remix => {
-                        let _ = remix(&agent, &collection).await;
+                        let _ = remix(&agent, &collection, tokens, collection_contract).await;
                     }
                 }
             })

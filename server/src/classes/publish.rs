@@ -5,7 +5,7 @@ use uuid::Uuid;
 use crate::utils::{
     ipfs::upload_lens_storage,
     lens::make_publication,
-    models::{call_chat_completion_claude, call_chat_completion_openai},
+    venice::call_chat_completion,
     types::{Collection, Content, Image, Publication, SavedTokens, TripleAAgent},
 };
 
@@ -15,23 +15,15 @@ pub async fn publish(
     collection: &Collection,
     collection_instructions: &str,
 ) -> Result<(), Box<dyn Error + Send + Sync>> {
-    match if agent.model == "Claude" {
-        call_chat_completion_claude(
-            collection,
-            &agent.custom_instructions,
-            collection_instructions,
-            &agent.id,
-        )
-        .await
-    } else {
-        call_chat_completion_openai(
-            collection,
-            &agent.custom_instructions,
-            collection_instructions,
-            &agent.id,
-        )
-        .await
-    } {
+    match call_chat_completion(
+        collection,
+        &agent.custom_instructions,
+        collection_instructions,
+        &agent.id,
+        &agent.model
+    )
+    .await
+    {
         Ok(llm_message) => match format_publication(agent, tokens, &llm_message, &collection).await
         {
             Ok(_) => Ok(()),
@@ -100,7 +92,8 @@ async fn format_publication(
     let res = make_publication(
         &content,
         agent.id,
-        &tokens.as_ref().unwrap().tokens.access_token, None
+        &tokens.as_ref().unwrap().tokens.access_token,
+        None,
     )
     .await
     .map_err(|e| Box::new(e.to_string()));

@@ -5,14 +5,23 @@ const provider = new ethers.JsonRpcProvider(
   "https://rpc.testnet.lens.dev",
   37111
 );
-const wallet = new ethers.Wallet(process.env.PRIVATE_KEY, provider);
-const collectionManagerAddress = "0xf29244D172dc0e54deB100D4E180e6A643bc76f3";
-const marketAddress = "0x703A1F27c2ae703044F2896435b9e340bEaa95dF";
-const agentsAddress = "0x93f12014B6bE2121b451536B05bD5c8ae65D173E";
-const fulfillerAddress = "0x58DAA5A71F900FFb727E9902A07Eb0835f4C03c1";
-const accessControlsAddress = "0x852FcD7a7782d3609e61E0A5fDe9A3328D8c0303";
-const nftAddress = "0x55ee89D84Ae1B469b419D9D29760B23d9d4CdA94";
-const skyhuntersAcAddress = "0x0512d639c0b32E29a06d95221899288152295aE6";
+const wallet = new ethers.Wallet(
+  "",
+  provider
+);
+const collectionManagerAddress = "0x575da586767F54DC9ba7E08024844ce72480e234";
+const marketAddress = "0x704D2A8e6385CbD203990E0C92397908d96Fc6dA";
+const agentsAddress = "0xF880C84F7EF0E49039B87Dbd534aD88545FC2D29";
+const fulfillerAddress = "0x1b372DB79C03B8EA13F4d9115F7ee6207Bb22443";
+const accessControlsAddress = "0x1b37B6FD3457b7FbB09308752e3ECCA4a7734839";
+const nftAddress = "0xA4Df48010Ff3A862152A50d481B9D5D085cfA63d";
+const skyhuntersAcAddress = "0x127AD7cb800B24Cb4Ac961dd9A7B49E23546F2e4";
+const skyhuntersAgentAddress = "0x48d2347BBF723D4AeB9Cc2a7d4D25a958586e4Ce";
+
+const WGRASS = "0xeee5a340Cdc9c179Db25dea45AcfD5FE8d4d3eB8";
+const MONA = "0x72ab7C7f3F6FF123D08692b0be196149d4951a41";
+const BONSAI = "0x15B58c74A0Ef6D0A593340721055223f38F5721E";
+const FULFILLER = "0x3D1f8A6D6584a1672d2817368783B9a2a36ae361";
 
 (async () => {
   const cmContract = new ethers.Contract(
@@ -37,6 +46,13 @@ const skyhuntersAcAddress = "0x0512d639c0b32E29a06d95221899288152295aE6";
             internalType: "address",
           },
         ],
+        outputs: [],
+        stateMutability: "nonpayable",
+      },
+      {
+        type: "function",
+        name: "setAgents",
+        inputs: [{ name: "token", type: "address", internalType: "address" }],
         outputs: [],
         stateMutability: "nonpayable",
       },
@@ -100,13 +116,6 @@ const skyhuntersAcAddress = "0x0512d639c0b32E29a06d95221899288152295aE6";
     wallet
   );
 
-  await agentsContract.setCollectionManager(
-    "0xf29244D172dc0e54deB100D4E180e6A643bc76f3"
-  );
-  await marketContract.setCollectionManager(
-    "0xf29244D172dc0e54deB100D4E180e6A643bc76f3"
-  );
-
   const skyhuntersAcContract = new ethers.Contract(
     skyhuntersAcAddress,
     [
@@ -121,6 +130,24 @@ const skyhuntersAcAddress = "0x0512d639c0b32E29a06d95221899288152295aE6";
         type: "function",
         name: "setAgentsContract",
         inputs: [{ name: "token", type: "address", internalType: "address" }],
+        outputs: [],
+        stateMutability: "nonpayable",
+      },
+    ],
+    wallet
+  );
+
+  const skyhuntersAgentContract = new ethers.Contract(
+    skyhuntersAgentAddress,
+    [
+      {
+        type: "function",
+        name: "createAgent",
+        inputs: [
+          { name: "wallets", type: "address[]", internalType: "address[]" },
+          { name: "owners", type: "address[]", internalType: "address[]" },
+          { name: "metadata", type: "string", internalType: "string" },
+        ],
         outputs: [],
         stateMutability: "nonpayable",
       },
@@ -238,65 +265,80 @@ const skyhuntersAcAddress = "0x0512d639c0b32E29a06d95221899288152295aE6";
     wallet
   );
 
-  // try {
-  //   const res = await nftContract.accessControls();
-  //   const res2 = await acContract.isFulfiller(
-  //     "0x3D1f8A6D6584a1672d2817368783B9a2a36ae361"
-  //   );
-  //   console.log({ res, res2 });
-  //   const tx1 = await acContract.addFulfiller(
-  //     "0x3D1f8A6D6584a1672d2817368783B9a2a36ae361"
-  //   );
-
-  //   await tx1.wait();
-  // } catch (error) {
-  //   console.log(error);
-  // }
-
-  // const tx1 = await skyhuntersAcContract.setAcceptedToken(
-  //   "0x68d0b8fa9288f84fa6e48e0d8ee92b22d514de26"
-  // );
-  // await tx1.wait();
-
-  const tx2 = await fmContract.setMarket(
-    "0x703A1F27c2ae703044F2896435b9e340bEaa95dF"
+  // Configura contratos
+  const grassToken = await skyhuntersAcContract.setAcceptedToken(WGRASS);
+  await grassToken.wait();
+  const grass = await acContract.setTokenDetails(
+    WGRASS,
+    "100000000000000000",
+    "10000000000000000",
+    "50000000000000000",
+    "30000000000000000",
+    10,
+    "2000000000000000000"
   );
+  await grass.wait();
 
-  // await tx2.wait();
+  const monaToken = await skyhuntersAcContract.setAcceptedToken(MONA);
+  await monaToken.wait();
+  const mona = await acContract.setTokenDetails(
+    MONA,
+    "10000000000000000000",
+    "1500000000000000000",
+    "6000000000000000000",
+    "4000000000000000000",
+    6,
+    "20000000000000000000"
+  );
+  await mona.wait();
 
-  // const tx3 = await fmContract.createFulfillerProfile({
-  //   metadata: "ipfs://QmNSKfpUbPJe3cu5aDsmdG4S8xGJaiMCvNbrGnd1avqKRm",
-  //   wallet: "0x3D1f8A6D6584a1672d2817368783B9a2a36ae361",
-  // });
+  const bonsaiToken = await skyhuntersAcContract.setAcceptedToken(BONSAI);
+  await bonsaiToken.wait();
+  const bonsai = await acContract.setTokenDetails(
+    BONSAI,
+    "100000000000000000000",
+    "12000000000000000000",
+    "14500000000000000000",
+    "13000000000000000000",
+    5,
+    "50000000000000000000"
+  );
+  await bonsai.wait();
 
-  // await tx3.wait();
+  const tx1 = await agentsContract.setMarket(marketAddress);
+  await tx1.wait();
 
-  // const tx4 = await acContract.setTokenDetails(
-  //   "0x68d0b8fa9288f84fa6e48e0d8ee92b22d514de26",
-  //   "1000000000000000000000",
-  //   "1200000000000000000000",
-  //   "2300000000000000000000",
-  //   "1100000000000000000000",
-  //   10,
-  //   "20000000000000000000"
+  const tx2 = await cmContract.setMarket(marketAddress);
+  await tx2.wait();
+  const tx3 = await cmContract.setAgents(agentsAddress);
+  await tx3.wait();
+
+  const tx4 = await fmContract.setMarket(marketAddress);
+  await tx4.wait();
+  const tx5 = await acContract.addFulfiller(FULFILLER);
+  await tx5.wait();
+  const tx6 = await fmContract.createFulfillerProfile({
+    metadata: "ipfs://QmNSKfpUbPJe3cu5aDsmdG4S8xGJaiMCvNbrGnd1avqKRm",
+    wallet: FULFILLER,
+  });
+  await tx6.wait();
+
+  const tx7 = await nftContract.setMarket(marketAddress);
+  await tx7.wait();
+
+  const tx8 = await skyhuntersAcContract.setAgentsContract(agentsAddress);
+  await tx8.wait();
+
+  // await skyhuntersAgentContract.createAgent(
+  //   ["0x07ee9af365a7013ee7dc2f556f5d64cb1a51bd08"],
+  //   ["0x26e3f8d2065a9bfdddffba7fddea0d7eb0ecff6f"],
+  //   "ipfs://QmVZhDFGHFQWnx1P7uonTvGwDmX6fVUZF5mww6VMJrRXpx"
   // );
 
-  // const tx5 = await acContract.setTokenDetails(
-  //   "0xeee5a340Cdc9c179Db25dea45AcfD5FE8d4d3eB8",
-  //   "1000000000000000000000",
-  //   "1000000000000000000000",
-  //   "1300000000000000000000",
-  //   "1000000000000000000000",
-  //   14,
-  //   "40000000000000000000"
+  // await agentsContract.setCollectionManager(
+  //   "0x575da586767F54DC9ba7E08024844ce72480e234"
   // );
-
-  // await tx5.wait();
-
-  await cmContract.setMarket("0x703A1F27c2ae703044F2896435b9e340bEaa95dF");
-  await agentsContract.setMarket("0x703A1F27c2ae703044F2896435b9e340bEaa95dF");
-  await fmContract.setMarket("0x703A1F27c2ae703044F2896435b9e340bEaa95dF");
-  await nftContract.setMarket("0x703A1F27c2ae703044F2896435b9e340bEaa95dF");
-
-  await skyhuntersAcContract.setAgentsContract("0x77c64743E42A99FA0c916C12Ab17B85c8c8458c7");
+  // await marketContract.setCollectionManager(
+  //   "0x575da586767F54DC9ba7E08024844ce72480e234"
+  // );
 })();

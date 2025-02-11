@@ -1,15 +1,9 @@
 use crate::utils::{
-    constants::INFURA_GATEWAY,
     ipfs::upload_lens_storage,
     lens::{feed_info, follow_profiles, make_comment, make_publication, make_quote, search_posts},
-    models::{
-        call_comment_completion_claude, call_comment_completion_openai,
-        call_feed_completion_claude, call_feed_completion_openai, call_quote_completion_claude,
-        call_quote_completion_openai, receive_query_claude, receive_query_openai,
-    },
     types::{Collection, Content, Image, Publication, SavedTokens, TripleAAgent},
+    venice::{call_comment_completion, call_feed_completion, call_quote_completion, receive_query},
 };
-use base64::{engine::general_purpose, Engine as _};
 use futures::future::join_all;
 use serde_json::{to_string, Value};
 use std::{error::Error, io};
@@ -21,21 +15,7 @@ pub async fn lead_generation(
     tokens: Option<SavedTokens>,
     collection_instructions: &str,
 ) -> Result<(), Box<dyn Error + Send + Sync>> {
-    match if agent.model == "Claude" {
-        receive_query_claude(
-            &collection.description,
-            &collection.title,
-            &collection.image,
-        )
-        .await
-    } else {
-        receive_query_openai(
-            &collection.description,
-            &collection.title,
-            &collection.image,
-        )
-        .await
-    } {
+    match receive_query(&collection.description, &collection.title, &agent.model).await {
         Ok(query) => match search_posts(&agent.wallet, &query).await {
             Ok((posts, profiles)) => {
                 let _ = follow_profiles(
@@ -110,8 +90,6 @@ async fn make_comments(
 ) -> Result<(), Box<dyn Error + Send + Sync>> {
     let comment_futures = posts.into_iter().map(|post| async move {
         let mut content = String::new();
-        let mut attachment_type = String::new();
-        let mut item = String::new();
 
         if let Some(metadata) = post["metadata"].as_object() {
             content = metadata
@@ -119,59 +97,17 @@ async fn make_comments(
                 .and_then(|v| v.as_str())
                 .unwrap_or_default()
                 .to_string();
-
-            if let Some(attachments) = metadata.get("attachments").and_then(|a| a.as_array()) {
-                if let Some(attachment) = attachments.first() {
-                    match attachment.get("__typename").and_then(|t| t.as_str()) {
-                        Some("MediaImage") => {
-                            attachment_type = "MediaImage".to_string();
-                            item = attachment
-                                .get("item")
-                                .and_then(|v| v.as_str())
-                                .unwrap_or_default()
-                                .to_string();
-
-                            item = if item.starts_with("ipfs://") {
-                                let hash = item.trim_start_matches("ipfs://");
-                                format!("{}/ipfs/{}", INFURA_GATEWAY, hash)
-                            } else {
-                                item.to_string()
-                            };
-
-                            let response = reqwest::get(&item).await?;
-                            let image_bytes = response.bytes().await?;
-                            item = general_purpose::STANDARD.encode(&image_bytes)
-                        }
-
-                        _ => {
-                            attachment_type = "Unknown".to_string();
-                        }
-                    }
-                }
-            }
         }
 
-        match if model == "Claude" {
-            call_comment_completion_claude(
-                &content,
-                custom_instructions,
-                collection_instructions,
-                &collection.description,
-                &attachment_type,
-                &item,
-            )
-            .await
-        } else {
-            call_comment_completion_openai(
-                &content,
-                custom_instructions,
-                collection_instructions,
-                &collection.description,
-                &attachment_type,
-                &item,
-            )
-            .await
-        } {
+        match call_comment_completion(
+            &content,
+            custom_instructions,
+            collection_instructions,
+            &collection.description,
+            &model,
+        )
+        .await
+        {
             Ok((llm_response, image)) => {
                 match format_response(&llm_response, &collection, image).await {
                     Ok(content) => {
@@ -217,8 +153,6 @@ async fn make_quotes(
 ) -> Result<(), Box<dyn Error + Send + Sync>> {
     let quote_futures = posts.into_iter().map(|post| async move {
         let mut content = String::new();
-        let mut attachment_type = String::new();
-        let mut item = String::new();
 
         if let Some(metadata) = post["metadata"].as_object() {
             content = metadata
@@ -226,59 +160,17 @@ async fn make_quotes(
                 .and_then(|v| v.as_str())
                 .unwrap_or_default()
                 .to_string();
-
-            if let Some(attachments) = metadata.get("attachments").and_then(|a| a.as_array()) {
-                if let Some(attachment) = attachments.first() {
-                    match attachment.get("__typename").and_then(|t| t.as_str()) {
-                        Some("MediaImage") => {
-                            attachment_type = "MediaImage".to_string();
-                            item = attachment
-                                .get("item")
-                                .and_then(|v| v.as_str())
-                                .unwrap_or_default()
-                                .to_string();
-
-                            item = if item.starts_with("ipfs://") {
-                                let hash = item.trim_start_matches("ipfs://");
-                                format!("{}/ipfs/{}", INFURA_GATEWAY, hash)
-                            } else {
-                                item.to_string()
-                            };
-
-                            let response = reqwest::get(&item).await?;
-                            let image_bytes = response.bytes().await?;
-                            item = general_purpose::STANDARD.encode(&image_bytes)
-                        }
-
-                        _ => {
-                            attachment_type = "Unknown".to_string();
-                        }
-                    }
-                }
-            }
         }
 
-        match if model == "Claude" {
-            call_quote_completion_claude(
-                &content,
-                custom_instructions,
-                collection_instructions,
-                &collection.description,
-                &attachment_type,
-                &item,
-            )
-            .await
-        } else {
-            call_quote_completion_openai(
-                &content,
-                custom_instructions,
-                collection_instructions,
-                &collection.description,
-                &attachment_type,
-                &item,
-            )
-            .await
-        } {
+        match call_quote_completion(
+            &content,
+            custom_instructions,
+            collection_instructions,
+            &collection.description,
+            &model,
+        )
+        .await
+        {
             Ok((llm_response, image)) => {
                 match format_response(&llm_response, &collection, image).await {
                     Ok(content) => {
@@ -376,25 +268,16 @@ async fn feed_posts(
     let feed_futures = feeds.into_iter().map(|feed| async move {
         match feed_info(&feed).await {
             Ok((title, description)) => {
-                match if model == "Claude" {
-                    call_feed_completion_claude(
-                        &collection,
-                        custom_instructions,
-                        collection_instructions,
-                        &description,
-                        &title,
-                    )
-                    .await
-                } else {
-                    call_feed_completion_openai(
-                        &collection,
-                        custom_instructions,
-                        collection_instructions,
-                        &description,
-                        &title,
-                    )
-                    .await
-                } {
+                match call_feed_completion(
+                    &collection,
+                    custom_instructions,
+                    collection_instructions,
+                    &description,
+                    &title,
+                    &model,
+                )
+                .await
+                {
                     Ok(llm_response) => {
                         match format_response(&llm_response, &collection, true).await {
                             Ok(content) => {

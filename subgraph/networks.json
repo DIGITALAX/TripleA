@@ -1,22 +1,22 @@
 {
   "lens-testnet": {
     "TripleAAccessControls": {
-      "address": "0x852FcD7a7782d3609e61E0A5fDe9A3328D8c0303"
+      "address": "0x1b37B6FD3457b7FbB09308752e3ECCA4a7734839"
     },
     "TripleACollectionManager": {
-      "address": "0xf29244D172dc0e54deB100D4E180e6A643bc76f3"
+      "address": "0x575da586767F54DC9ba7E08024844ce72480e234"
     },
     "TripleAAgents": {
-      "address": "0x93f12014B6bE2121b451536B05bD5c8ae65D173E"
+      "address": "0xF880C84F7EF0E49039B87Dbd534aD88545FC2D29"
     },
     "TripleAMarket": {
-      "address": "0x703A1F27c2ae703044F2896435b9e340bEaa95dF"
+      "address": "0x704D2A8e6385CbD203990E0C92397908d96Fc6dA"
     },
     "SkyhuntersAgentManager": {
-      "address": "0x77c64743E42A99FA0c916C12Ab17B85c8c8458c7"
+      "address": "0x48d2347BBF723D4AeB9Cc2a7d4D25a958586e4Ce"
     },
     "TripleAFulfillerManager": {
-      "address": "0x58DAA5A71F900FFb727E9902A07Eb0835f4C03c1"
+      "address": "0x1b372DB79C03B8EA13F4d9115F7ee6207Bb22443"
     }
   }
 }

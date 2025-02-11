@@ -15,8 +15,6 @@ contract TripleACollectionManager {
     mapping(address => EnumerableSet.UintSet) private _dropIdsByArtist;
     mapping(uint256 => TripleALibrary.Collection) private _collections;
     mapping(uint256 => TripleALibrary.Drop) private _drops;
-    mapping(uint256 => mapping(uint256 => string))
-        private _agentCustomInstructions;
     mapping(uint256 => mapping(address => uint256)) private _collectionPrices;
 
     uint256 private _collectionCounter;
@@ -158,10 +156,6 @@ contract TripleACollectionManager {
         }
 
         for (uint8 i = 0; i < collectionInput.agentIds.length; i++) {
-            _agentCustomInstructions[_collectionCounter][
-                collectionInput.agentIds[i]
-            ] = collectionInput.customInstructions[i];
-
             agents.addWorker(
                 workers[i],
                 collectionInput.agentIds[i],
@@ -211,11 +205,6 @@ contract TripleACollectionManager {
             workers.length != customInstructions.length
         ) {
             revert TripleAErrors.BadUserInput();
-        }
-        for (uint8 i = 0; i < agentIds.length; i++) {
-            _agentCustomInstructions[collectionId][
-                agentIds[i]
-            ] = customInstructions[i];
         }
 
         for (uint8 i = 0; i < workers.length; i++) {
@@ -267,9 +256,10 @@ contract TripleACollectionManager {
         uint256 collectionId
     ) external onlyArtist(collectionId) {
         for (uint8 i = 0; i < _collections[collectionId].agentIds.length; i++) {
-            delete _agentCustomInstructions[collectionId][
-                _collections[collectionId].agentIds[i]
-            ];
+            agents.removeWorker(
+                _collections[collectionId].agentIds[i],
+                collectionId
+            );
         }
 
         if (_collections[collectionId].amountSold > 0) {
@@ -459,13 +449,6 @@ contract TripleACollectionManager {
         uint256 collectionId
     ) public view returns (bool) {
         return _collections[collectionId].agent;
-    }
-
-    function getAgentCollectionCustomInstructions(
-        uint256 collectionId,
-        uint256 agentId
-    ) public view returns (string memory) {
-        return _agentCustomInstructions[collectionId][agentId];
     }
 
     function setMarket(address _market) external onlyAdmin {

@@ -53,6 +53,7 @@ contract TripleALibrary {
     }
 
     struct CollectionWorker {
+        string instructions;
         uint256 publishFrequency;
         uint256 remixFrequency;
         uint256 leadFrequency;

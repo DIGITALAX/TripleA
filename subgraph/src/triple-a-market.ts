@@ -43,7 +43,7 @@ export function handleCollectionPurchased(
   entity.save();
 
   let collectionManager = TripleACollectionManager.bind(
-    Address.fromString("0xf29244D172dc0e54deB100D4E180e6A643bc76f3")
+    Address.fromString("0x575da586767F54DC9ba7E08024844ce72480e234")
   );
 
   let entityCollection = CollectionCreated.load(

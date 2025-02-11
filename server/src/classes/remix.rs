@@ -1,4 +1,4 @@
-use std::{env, error::Error, io, sync::Arc, time::Duration};
+use std::{env, error::Error, io, sync::Arc};
 
 use ethers::{
     contract::{ContractInstance, FunctionCall},
@@ -8,38 +8,164 @@ use ethers::{
     signers::Wallet,
     types::{Address, Eip1559TransactionRequest, NameOrAddress, H256, U256},
 };
+use rand::{thread_rng, Rng};
 use reqwest::Client;
 use serde_json::{json, to_string, Value};
+use uuid::Uuid;
 
 use crate::utils::{
-    constants::{BONSAI, COLLECTION_MANAGER, GRASS, LENS_CHAIN_ID, MONA, REMIX_FEED, TRIPLEA_URI},
-    ipfs::upload_ipfs,
-    lens::make_publication,
-    models::{
-        call_drop_details_claude, call_drop_details_openai, call_image_details_claude,
-        call_image_details_openai, call_prompt_claude, call_prompt_openai,
+    constants::{
+        BONSAI, COLLECTION_MANAGER, GRASS, LENS_CHAIN_ID, MONA, NEGATIVE_PROMPT, REMIX_FEED,
+        STYLE_PRESETS, TRIPLEA_URI, VENICE_API,
     },
-    types::{Collection, CollectionInput, CollectionWorker, TripleAAgent},
+    ipfs::{upload_image_to_ipfs, upload_ipfs, upload_lens_storage},
+    lens::make_publication,
+    types::{
+        Collection, CollectionInput, CollectionWorker, Content, Image, Publication, SavedTokens,
+        TripleAAgent,
+    },
+    venice::{call_drop_details, call_image_details, call_prompt},
 };
 
 pub async fn remix(
     agent: &TripleAAgent,
     collection: &Collection,
+    tokens: Option<SavedTokens>,
+    collection_manager_contract: Arc<
+        ContractInstance<
+            Arc<SignerMiddleware<Arc<Provider<Http>>, Wallet<SigningKey>>>,
+            SignerMiddleware<Arc<Provider<Http>>, Wallet<SigningKey>>,
+        >,
+    >,
 ) -> Result<(), Box<dyn Error + Send + Sync>> {
-    match if agent.model == "Claude" {
-        call_prompt_claude(&collection.image, &collection.description).await
-    } else {
-        call_prompt_openai(&collection.image, &collection.description).await
-    } {
-        Ok((image_prompt, model)) => {
-            call_comfy(
-                &image_prompt,
-                &collection.image,
-                &model,
-                collection.collection_id,
-                agent.id,
-            )
-            .await?
+    match call_prompt(&collection.description, &agent.model).await {
+        Ok((prompt, model)) => {
+            let venice_key =
+                env::var("VENICE_KEY").expect("VENICE_KEY no está configurada en .env");
+
+            let client = Client::new();
+
+            let payload_inicial = serde_json::json!({
+                "model": model,
+                "prompt": prompt,
+                "width": 1024,
+                "height": 1024,
+                "steps": 25,
+                "hide_watermark": true,
+                "return_binary": false,
+                "seed": "821280040973240",
+                "cfg_scale": 3.5,
+                "style_preset": STYLE_PRESETS[thread_rng().gen_range(0..3)],
+                "negative_prompt": NEGATIVE_PROMPT,
+                "safe_mode": false
+            });
+
+            let response = client
+                .post(format!("{}image/generate", VENICE_API))
+                .header("Content-Type", "application/json")
+                .header("Authorization", format!("Bearer {}", venice_key))
+                .json(&payload_inicial)
+                .send()
+                .await?;
+
+            if response.status() == 200 {
+                let json: Value = response.json().await?;
+                let images = json
+                    .get("images")
+                    .and_then(|v| v.as_array())
+                    .cloned()
+                    .unwrap_or_else(Vec::new);
+                let image = images
+                    .first()
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("")
+                    .to_string();
+
+                match call_image_details().await {
+                    Ok((title, description, amount, prices)) => {
+                        match upload_image_to_ipfs(&image).await {
+                            Ok(ipfs) => {
+                                let _ = mint_collection(
+                                    &description,
+                                    &format!("ipfs://{}", ipfs.Hash),
+                                    &title,
+                                    amount,
+                                    collection_manager_contract,
+                                    prices,
+                                    &agent,
+                                    collection.collection_id,
+                                )
+                                .await;
+
+                                let focus = String::from("IMAGE");
+                                let schema = "https://json-schemas.lens.dev/posts/image/3.0.0.json"
+                                    .to_string();
+                                let tags = vec![
+                                    "tripleA".to_string(),
+                                    title.replace(" ", "").to_lowercase(),
+                                ];
+
+                                let publication = Publication {
+                                    schema,
+                                    lens: Content {
+                                        mainContentFocus: focus,
+                                        title,
+                                        content: description,
+                                        id: Uuid::new_v4().to_string(),
+                                        locale: "en".to_string(),
+                                        tags,
+                                        image: Some(Image {
+                                            tipo: "image/png".to_string(),
+                                            item: format!("ipfs://{}", ipfs.Hash),
+                                        }),
+                                    },
+                                };
+
+                                let publication_json = to_string(&publication)?;
+
+                                let content = match upload_lens_storage(publication_json).await {
+                                    Ok(con) => con,
+                                    Err(e) => {
+                                        eprintln!("Error uploading content to Lens Storage: {}", e);
+                                        return Err(Box::new(io::Error::new(
+                                            io::ErrorKind::Other,
+                                            format!(
+                                                "Error uploading content to Lens Storage: {}",
+                                                e
+                                            ),
+                                        )));
+                                    }
+                                };
+
+                                let _ = make_publication(
+                                    &content,
+                                    agent.id,
+                                    &tokens.as_ref().unwrap().tokens.access_token,
+                                    Some(REMIX_FEED.to_string()),
+                                )
+                                .await;
+                            }
+                            Err(err) => {
+                                return Err(Box::new(std::io::Error::new(
+                                    std::io::ErrorKind::Other,
+                                    format!("Error in uploading image to IPFS {:?}", err),
+                                )));
+                            }
+                        }
+                    }
+                    Err(err) => {
+                        return Err(Box::new(std::io::Error::new(
+                            std::io::ErrorKind::Other,
+                            format!("Error with creating remix {:?}", err),
+                        )));
+                    }
+                }
+            } else {
+                return Err(Box::new(std::io::Error::new(
+                    std::io::ErrorKind::Other,
+                    format!("Error in sending to Venice {:?}", response.status()),
+                )));
+            }
         }
         Err(err) => {
             eprintln!("Error with image prompt: {}", err)
@@ -62,17 +188,9 @@ async fn mint_collection(
     >,
     prices: Vec<U256>,
     agent: &TripleAAgent,
-    remix_collection_id: &str,
+    remix_collection_id: U256,
 ) -> Result<(), Box<dyn Error + Send + Sync>> {
-    match get_drop_details(
-        remix_collection_id,
-        description,
-        agent.id,
-        &agent.model,
-        image,
-    )
-    .await
-    {
+    match get_drop_details(remix_collection_id, description, agent.id, image).await {
         Ok((drop_metadata, drop_id)) => {
             match upload_ipfs(to_string(&json!({
                 "title": title,
@@ -91,7 +209,6 @@ async fn mint_collection(
                         "create",
                         (
                             CollectionInput {
-                                customInstructions: vec![agent.custom_instructions.to_string()],
                                 tokens: vec![
                                     MONA.to_string(),
                                     GRASS.to_string(),
@@ -106,6 +223,7 @@ async fn mint_collection(
                                 remix: true,
                             },
                             vec![CollectionWorker {
+                                instructions: agent.custom_instructions.to_string(),
                                 publish: true,
                                 publishFrequency: U256::from(1),
                                 remix: false,
@@ -199,107 +317,10 @@ async fn mint_collection(
     }
 }
 
-async fn call_comfy(
-    prompt: &str,
-    init_image: &str,
-    model: &str,
-    remix_id: U256,
-    agent_id: u32,
-) -> Result<(), Box<dyn Error + Send + Sync>> {
-    let comfy_key = env::var("COMFY_KEY").expect("COMFY_KEY no está configurada en .env");
-
-    let cliente = Client::builder()
-        .danger_accept_invalid_certs(true)
-        .danger_accept_invalid_hostnames(true)
-        .timeout(Duration::from_secs(10000))
-        .connect_timeout(Duration::from_secs(10000))
-        .read_timeout(Duration::from_secs(10000))
-        .pool_idle_timeout(Duration::from_secs(10000))
-        .pool_max_idle_per_host(10000)
-        .use_rustls_tls()
-        .no_gzip()
-        .no_brotli()
-        .no_deflate()
-        .no_proxy()
-        .build()?;
-    let payload_inicial = serde_json::json!({
-        "api_key": comfy_key,
-        "init_image": init_image.trim(),
-        "prompt": prompt,
-        "model": model,
-        "remix_id": remix_id,
-        "agent_id": agent_id
-    });
-
-    let res_inicial = cliente
-        .post("https://glorious-eft-deeply.ngrok-free.app/run_comfy")
-        .header("Content-Type", "application/json; charset=UTF-8")
-        .json(&payload_inicial)
-        .send()
-        .await?;
-
-    if res_inicial.status() == 200 {
-        println!("Successfully sent to Comfy queue");
-        Ok(())
-    } else {
-        return Err(Box::new(std::io::Error::new(
-            std::io::ErrorKind::Other,
-            format!("Error in sending to Comfy {:?}", res_inicial.status()),
-        )));
-    }
-}
-
-pub async fn receive_comfy(
-    image: &str,
-    remix_collection_id: &str,
-    agent: &TripleAAgent,
-    collection_manager_contract: Arc<
-        ContractInstance<
-            Arc<SignerMiddleware<Arc<Provider<Http>>, Wallet<SigningKey>>>,
-            SignerMiddleware<Arc<Provider<Http>>, Wallet<SigningKey>>,
-        >,
-    >,
-    auth_tokens: &str,
-) -> Result<(), Box<dyn Error + Send + Sync>> {
-    match if agent.model == "Claude" {
-        call_image_details_claude(&image).await
-    } else {
-        call_image_details_openai(&image).await
-    } {
-        Ok((title, description, amount, prices)) => {
-            let _ = mint_collection(
-                &description,
-                &image,
-                &title,
-                amount,
-                collection_manager_contract,
-                prices,
-                &agent,
-                remix_collection_id,
-            )
-            .await;
-
-            let _ = make_publication(
-                &description,
-                agent.id,
-                &auth_tokens,
-                Some(REMIX_FEED.to_string()),
-            )
-            .await;
-        }
-        Err(err) => {
-            eprintln!("Error with creating remix: {}", err)
-        }
-    }
-
-    Ok(())
-}
-
 async fn get_drop_details(
-    remix_collection_id: &str,
+    remix_collection_id: U256,
     remix_collection_description: &str,
     agent_id: u32,
-    model: &str,
     image: &str,
 ) -> Result<(String, U256), Box<dyn Error + Send + Sync>> {
     let mut drop_metadata = String::from("");
@@ -342,11 +363,7 @@ async fn get_drop_details(
                 let id: u32 = value.parse().expect("Error converting drop value to u32");
                 drop_id = U256::from(id);
             } else {
-                match if model == "Claude" {
-                    call_drop_details_claude(&remix_collection_description, image).await
-                } else {
-                    call_drop_details_openai(&remix_collection_description, image).await
-                } {
+                match call_drop_details(&remix_collection_description).await {
                     Ok((title, description)) => {
                         match upload_ipfs(to_string(&json!({
                             "title": title,
