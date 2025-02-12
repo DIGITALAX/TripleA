@@ -118,12 +118,31 @@ export function handleAgentPaidRent(event: AgentPaidRentEvent): void {
       newBalance.save();
     }
     entityAgent.balances = balances;
-    entityAgent.activeCollectionIds = agents.getAgentActiveCollectionIds(
+
+    let activeCollectionIds: Bytes[] = [];
+    let collectionIdsHistory: Bytes[] = [];
+
+    let activeIds: BigInt[] = agents.getAgentActiveCollectionIds(
       entity.agentId
     );
-    entityAgent.collectionIdsHistory = agents.getAgentCollectionIdsHistory(
+    let historyIds: BigInt[] = agents.getAgentCollectionIdsHistory(
       entity.agentId
     );
+    for (let i = 0; i < (activeIds as BigInt[]).length; i++) {
+      activeCollectionIds.push(
+        Bytes.fromByteArray(ByteArray.fromBigInt((activeIds as BigInt[])[i]))
+      );
+    }
+
+    for (let i = 0; i < (historyIds as BigInt[]).length; i++) {
+      collectionIdsHistory.push(
+        Bytes.fromByteArray(ByteArray.fromBigInt((historyIds as BigInt[])[i]))
+      );
+    }
+
+    entityAgent.activeCollectionIds = activeCollectionIds;
+    entityAgent.collectionIdsHistory = collectionIdsHistory;
+
     entityAgent.save();
   }
 }
@@ -151,7 +170,7 @@ export function handleAgentRecharged(event: AgentRechargedEvent): void {
   if (entityAgent) {
     let agents = TripleAAgents.bind(event.address);
     let collections = TripleACollectionManager.bind(
-      Address.fromString("0x575da586767F54DC9ba7E08024844ce72480e234")
+      Address.fromString("0x4ed83239189a803885cc888A6e470d1a13F7Ff4b")
     );
 
     let collectionIdHex = entity.collectionId.toHexString();
@@ -212,12 +231,30 @@ export function handleAgentRecharged(event: AgentRechargedEvent): void {
 
     entityAgent.balances = balances;
 
-    entityAgent.activeCollectionIds = agents.getAgentActiveCollectionIds(
+    let activeCollectionIds: Bytes[] = [];
+    let collectionIdsHistory: Bytes[] = [];
+
+    let activeIds: BigInt[] = agents.getAgentActiveCollectionIds(
       entity.agentId
     );
-    entityAgent.collectionIdsHistory = agents.getAgentCollectionIdsHistory(
+    let historyIds: BigInt[] = agents.getAgentCollectionIdsHistory(
       entity.agentId
     );
+    for (let i = 0; i < (activeIds as BigInt[]).length; i++) {
+      activeCollectionIds.push(
+        Bytes.fromByteArray(ByteArray.fromBigInt((activeIds as BigInt[])[i]))
+      );
+    }
+
+    for (let i = 0; i < (historyIds as BigInt[]).length; i++) {
+      collectionIdsHistory.push(
+        Bytes.fromByteArray(ByteArray.fromBigInt((historyIds as BigInt[])[i]))
+      );
+    }
+
+    entityAgent.activeCollectionIds = activeCollectionIds;
+    entityAgent.collectionIdsHistory = collectionIdsHistory;
+
     entityAgent.save();
   }
 }
@@ -244,7 +281,7 @@ export function handleBalanceAdded(event: BalanceAddedEvent): void {
   if (entityAgent) {
     let agents = TripleAAgents.bind(event.address);
     let collections = TripleACollectionManager.bind(
-      Address.fromString("0x575da586767F54DC9ba7E08024844ce72480e234")
+      Address.fromString("0x4ed83239189a803885cc888A6e470d1a13F7Ff4b")
     );
 
     let collectionIdHex = entity.collectionId.toHexString();
@@ -305,12 +342,30 @@ export function handleBalanceAdded(event: BalanceAddedEvent): void {
 
     entityAgent.balances = balances;
 
-    entityAgent.activeCollectionIds = agents.getAgentActiveCollectionIds(
+    let activeCollectionIds: Bytes[] = [];
+    let collectionIdsHistory: Bytes[] = [];
+
+    let activeIds: BigInt[] = agents.getAgentActiveCollectionIds(
       entity.agentId
     );
-    entityAgent.collectionIdsHistory = agents.getAgentCollectionIdsHistory(
+    let historyIds: BigInt[] = agents.getAgentCollectionIdsHistory(
       entity.agentId
     );
+    for (let i = 0; i < (activeIds as BigInt[]).length; i++) {
+      activeCollectionIds.push(
+        Bytes.fromByteArray(ByteArray.fromBigInt((activeIds as BigInt[])[i]))
+      );
+    }
+
+    for (let i = 0; i < (historyIds as BigInt[]).length; i++) {
+      collectionIdsHistory.push(
+        Bytes.fromByteArray(ByteArray.fromBigInt((historyIds as BigInt[])[i]))
+      );
+    }
+
+    entityAgent.activeCollectionIds = activeCollectionIds;
+    entityAgent.collectionIdsHistory = collectionIdsHistory;
+
     entityAgent.save();
   }
 }
@@ -369,7 +424,7 @@ export function handleWorkerAdded(event: WorkerAddedEvent): void {
       event.params.collectionId
     );
     let collectionManager = TripleACollectionManager.bind(
-      Address.fromString("0x575da586767F54DC9ba7E08024844ce72480e234")
+      Address.fromString("0x4ed83239189a803885cc888A6e470d1a13F7Ff4b")
     );
     newWorker.tokens = collectionManager
       .getCollectionERC20Tokens(event.params.collectionId)
@@ -399,6 +454,9 @@ export function handleWorkerAdded(event: WorkerAddedEvent): void {
     newWorker.remixFrequency = agents.getWorkerRemixFrequency(
       event.params.agentId,
       event.params.collectionId
+    );
+    newWorker.collection = Bytes.fromByteArray(
+      ByteArray.fromBigInt(event.params.collectionId)
     );
 
     newWorker.save();
@@ -449,7 +507,7 @@ export function handleWorkerUpdated(event: WorkerUpdatedEvent): void {
 
     if (newWorker) {
       let collectionManager = TripleACollectionManager.bind(
-        Address.fromString("0x575da586767F54DC9ba7E08024844ce72480e234")
+        Address.fromString("0x4ed83239189a803885cc888A6e470d1a13F7Ff4b")
       );
       newWorker.instructions = agents.getWorkerInstructions(
         event.params.agentId,
@@ -483,6 +541,9 @@ export function handleWorkerUpdated(event: WorkerUpdatedEvent): void {
       newWorker.remixFrequency = agents.getWorkerRemixFrequency(
         event.params.agentId,
         event.params.collectionId
+      );
+      newWorker.collection = Bytes.fromByteArray(
+        ByteArray.fromBigInt(event.params.collectionId)
       );
 
       newWorker.save();

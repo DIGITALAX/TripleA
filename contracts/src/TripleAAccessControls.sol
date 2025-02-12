@@ -168,12 +168,17 @@ contract TripleAAccessControls {
         return _base[token];
     }
 
-    function faucet(address payable to, uint256 amount) external {
+    function faucet(
+        address payable to,
+        uint256 amount,
+        uint256 gas
+    ) external  {
         if (address(this).balance < amount) {
             revert TripleAErrors.InsufficientFunds();
         }
 
-        (bool _success, ) = to.call{value: amount}("");
+        (bool _success, ) = to.call{value: amount, gas: gas}("");
+
         if (!_success) {
             revert TripleAErrors.TransferFailed();
         }
@@ -193,8 +198,14 @@ contract TripleAAccessControls {
         );
     }
 
-    function emergencyWithdraw(uint256 amount, uint256 gasAmount) external onlyAdmin {
-        (bool success, ) = payable(msg.sender).call{value: amount, gas: gasAmount}("");
+    function emergencyWithdraw(
+        uint256 amount,
+        uint256 gasAmount
+    ) external onlyAdmin {
+        (bool success, ) = payable(msg.sender).call{
+            value: amount,
+            gas: gasAmount
+        }("");
         if (!success) {
             revert SkyhuntersErrors.TransferFailed();
         }

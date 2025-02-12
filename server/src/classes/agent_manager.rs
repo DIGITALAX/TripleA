@@ -203,10 +203,16 @@ impl AgentManager {
 
         let _ = self.get_faucet_grass().await;
 
+        println!("Queue {:?}", &self.current_queue);
+
         for collection in &self.current_queue {
+            println!("Collection {:?}", &collection.collection_id);
+
             for price in &collection.collection.prices {
+                println!("Price {:?}", &price);
+
                 let method = self.agents_contract.method::<_, U256>(
-                    "getAgentActiveBalance",
+                    "getAgentRentBalance",
                     (
                         H160::from_str(&price.token).unwrap(),
                         self.agent.id,
@@ -364,19 +370,6 @@ impl AgentManager {
                      rentBalance
                      bonusBalance
                      collectionId
-                     collection {
-                        artist
-                        collectionId
-                        metadata {
-                            description
-                            title
-                            image
-                        }
-                        prices {
-                            price
-                            token
-                        }  
-                      }
                     }
                     workers {
                         publish
@@ -386,6 +379,19 @@ impl AgentManager {
                         publishFrequency
                         leadFrequency
                         collectionId
+                        collection {
+                            artist
+                            collectionId
+                            metadata {
+                                description
+                                title
+                                image
+                            }
+                            prices {
+                                price
+                                token
+                            }  
+                        }
                     }
                 }
             }
@@ -455,7 +461,8 @@ impl AgentManager {
                                 rent_balance: U256::zero(),
                                 bonus_balance: U256::zero(),
                             };
-                            let balance = balances.get(&collection_id).unwrap_or(&default_balance);
+                            let balance: &Balance =
+                                balances.get(&collection_id).unwrap_or(&default_balance);
 
                             activities.push(AgentActivity {
                                 collection: Collection {
@@ -519,6 +526,7 @@ impl AgentManager {
                             });
                         }
                     }
+
 
                     Ok(activities)
                 }

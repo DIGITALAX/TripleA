@@ -2,7 +2,7 @@ use crate::utils::{
     ipfs::upload_lens_storage,
     lens::{feed_info, follow_profiles, make_comment, make_publication, make_quote, search_posts},
     types::{Collection, Content, Image, Publication, SavedTokens, TripleAAgent},
-    venice::{call_comment_completion, call_feed_completion, call_quote_completion, receive_query},
+    venice::{call_comment_completion, call_feed_completion, receive_query},
 };
 use futures::future::join_all;
 use serde_json::{to_string, Value};
@@ -162,7 +162,7 @@ async fn make_quotes(
                 .to_string();
         }
 
-        match call_quote_completion(
+        match call_comment_completion(
             &content,
             custom_instructions,
             collection_instructions,

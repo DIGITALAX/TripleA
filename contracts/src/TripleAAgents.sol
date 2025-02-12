@@ -9,8 +9,8 @@ import "./TripleAMarket.sol";
 import "./skyhunters/SkyhuntersAgentManager.sol";
 import "./skyhunters/SkyhuntersAccessControls.sol";
 import "./skyhunters/SkyhuntersPoolManager.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
+import "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
+import "openzeppelin-contracts/contracts/utils/structs/EnumerableSet.sol";
 
 contract TripleAAgents {
     using EnumerableSet for EnumerableSet.UintSet;
@@ -18,7 +18,6 @@ contract TripleAAgents {
     uint256 public ownerAmountPercent;
     uint256 public distributionAmountPercent;
     uint256 public devAmountPercent;
-    address public agentActivityPool;
     TripleAAccessControls public accessControls;
     TripleAMarket public market;
     SkyhuntersAccessControls public skyhuntersAccessControls;
@@ -72,6 +71,7 @@ contract TripleAAgents {
     event WorkerAdded(uint256 agentId, uint256 collectionId);
     event WorkerUpdated(uint256 agentId, uint256 collectionId);
     event WorkerRemoved(uint256 agentId, uint256 collectionId);
+    event ServicesWithdrawn(address token, uint256 amount);
 
     modifier onlyAdmin() {
         if (!accessControls.isAdmin(msg.sender)) {
@@ -115,7 +115,7 @@ contract TripleAAgents {
     constructor(
         address payable _accessControls,
         address _collectionManager,
-        address _skyhuntersAccessControls
+        address payable _skyhuntersAccessControls
     ) payable {
         accessControls = TripleAAccessControls(_accessControls);
         collectionManager = TripleACollectionManager(_collectionManager);
@@ -160,11 +160,24 @@ contract TripleAAgents {
         emit WorkerUpdated(agentId, collectionId);
     }
 
-     function removeWorker(
+    function removeWorker(
         uint256 agentId,
         uint256 collectionId
     ) external onlyCollectionManager {
-   
+        address[] memory _tokens = skyhuntersAccessControls.getAcceptedTokens();
+
+        for (uint8 i = 0; i < _tokens.length; i++) {
+            if (_agentRentBalances[agentId][_tokens[i]][collectionId] > 0) {
+                _services[_tokens[i]] += (_agentRentBalances[agentId][
+                    _tokens[i]
+                ][collectionId] +
+                    _agentBonusBalances[agentId][_tokens[i]][collectionId]);
+
+                _agentRentBalances[agentId][_tokens[i]][collectionId] = 0;
+                _agentBonusBalances[agentId][_tokens[i]][collectionId] = 0;
+            }
+        }
+
         delete _workers[agentId][collectionId];
 
         emit WorkerRemoved(agentId, collectionId);
@@ -374,10 +387,15 @@ contract TripleAAgents {
             revert TripleAErrors.TokenNotAccepted();
         }
 
-        if (!IERC20(token).transfer(address(poolManager), amount)) {
+        if (
+            !IERC20(token).transferFrom(
+                msg.sender,
+                address(poolManager),
+                amount
+            )
+        ) {
             revert TripleAErrors.PaymentFailed();
         } else {
-            poolManager.receiveRewards(token, amount);
             _agentRentBalances[agentId][token][collectionId] += amount;
             _agentHistoricalRentBalances[agentId][token][
                 collectionId
@@ -409,6 +427,20 @@ contract TripleAAgents {
                 amount
             );
         }
+    }
+
+    function withdrawServices(address token) public onlyAdmin {
+        uint256 _amount = _services[token];
+        if (IERC20(token).balanceOf(address(this)) > 0) {
+            if (_services[token] < IERC20(token).balanceOf(address(this))) {
+                _amount = IERC20(token).balanceOf(address(this));
+            }
+
+            IERC20(token).transfer(msg.sender, _amount);
+        }
+
+        _services[token] = 0;
+        emit ServicesWithdrawn(token, _amount);
     }
 
     function getAgentRentBalance(
@@ -553,7 +585,7 @@ contract TripleAAgents {
     }
 
     function setSkyhuntersAccessControls(
-        address _skyhuntersAccessControls
+        address payable _skyhuntersAccessControls
     ) external onlyAdmin {
         skyhuntersAccessControls = SkyhuntersAccessControls(
             _skyhuntersAccessControls
@@ -576,19 +608,15 @@ contract TripleAAgents {
         poolManager = SkyhuntersPoolManager(_poolManager);
     }
 
-    function setSkyhuntersAgentActivityPool(
-        address payable _agentActivityPool
-    ) external onlyAdmin {
-        agentActivityPool = _agentActivityPool;
-    }
-
     function setAmounts(
         uint256 _ownerAmountPercent,
         uint256 _distributionAmountPercent,
         uint256 _devAmountPercent
     ) external onlyAdmin {
         if (
-            ownerAmountPercent + distributionAmountPercent + devAmountPercent !=
+            _ownerAmountPercent +
+                _distributionAmountPercent +
+                _devAmountPercent !=
             100
         ) {
             revert TripleAErrors.BadUserInput();

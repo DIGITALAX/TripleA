@@ -5,8 +5,8 @@ import "./TripleAErrors.sol";
 import "./TripleAAccessControls.sol";
 import "./TripleALibrary.sol";
 import "./TripleAMarket.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
+import "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
+import "openzeppelin-contracts/contracts/utils/structs/EnumerableSet.sol";
 
 contract TripleAFulfillerManager {
     using EnumerableSet for EnumerableSet.UintSet;

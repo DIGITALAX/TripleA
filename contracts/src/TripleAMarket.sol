@@ -7,7 +7,7 @@ import "./TripleAAccessControls.sol";
 import "./TripleACollectionManager.sol";
 import "./TripleAAgents.sol";
 import "./TripleAFulfillerManager.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 
 contract TripleAMarket {
     uint256 private _orderCounter;

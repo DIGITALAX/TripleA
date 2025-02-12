@@ -82,6 +82,11 @@ export function handleAgentMetadata(content: Bytes): void {
       metadata.style = style.toString();
     }
 
+    let model = value.get("model");
+    if (model && model.kind === JSONValueKind.STRING) {
+      metadata.model = model.toString();
+    }
+
     let knowledge = value.get("knowledge");
     if (knowledge && knowledge.kind === JSONValueKind.STRING) {
       metadata.knowledge = knowledge.toString();

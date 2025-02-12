@@ -88,7 +88,7 @@ export function handleCollectionCreated(event: CollectionCreatedEvent): void {
 
   let collectionManager = TripleACollectionManager.bind(event.address);
   let agents = TripleAAgents.bind(
-    Address.fromString("0xF880C84F7EF0E49039B87Dbd534aD88545FC2D29")
+    Address.fromString("0x155198Ea8c654D611eCf611fF817076838184506")
   );
 
   entity.amount = collectionManager.getCollectionAmount(entity.collectionId);
@@ -98,12 +98,14 @@ export function handleCollectionCreated(event: CollectionCreatedEvent): void {
 
   let customInstructions: string[] = [];
   for (let i = 0; i < (entity.agentIds as BigInt[]).length; i++) {
-    customInstructions.push(
-      agents.getWorkerInstructions(
-        (entity.agentIds as BigInt[])[i],
-        event.params.collectionId
-      )
+    let instructions = agents.try_getWorkerInstructions(
+      (entity.agentIds as BigInt[])[i],
+      event.params.collectionId
     );
+
+    if (!instructions.reverted) {
+      customInstructions.push(instructions.value);
+    }
   }
   entity.active = true;
   entity.uri = collectionManager.getCollectionMetadata(entity.collectionId);

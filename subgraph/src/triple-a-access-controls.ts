@@ -1,3 +1,4 @@
+import { ByteArray, Bytes, store } from "@graphprotocol/graph-ts"
 import {
   AdminAdded as AdminAddedEvent,
   AdminRemoved as AdminRemovedEvent,
@@ -84,35 +85,52 @@ export function handleFulfillerRemoved(event: FulfillerRemovedEvent): void {
 }
 
 export function handleTokenDetailsRemoved(
-  event: TokenDetailsRemovedEvent,
+  event: TokenDetailsRemovedEvent
 ): void {
   let entity = new TokenDetailsRemoved(
-    event.transaction.hash.concatI32(event.logIndex.toI32()),
-  )
-  entity.token = event.params.token
+    event.transaction.hash.concatI32(event.logIndex.toI32())
+  );
+  entity.token = event.params.token;
 
-  entity.blockNumber = event.block.number
-  entity.blockTimestamp = event.block.timestamp
-  entity.transactionHash = event.transaction.hash
+  entity.blockNumber = event.block.number;
+  entity.blockTimestamp = event.block.timestamp;
+  entity.transactionHash = event.transaction.hash;
 
-  entity.save()
+  entity.save();
+
+  let tokenEntity = new TokenDetailsSet(
+    Bytes.fromByteArray(
+      ByteArray.fromHexString(event.params.token.toHexString())
+    )
+  );
+
+  if (tokenEntity) {
+    store.remove(
+      "TokenDetailsRemoved",
+      Bytes.fromByteArray(
+        ByteArray.fromHexString(event.params.token.toHexString())
+      ).toHexString()
+    );
+  }
 }
 
 export function handleTokenDetailsSet(event: TokenDetailsSetEvent): void {
   let entity = new TokenDetailsSet(
-    event.transaction.hash.concatI32(event.logIndex.toI32()),
-  )
-  entity.token = event.params.token
-  entity.threshold = event.params.threshold
-  entity.rentLead = event.params.rentLead
-  entity.rentRemix = event.params.rentRemix
-  entity.rentPublish = event.params.rentPublish
-  entity.vig = event.params.vig
-  entity.base = event.params.base
+    Bytes.fromByteArray(
+      ByteArray.fromHexString(event.params.token.toHexString())
+    )
+  );
+  entity.token = event.params.token;
+  entity.threshold = event.params.threshold;
+  entity.rentLead = event.params.rentLead;
+  entity.rentRemix = event.params.rentRemix;
+  entity.rentPublish = event.params.rentPublish;
+  entity.vig = event.params.vig;
+  entity.base = event.params.base;
 
-  entity.blockNumber = event.block.number
-  entity.blockTimestamp = event.block.timestamp
-  entity.transactionHash = event.transaction.hash
+  entity.blockNumber = event.block.number;
+  entity.blockTimestamp = event.block.timestamp;
+  entity.transactionHash = event.transaction.hash;
 
-  entity.save()
+  entity.save();
 }

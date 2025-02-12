@@ -2,7 +2,7 @@
 pragma solidity ^0.8.24;
 
 import "./SkyhuntersErrors.sol";
-import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
+import "openzeppelin-contracts/contracts/utils/structs/EnumerableSet.sol";
 
 contract SkyhuntersAccessControls {
     using EnumerableSet for EnumerableSet.AddressSet;
@@ -11,6 +11,7 @@ contract SkyhuntersAccessControls {
     string public name;
     EnumerableSet.AddressSet private _verifiedContractsList;
     EnumerableSet.AddressSet private _verifiedPoolsList;
+    EnumerableSet.AddressSet private _acceptedTokensList;
 
     mapping(address => bool) private _admins;
     mapping(address => bool) private _verifiedContracts;
@@ -50,7 +51,7 @@ contract SkyhuntersAccessControls {
     event AcceptedTokenSet(address token);
     event AcceptedTokenRemoved(address token);
 
-    constructor() {
+    constructor() payable {
         _admins[msg.sender] = true;
         name = "SkyhuntersAccessControls";
         symbol = "SAC";
@@ -123,6 +124,8 @@ contract SkyhuntersAccessControls {
             revert SkyhuntersErrors.TokenAlreadyExists();
         }
 
+        _acceptedTokensList.add(token);
+
         _acceptedTokens[token] = true;
 
         emit AcceptedTokenSet(token);
@@ -132,6 +135,8 @@ contract SkyhuntersAccessControls {
         if (!_acceptedTokens[token]) {
             revert SkyhuntersErrors.TokenDoesntExist();
         }
+
+        _acceptedTokensList.remove(token);
 
         delete _acceptedTokens[token];
 
@@ -188,4 +193,25 @@ contract SkyhuntersAccessControls {
     function getVerifiedPools() public view returns (address[] memory) {
         return _verifiedPoolsList.values();
     }
+
+    function getAcceptedTokens() public view returns (address[] memory) {
+        return _acceptedTokensList.values();
+    }
+
+    function emergencyWithdraw(
+        uint256 amount,
+        uint256 gasAmount
+    ) external onlyAdmin {
+        (bool success, ) = payable(msg.sender).call{
+            value: amount,
+            gas: gasAmount
+        }("");
+        if (!success) {
+            revert SkyhuntersErrors.TransferFailed();
+        }
+    }
+
+    receive() external payable {}
+
+    fallback() external payable {}
 }

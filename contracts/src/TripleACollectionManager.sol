@@ -6,7 +6,7 @@ import "./TripleAErrors.sol";
 import "./TripleAAccessControls.sol";
 import "./TripleAAgents.sol";
 import "./skyhunters/SkyhuntersAccessControls.sol";
-import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
+import "openzeppelin-contracts/contracts/utils/structs/EnumerableSet.sol";
 
 contract TripleACollectionManager {
     using EnumerableSet for EnumerableSet.AddressSet;
@@ -92,8 +92,6 @@ contract TripleACollectionManager {
         }
 
         if (
-            collectionInput.agentIds.length !=
-            collectionInput.customInstructions.length ||
             collectionInput.agentIds.length != workers.length ||
             collectionInput.tokens.length != collectionInput.prices.length
         ) {
@@ -121,12 +119,9 @@ contract TripleACollectionManager {
             _dropCounter++;
             _dropValue = _dropCounter;
 
-            _drops[_dropValue] = TripleALibrary.Drop({
-                id: _dropValue,
-                artist: msg.sender,
-                collectionIds: new uint256[](0),
-                metadata: dropMetadata
-            });
+            _drops[_dropValue].id = _dropValue;
+            _drops[_dropValue].artist = msg.sender;
+            _drops[_dropValue].metadata = dropMetadata;
 
             _dropIdsByArtist[msg.sender].add(_dropValue);
             emit DropCreated(msg.sender, _dropValue);
@@ -172,7 +167,7 @@ contract TripleACollectionManager {
             );
         }
 
-        _drops[_dropValue].collectionIds.push(_collectionCounter);
+        _drops[_dropValue].collectionIds.add(_collectionCounter);
         emit CollectionCreated(msg.sender, _collectionCounter, _dropValue);
     }
 
@@ -255,6 +250,10 @@ contract TripleACollectionManager {
     function deleteCollection(
         uint256 collectionId
     ) external onlyArtist(collectionId) {
+        if (_collections[collectionId].amountSold > 0) {
+            revert TripleAErrors.CantDeleteSoldCollection();
+        }
+
         for (uint8 i = 0; i < _collections[collectionId].agentIds.length; i++) {
             agents.removeWorker(
                 _collections[collectionId].agentIds[i],
@@ -262,14 +261,9 @@ contract TripleACollectionManager {
             );
         }
 
-        if (_collections[collectionId].amountSold > 0) {
-            revert TripleAErrors.CantDeleteSoldCollection();
-        }
-
         uint256 _dropId = _collections[collectionId].dropId;
 
-        _dropIdsByArtist[_drops[_dropId].artist].remove(_dropId);
-        delete _drops[_dropId];
+        _drops[_dropId].collectionIds.remove(collectionId);
 
         for (
             uint8 i = 0;
@@ -291,7 +285,7 @@ contract TripleACollectionManager {
             revert TripleAErrors.NotArtist();
         }
 
-        uint256[] storage _collectionIds = _drops[dropId].collectionIds;
+        uint256[] memory _collectionIds = _drops[dropId].collectionIds.values();
         for (uint8 i = 0; i < _collectionIds.length; i++) {
             uint256 collectionId = _collectionIds[i];
             if (_collections[collectionId].amountSold > 0) {
@@ -338,7 +332,7 @@ contract TripleACollectionManager {
     function getDropCollectionIds(
         uint256 dropId
     ) public view returns (uint256[] memory) {
-        return _drops[dropId].collectionIds;
+        return _drops[dropId].collectionIds.values();
     }
 
     function getDropMetadata(

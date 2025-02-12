@@ -5,48 +5,10 @@ schema:
   file: ./schema.graphql
 dataSources:
   - kind: ethereum
-    name: TripleAAccessControls
-    network: lens-testnet
-    source:
-      address: "0x1b37B6FD3457b7FbB09308752e3ECCA4a7734839"
-      abi: TripleAAccessControls
-      startBlock: 103090
-    mapping:
-      kind: ethereum/events
-      apiVersion: 0.0.7
-      language: wasm/assemblyscript
-      entities:
-        - AdminAdded
-        - AdminRemoved
-        - FaucetUsed
-        - FulfillerAdded
-        - FulfillerRemoved
-        - TokenDetailsRemoved
-        - TokenDetailsSet
-      abis:
-        - name: TripleAAccessControls
-          file: ./abis/TripleAAccessControls.json
-      eventHandlers:
-        - event: AdminAdded(indexed address)
-          handler: handleAdminAdded
-        - event: AdminRemoved(indexed address)
-          handler: handleAdminRemoved
-        - event: FaucetUsed(address,uint256)
-          handler: handleFaucetUsed
-        - event: FulfillerAdded(indexed address)
-          handler: handleFulfillerAdded
-        - event: FulfillerRemoved(indexed address)
-          handler: handleFulfillerRemoved
-        - event: TokenDetailsRemoved(address)
-          handler: handleTokenDetailsRemoved
-        - event: TokenDetailsSet(address,uint256,uint256,uint256,uint256,uint256,uint256)
-          handler: handleTokenDetailsSet
-      file: ./src/triple-a-access-controls.ts
-  - kind: ethereum
     name: TripleACollectionManager
     network: lens-testnet
     source:
-      address: "0x575da586767F54DC9ba7E08024844ce72480e234"
+      address: "0x4ed83239189a803885cc888A6e470d1a13F7Ff4b"
       abi: TripleACollectionManager
       startBlock: 103090
     mapping:
@@ -92,7 +54,7 @@ dataSources:
     name: TripleAAgents
     network: lens-testnet
     source:
-      address: "0xF880C84F7EF0E49039B87Dbd534aD88545FC2D29"
+      address: "0x155198Ea8c654D611eCf611fF817076838184506"
       abi: TripleAAgents
       startBlock: 103090
     mapping:
@@ -132,7 +94,7 @@ dataSources:
     name: TripleAMarket
     network: lens-testnet
     source:
-      address: "0x704D2A8e6385CbD203990E0C92397908d96Fc6dA"
+      address: "0x58c292A06Abe5A7996C32921e3DB48f7909D5D1B"
       abi: TripleAMarket
       startBlock: 103090
     mapping:
@@ -157,7 +119,7 @@ dataSources:
     name: SkyhuntersAgentManager
     network: lens-testnet
     source:
-      address: "0x48d2347BBF723D4AeB9Cc2a7d4D25a958586e4Ce"
+      address: "0xd23fd2228D0D0dD442422c1704e4DB8abb5884d9"
       abi: SkyhuntersAgentManager
       startBlock: 103090
     mapping:
@@ -204,7 +166,7 @@ dataSources:
     name: TripleAFulfillerManager
     network: lens-testnet
     source:
-      address: "0x1b372DB79C03B8EA13F4d9115F7ee6207Bb22443"
+      address: "0x49a81387572072FC2af31E7D659034D22e34b7b3"
       abi: TripleAFulfillerManager
       startBlock: 103090
     mapping:
@@ -229,6 +191,44 @@ dataSources:
         - event: OrderFulfilled(uint256,uint256)
           handler: handleOrderFulfilled
       file: ./src/triple-a-fulfiller-manager.ts
+  - kind: ethereum
+    name: TripleAAccessControls
+    network: lens-testnet
+    source:
+      address: "0x0064d596558Ca3Dae49B7919AEe821330203C2A6"
+      abi: TripleAAccessControls
+      startBlock: 103090
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - AdminAdded
+        - AdminRemoved
+        - FaucetUsed
+        - FulfillerAdded
+        - FulfillerRemoved
+        - TokenDetailsRemoved
+        - TokenDetailsSet
+      abis:
+        - name: TripleAAccessControls
+          file: ./abis/TripleAAccessControls.json
+      eventHandlers:
+        - event: AdminAdded(indexed address)
+          handler: handleAdminAdded
+        - event: AdminRemoved(indexed address)
+          handler: handleAdminRemoved
+        - event: FaucetUsed(address,uint256)
+          handler: handleFaucetUsed
+        - event: FulfillerAdded(indexed address)
+          handler: handleFulfillerAdded
+        - event: FulfillerRemoved(indexed address)
+          handler: handleFulfillerRemoved
+        - event: TokenDetailsRemoved(address)
+          handler: handleTokenDetailsRemoved
+        - event: TokenDetailsSet(address,uint256,uint256,uint256,uint256,uint256,uint256)
+          handler: handleTokenDetailsSet
+      file: ./src/triple-a-access-controls.ts
 templates:
   - name: AgentMetadata
     kind: file/ipfs

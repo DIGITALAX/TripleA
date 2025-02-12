@@ -1,8 +1,9 @@
 use std::sync::LazyLock;
 
-pub static AGENTS: &'static str = "0xF880C84F7EF0E49039B87Dbd534aD88545FC2D29";
-pub static ACCESS_CONTROLS: &'static str = "0x1b37B6FD3457b7FbB09308752e3ECCA4a7734839";
-pub static COLLECTION_MANAGER: &'static str = "0x575da586767F54DC9ba7E08024844ce72480e234";
+pub static AGENTS: &'static str = "0x155198Ea8c654D611eCf611fF817076838184506";
+pub static COIN_GECKO: &'static str =  "https://api.geckoterminal.com/api/v2";
+pub static ACCESS_CONTROLS: &'static str = "0x0064d596558Ca3Dae49B7919AEe821330203C2A6";
+pub static COLLECTION_MANAGER: &'static str = "0x4ed83239189a803885cc888A6e470d1a13F7Ff4b";
 pub static REMIX_FEED: &'static str = "0x";
 pub static MONA: &'static str = "0x72ab7C7f3F6FF123D08692b0be196149d4951a41";
 pub static GRASS: &'static str = "0xeee5a340Cdc9c179Db25dea45AcfD5FE8d4d3eB8";
@@ -86,5 +87,5 @@ pub static STYLE_PRESETS: &[&str] = &[
     "Tilt-Shift"
   ];
   pub static SAMPLE_PROMPT:&'static str = "A surreal, liminal retro anime line art scene of a (pixel art:1.3) inspired (illustration:1.3) depicting the (interior view:1.3) of modern NYC MTA subway doors, The doors are composed of sleek brushed silver metallic panels with smooth ridges, featuring two rounded rectangular glass windows framed with black rubber trims, Below each window, blue rectangular stickers display a green circular 'yes' symbol on the left and bold white horizontal text on a single line reading 'I <3 Web3' in a clean sans-serif font, underneath a solid white line above the text, striking scratch-graffiti tags are etched roughly into the glass windows, and small marker-style graffiti tags adorn the metallic panels below the stickers. The perspective is symmetrical and straight-on, capturing the gritty urban aesthetic with realistic grime, wear, and imperfections. The background includes muted orange, yellow, and beige seating and metallic poles, illuminated by soft, cool white subway lighting. The illustration blends sharp, clean details with pixel-art-inspired textures, creating a retro-modern urban aesthetic.";
-  pub static NEGATIVE_PROMPT:&'static str = " (worst quality, low quality), (bad face), (deformed eyes), (bad eyes), ((extra hands)), extra fingers, too many fingers, fused fingers, bad arm, distorted arm, extra arms, fused arms, extra legs, missing leg, disembodied leg, extra nipples, detached arm, liquid hand, inverted hand, disembodied limb, oversized head, extra body, extra navel, (hair between eyes), twins, doubles";
+  pub static NEGATIVE_PROMPT:&'static str = "(worst quality, low quality), (bad face), (deformed eyes), (bad eyes), ((extra hands)), extra fingers, too many fingers, fused fingers, bad arm, distorted arm, extra arms, fused arms, extra legs, missing leg, disembodied leg, extra nipples, detached arm, liquid hand, inverted hand, disembodied limb, oversized head, extra body, extra navel, (hair between eyes), twins, doubles";
   

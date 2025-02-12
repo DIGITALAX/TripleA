@@ -48,12 +48,11 @@ pub async fn remix(
             let payload_inicial = serde_json::json!({
                 "model": model,
                 "prompt": prompt,
-                "width": 1024,
-                "height": 1024,
+                "width": 768,
+                "height": 768,
                 "steps": 25,
                 "hide_watermark": true,
                 "return_binary": false,
-                "seed": "821280040973240",
                 "cfg_scale": 3.5,
                 "style_preset": STYLE_PRESETS[thread_rng().gen_range(0..3)],
                 "negative_prompt": NEGATIVE_PROMPT,
@@ -81,7 +80,7 @@ pub async fn remix(
                     .unwrap_or("")
                     .to_string();
 
-                match call_image_details().await {
+                match call_image_details(&model).await {
                     Ok((title, description, amount, prices)) => {
                         match upload_image_to_ipfs(&image).await {
                             Ok(ipfs) => {
@@ -94,6 +93,7 @@ pub async fn remix(
                                     prices,
                                     &agent,
                                     collection.collection_id,
+                                    &model,
                                 )
                                 .await;
 
@@ -189,8 +189,9 @@ async fn mint_collection(
     prices: Vec<U256>,
     agent: &TripleAAgent,
     remix_collection_id: U256,
+    model: &str,
 ) -> Result<(), Box<dyn Error + Send + Sync>> {
-    match get_drop_details(remix_collection_id, description, agent.id, image).await {
+    match get_drop_details(remix_collection_id, description, agent.id, image, &model).await {
         Ok((drop_metadata, drop_id)) => {
             match upload_ipfs(to_string(&json!({
                 "title": title,
@@ -322,6 +323,7 @@ async fn get_drop_details(
     remix_collection_description: &str,
     agent_id: u32,
     image: &str,
+    model: &str,
 ) -> Result<(String, U256), Box<dyn Error + Send + Sync>> {
     let mut drop_metadata = String::from("");
     let mut drop_id = U256::from(0);
@@ -363,7 +365,7 @@ async fn get_drop_details(
                 let id: u32 = value.parse().expect("Error converting drop value to u32");
                 drop_id = U256::from(id);
             } else {
-                match call_drop_details(&remix_collection_description).await {
+                match call_drop_details(&remix_collection_description, &model).await {
                     Ok((title, description)) => {
                         match upload_ipfs(to_string(&json!({
                             "title": title,
