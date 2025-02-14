@@ -21,9 +21,9 @@ contract TripleAAgents {
     TripleAAccessControls public accessControls;
     TripleAMarket public market;
     SkyhuntersAccessControls public skyhuntersAccessControls;
-    SkyhuntersPoolManager public poolManager;
     SkyhuntersAgentManager public agentManager;
     TripleACollectionManager public collectionManager;
+    address public poolManager;
 
     mapping(uint256 => TripleALibrary.Agent) private _activatedAgents;
     mapping(uint256 => mapping(address => mapping(uint256 => uint256)))
@@ -115,13 +115,17 @@ contract TripleAAgents {
     constructor(
         address payable _accessControls,
         address _collectionManager,
-        address payable _skyhuntersAccessControls
+        address payable _skyhuntersAccessControls,
+        address _agentManager,
+        address payable _poolManager
     ) payable {
         accessControls = TripleAAccessControls(_accessControls);
         collectionManager = TripleACollectionManager(_collectionManager);
         skyhuntersAccessControls = SkyhuntersAccessControls(
             _skyhuntersAccessControls
         );
+        agentManager = SkyhuntersAgentManager(_agentManager);
+        poolManager = _poolManager;
     }
 
     function activateAgent(
@@ -198,7 +202,6 @@ contract TripleAAgents {
         }
         _agentRentBalances[agentId][token][collectionId] += _rent;
         _agentHistoricalRentBalances[agentId][token][collectionId] += _rent;
-
         _agentBonusBalances[agentId][token][collectionId] += _bonus;
         _agentHistoricalBonusBalances[agentId][token][collectionId] += _bonus;
 
@@ -232,14 +235,18 @@ contract TripleAAgents {
             revert TripleAErrors.BadUserInput();
         }
 
-        if (skyhuntersAccessControls.isAgent(msg.sender)) {
+        if (!skyhuntersAccessControls.isAgent(msg.sender)) {
             revert TripleAErrors.NotAgent();
         }
 
+        uint256[] memory _amounts = new uint256[](collectionIds.length);
+        uint256[] memory _bonuses = new uint256[](collectionIds.length);
         for (uint8 i = 0; i < collectionIds.length; i++) {
+            _amounts[i] = _handleRent(tokens[i], agentId, collectionIds[i]);
+         
             if (
                 _agentRentBalances[agentId][tokens[i]][collectionIds[i]] <
-                _handleRent(tokens[i], agentId, collectionIds[i])
+                _amounts[i]
             ) {
                 revert TripleAErrors.InsufficientBalance();
             }
@@ -256,18 +263,15 @@ contract TripleAAgents {
             ) {
                 revert TripleAErrors.NoActiveAgents();
             }
-        }
 
-        uint256[] memory _amounts = new uint256[](collectionIds.length);
-        uint256[] memory _bonuses = new uint256[](collectionIds.length);
-        for (uint8 i = 0; i < collectionIds.length; i++) {
-            _amounts[i] = _handleRent(tokens[i], agentId, collectionIds[i]);
             _agentRentBalances[agentId][tokens[i]][
                 collectionIds[i]
-            ] -= _handleRent(tokens[i], agentId, collectionIds[i]);
+            ] -= _amounts[i];
+
             _bonuses[i] = _agentBonusBalances[agentId][tokens[i]][
                 collectionIds[i]
             ];
+
             _agentBonusBalances[agentId][tokens[i]][collectionIds[i]] = 0;
         }
 
@@ -276,7 +280,6 @@ contract TripleAAgents {
         for (uint8 i = 0; i < collectionIds.length; i++) {
             _services[tokens[i]] += _amounts[i];
             _allTimeServices[tokens[i]] += _amounts[i];
-
             if (_bonuses[i] > 0) {
                 _handleBonus(_owners, tokens[i], _bonuses[i], collectionIds[i]);
             }
@@ -319,7 +322,6 @@ contract TripleAAgents {
         uint256 _ownerAmount = (bonus * ownerAmountPercent) / 100;
         uint256 _devAmount = (bonus * devAmountPercent) / 100;
         uint256 _distributionAmount = (bonus * distributionAmountPercent) / 100;
-
         address[] memory _collectors = market.getAllCollectorsByCollectionId(
             collectionId
         );
@@ -334,13 +336,18 @@ contract TripleAAgents {
                 uint256 weight = 1e18 / (j + 1);
                 uint256 payment = (_distributionAmount * weight) / totalWeight;
 
+                IERC20(token).transfer(_collectors[j], payment);
+
                 _collectorPayment[token][_collectors[j]][
                     collectionId
                 ] += payment;
+
             }
         }
 
         for (uint8 i = 0; i < owners.length; i++) {
+            IERC20(token).transfer(owners[i], _ownerAmount / owners.length);
+
             _ownerPayment[token][owners[i]][collectionId] +=
                 _ownerAmount /
                 owners.length;
@@ -584,6 +591,10 @@ contract TripleAAgents {
         accessControls = TripleAAccessControls(_accessControls);
     }
 
+    function setAgentManager(address payable _agentManager) external onlyAdmin {
+        agentManager = SkyhuntersAgentManager(_agentManager);
+    }
+
     function setSkyhuntersAccessControls(
         address payable _skyhuntersAccessControls
     ) external onlyAdmin {
@@ -605,7 +616,7 @@ contract TripleAAgents {
     function setSkyhuntersPoolManager(
         address payable _poolManager
     ) external onlyAdmin {
-        poolManager = SkyhuntersPoolManager(_poolManager);
+        poolManager = _poolManager;
     }
 
     function setAmounts(

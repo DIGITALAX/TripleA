@@ -33,18 +33,18 @@ export function handleCollectionPurchased(
 
   let market = TripleAMarket.bind(event.address);
 
+  let collectionManager = TripleACollectionManager.bind(
+    Address.fromString("0x4ed83239189a803885cc888A6e470d1a13F7Ff4b")
+  );
   entity.mintedTokens = market.getOrderMintedTokens(event.params.orderId);
   entity.totalPrice = market.getOrderTotalPrice(event.params.orderId);
   entity.collection = Bytes.fromByteArray(
     ByteArray.fromBigInt(event.params.collectionId)
   );
   entity.fulfillment = market.getOrderFulfillmentDetails(event.params.orderId);
-
+  entity.fulfiller = collectionManager.getCollectionFulfillerId(event.params.collectionId);
   entity.save();
 
-  let collectionManager = TripleACollectionManager.bind(
-    Address.fromString("0x4ed83239189a803885cc888A6e470d1a13F7Ff4b")
-  );
 
   let entityCollection = CollectionCreated.load(
     Bytes.fromByteArray(ByteArray.fromBigInt(event.params.collectionId))

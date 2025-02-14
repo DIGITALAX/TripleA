@@ -119,7 +119,7 @@ contract SkyhuntersAccessControls {
         emit VerifiedPoolRemoved(verifiedPool);
     }
 
-    function setAcceptedToken(address token) external {
+    function setAcceptedToken(address token) external onlyAdmin {
         if (_acceptedTokens[token]) {
             revert SkyhuntersErrors.TokenAlreadyExists();
         }
@@ -131,7 +131,7 @@ contract SkyhuntersAccessControls {
         emit AcceptedTokenSet(token);
     }
 
-    function removeAcceptedToken(address token) external {
+    function removeAcceptedToken(address token) external onlyAdmin {
         if (!_acceptedTokens[token]) {
             revert SkyhuntersErrors.TokenDoesntExist();
         }

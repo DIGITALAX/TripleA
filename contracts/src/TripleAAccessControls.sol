@@ -92,7 +92,7 @@ contract TripleAAccessControls {
         uint256 rentPublish,
         uint256 vig,
         uint256 base
-    ) external {
+    ) external onlyAdmin {
         if (!skyhuntersAccessControls.isAcceptedToken(token)) {
             revert TripleAErrors.TokenNotAccepted();
         }
@@ -115,7 +115,7 @@ contract TripleAAccessControls {
         );
     }
 
-    function removeTokenDetails(address token) external {
+    function removeTokenDetails(address token) onlyAdmin external {
         if (!skyhuntersAccessControls.isAcceptedToken(token)) {
             revert TripleAErrors.TokenDoesntExist();
         }

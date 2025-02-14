@@ -89,4 +89,12 @@ contract TripleALibrary {
         string metadata;
         address wallet;
     }
+
+    struct ShareResponse {
+        address remixArtist;
+        uint256 remixShare;
+        uint256 agentShare;
+        uint256 perAgentShare;
+        uint256 artistShare;
+    }
 }

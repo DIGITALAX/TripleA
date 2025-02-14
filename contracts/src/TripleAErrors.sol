@@ -48,4 +48,6 @@ contract TripleAErrors {
 
     error NotFulfiller();
     error ActiveOrders();
+
+    error OnlyCollector();
 }

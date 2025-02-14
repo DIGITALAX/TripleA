@@ -1,4 +1,5 @@
 use crate::utils::{
+    helpers::format_instructions,
     ipfs::upload_lens_storage,
     lens::{feed_info, follow_profiles, make_comment, make_publication, make_quote, search_posts},
     types::{Collection, Content, Image, Publication, SavedTokens, TripleAAgent},
@@ -31,7 +32,7 @@ pub async fn lead_generation(
                     &tokens.as_ref().unwrap().tokens.access_token,
                     agent.id,
                     &agent.model,
-                    &agent.custom_instructions,
+                    &format_instructions(&agent),
                     &collection_instructions,
                     &collection,
                 )
@@ -42,7 +43,7 @@ pub async fn lead_generation(
                     &tokens.as_ref().unwrap().tokens.access_token,
                     agent.id,
                     &agent.model,
-                    &agent.custom_instructions,
+                    &format_instructions(&agent),
                     &collection_instructions,
                     &collection,
                 )
@@ -54,7 +55,7 @@ pub async fn lead_generation(
                     agent.id,
                     agent.feeds.clone(),
                     &agent.model,
-                    &agent.custom_instructions,
+                    &format_instructions(&agent),
                     &collection_instructions,
                 )
                 .await;

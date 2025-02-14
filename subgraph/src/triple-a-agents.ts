@@ -8,6 +8,7 @@ import {
   TripleAAgents,
   WorkerAdded as WorkerAddedEvent,
   WorkerUpdated as WorkerUpdatedEvent,
+  WorkerRemoved as WorkerRemovedEvent,
 } from "../generated/TripleAAgents/TripleAAgents";
 import {
   ActivateAgent,
@@ -20,6 +21,7 @@ import {
   RewardsCalculated,
   WorkerAdded,
   WorkerUpdated,
+  WorkerRemoved,
 } from "../generated/schema";
 import { TripleACollectionManager } from "../generated/TripleACollectionManager/TripleACollectionManager";
 
@@ -66,10 +68,10 @@ export function handleAgentPaidRent(event: AgentPaidRentEvent): void {
     }
 
     for (let i = 0; i < (entity.collectionIds as BigInt[]).length; i++) {
-      let collectionIdHex = (entity.collectionIds as BigInt[])[i].toHexString();
-      let tokenHex = (entity.tokens as Bytes[])[i].toHexString();
+      let collectionIdHex = entity.collectionIds[i].toHexString();
+      let tokenHex = entity.tokens[i].toHexString();
       let agentHex = entity.agentId.toHexString();
-      let agentWalletHex = (entityAgent.wallets as Bytes[])[0].toHexString();
+      let agentWalletHex = entityAgent.wallets[0].toHexString();
       let combinedHex = collectionIdHex + tokenHex + agentHex + agentWalletHex;
       if (combinedHex.length % 2 !== 0) {
         combinedHex = "0" + combinedHex;
@@ -78,30 +80,30 @@ export function handleAgentPaidRent(event: AgentPaidRentEvent): void {
       let newBalance = Balance.load(Bytes.fromHexString(combinedHex));
       if (!newBalance) {
         newBalance = new Balance(Bytes.fromHexString(combinedHex));
-        newBalance.collectionId = (entity.collectionIds as BigInt[])[i];
-        newBalance.token = (entity.tokens as Bytes[])[i];
+        newBalance.collectionId = entity.collectionIds[i];
+        newBalance.token = entity.tokens[i];
         balances.push(Bytes.fromHexString(combinedHex));
       }
 
       newBalance.rentBalance = agents.getAgentRentBalance(
-        (entity.tokens as Bytes[])[i] as Address,
+        event.params.tokens[i],
         entity.agentId,
-        (entity.collectionIds as BigInt[])[i]
+        entity.collectionIds[i]
       );
       newBalance.historicalRentBalance = agents.getAgentHistoricalRentBalance(
-        (entity.tokens as Bytes[])[i] as Address,
+        event.params.tokens[i],
         entity.agentId,
-        (entity.collectionIds as BigInt[])[i]
+        entity.collectionIds[i]
       );
       newBalance.bonusBalance = agents.getAgentBonusBalance(
-        (entity.tokens as Bytes[])[i] as Address,
+        event.params.tokens[i],
         entity.agentId,
-        (entity.collectionIds as BigInt[])[i]
+        entity.collectionIds[i]
       );
       newBalance.historicalBonusBalance = agents.getAgentHistoricalBonusBalance(
-        (entity.tokens as Bytes[])[i] as Address,
+        event.params.tokens[i],
         entity.agentId,
-        (entity.collectionIds as BigInt[])[i]
+        entity.collectionIds[i]
       );
 
       let workerHex = collectionIdHex + agentHex;
@@ -465,6 +467,50 @@ export function handleWorkerAdded(event: WorkerAddedEvent): void {
 
     entityAgent.workers = workers;
 
+    entityAgent.save();
+  }
+}
+
+export function handleWorkerRemoved(event: WorkerRemovedEvent): void {
+  let entity = new WorkerRemoved(
+    event.transaction.hash.concatI32(event.logIndex.toI32())
+  );
+  entity.agentId = event.params.agentId;
+  entity.collectionId = event.params.collectionId;
+
+  entity.blockNumber = event.block.number;
+  entity.blockTimestamp = event.block.timestamp;
+  entity.transactionHash = event.transaction.hash;
+
+  entity.save();
+
+  let entityAgent = AgentCreated.load(
+    Bytes.fromByteArray(ByteArray.fromBigInt(event.params.agentId))
+  );
+
+  if (entityAgent) {
+    let workers = entityAgent.workers;
+    let newWorkers: Bytes[] = [];
+
+    if (workers) {
+      for (let i = 0; i < (workers as Bytes[]).length; i++) {
+        let collectionIdHex = event.params.agentId.toHexString();
+        let agentHex = event.params.collectionId.toHexString();
+        let combinedHex = collectionIdHex + agentHex;
+        if (combinedHex.length % 2 !== 0) {
+          combinedHex = "0" + combinedHex;
+        }
+
+        if (
+          Bytes.fromByteArray(ByteArray.fromHexString(combinedHex)) !==
+          (workers as Bytes[])[i]
+        ) {
+          newWorkers.push((workers as Bytes[])[i]);
+        }
+      }
+    }
+
+    entityAgent.workers = newWorkers;
     entityAgent.save();
   }
 }

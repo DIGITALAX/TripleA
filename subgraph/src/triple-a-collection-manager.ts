@@ -18,6 +18,7 @@ import {
   TripleACollectionManager,
 } from "../generated/TripleACollectionManager/TripleACollectionManager";
 import {
+  AgentCreated,
   AgentDetailsUpdated,
   CollectionActivated,
   CollectionCreated,
@@ -88,7 +89,7 @@ export function handleCollectionCreated(event: CollectionCreatedEvent): void {
 
   let collectionManager = TripleACollectionManager.bind(event.address);
   let agents = TripleAAgents.bind(
-    Address.fromString("0x155198Ea8c654D611eCf611fF817076838184506")
+    Address.fromString("0x0c66DF3847Eae30797a62C2d2C28cf30B7af01Ce")
   );
 
   entity.amount = collectionManager.getCollectionAmount(entity.collectionId);
@@ -214,6 +215,28 @@ export function handleCollectionDeleted(event: CollectionDeletedEvent): void {
   );
 
   if (entityCollection) {
+    let agents = entityCollection.agentIds;
+
+    if (agents) {
+      for (let i = 0; i < (agents as BigInt[]).length; i++) {
+        let entityAgent = AgentCreated.load(
+          Bytes.fromByteArray(ByteArray.fromBigInt((agents as BigInt[])[i]))
+        );
+
+        if (entityAgent) {
+          let workers = entityAgent.workers;
+          if (workers) {
+            for (let j = 0; j < (workers as Bytes[]).length; j++) {
+              store.remove(
+                "CollectionWorker",
+                (workers as Bytes[])[j].toHexString()
+              );
+            }
+          }
+        }
+      }
+    }
+
     store.remove(
       "CollectionCreated",
       Bytes.fromByteArray(
@@ -337,6 +360,29 @@ export function handleDropDeleted(event: DropDeletedEvent): void {
         );
 
         if (entityCollection) {
+
+          let agents = entityCollection.agentIds;
+
+          if (agents) {
+            for (let i = 0; i < (agents as BigInt[]).length; i++) {
+              let entityAgent = AgentCreated.load(
+                Bytes.fromByteArray(ByteArray.fromBigInt((agents as BigInt[])[i]))
+              );
+      
+              if (entityAgent) {
+                let workers = entityAgent.workers;
+                if (workers) {
+                  for (let j = 0; j < (workers as Bytes[]).length; j++) {
+                    store.remove(
+                      "CollectionWorker",
+                      (workers as Bytes[])[j].toHexString()
+                    );
+                  }
+                }
+              }
+            }
+          }
+          
           store.remove(
             "CollectionCreated",
             (entityDrop.collections as Bytes[])[i].toHexString()

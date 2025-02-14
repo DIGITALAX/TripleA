@@ -1,6 +1,6 @@
 use std::sync::LazyLock;
 
-pub static AGENTS: &'static str = "0x155198Ea8c654D611eCf611fF817076838184506";
+pub static AGENTS: &'static str = "0x0c66DF3847Eae30797a62C2d2C28cf30B7af01Ce";
 pub static COIN_GECKO: &'static str =  "https://api.geckoterminal.com/api/v2";
 pub static ACCESS_CONTROLS: &'static str = "0x0064d596558Ca3Dae49B7919AEe821330203C2A6";
 pub static COLLECTION_MANAGER: &'static str = "0x4ed83239189a803885cc888A6e470d1a13F7Ff4b";

@@ -54,7 +54,7 @@ dataSources:
     name: TripleAAgents
     network: lens-testnet
     source:
-      address: "0x155198Ea8c654D611eCf611fF817076838184506"
+      address: "0x0c66DF3847Eae30797a62C2d2C28cf30B7af01Ce"
       abi: TripleAAgents
       startBlock: 103090
     mapping:
@@ -69,6 +69,7 @@ dataSources:
         - RewardsCalculated
         - WorkerAdded
         - WorkerUpdated
+        - WorkerRemoved
       abis:
         - name: TripleAAgents
           file: ./abis/TripleAAgents.json
@@ -89,6 +90,8 @@ dataSources:
           handler: handleWorkerAdded
         - event: WorkerUpdated(uint256,uint256)
           handler: handleWorkerUpdated
+        - event: WorkerRemoved(uint256,uint256)
+          handler: handleWorkerRemoved
       file: ./src/triple-a-agents.ts
   - kind: ethereum
     name: TripleAMarket

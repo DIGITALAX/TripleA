@@ -230,7 +230,7 @@ pub fn initialize_contracts(
     let access_controls_address = ACCESS_CONTROLS
         .parse::<Address>()
         .expect("Error in parsing ACCESS_CONTROLS");
-    let access_controls_abi: Abi = from_str(include_str!("./../../abis/AccessControls.json"))
+    let access_controls_abi: Abi = from_str(include_str!("./../../abis/TripleAAccessControls.json"))
         .expect("Error in loading AccessControls ABI");
     let access_controls_contract = Contract::new(
         access_controls_address,
@@ -241,14 +241,14 @@ pub fn initialize_contracts(
 
     let agents_address = AGENTS.parse::<Address>().expect("Error in parsing AGENTS");
     let agents_abi: Abi =
-        from_str(include_str!("./../../abis/Agents.json")).expect("Error in loading Agents ABI");
+        from_str(include_str!("./../../abis/TripleAAgents.json")).expect("Error in loading Agents ABI");
     let agents_contract = Contract::new(agents_address, agents_abi, client.clone());
     *AGENTS_CONTRACT.lock().unwrap() = Some(Arc::new(agents_contract));
 
     let collection_manager_address = COLLECTION_MANAGER
         .parse::<Address>()
         .expect("Error in parsing COLLECTION_MANAGER");
-    let collection_manager_abi: Abi = from_str(include_str!("./../../abis/CollectionManager.json"))
+    let collection_manager_abi: Abi = from_str(include_str!("./../../abis/TripleACollectionManager.json"))
         .expect("Error in loading CollectionManager ABI");
     let collection_manager_contract = Contract::new(
         collection_manager_address,

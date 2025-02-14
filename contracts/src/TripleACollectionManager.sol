@@ -179,7 +179,7 @@ contract TripleACollectionManager {
             uint256 _base = accessControls.getTokenBase(tokens[i]);
             uint256 _vig = accessControls.getTokenVig(tokens[i]);
 
-            if (prices[i] < _base + (prices[i] * (_vig / 100))) {
+            if (prices[i] < _base + ((prices[i] * _vig) / 100)) {
                 revert TripleAErrors.PriceTooLow();
             }
         }

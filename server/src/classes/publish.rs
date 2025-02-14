@@ -3,10 +3,11 @@ use std::{error::Error, io};
 use uuid::Uuid;
 
 use crate::utils::{
+    helpers::format_instructions,
     ipfs::upload_lens_storage,
     lens::make_publication,
-    venice::call_chat_completion,
     types::{Collection, Content, Image, Publication, SavedTokens, TripleAAgent},
+    venice::call_chat_completion,
 };
 
 pub async fn publish(
@@ -17,10 +18,10 @@ pub async fn publish(
 ) -> Result<(), Box<dyn Error + Send + Sync>> {
     match call_chat_completion(
         collection,
-        &agent.custom_instructions,
+        &format_instructions(&agent),
         collection_instructions,
         &agent.id,
-        &agent.model
+        &agent.model,
     )
     .await
     {
