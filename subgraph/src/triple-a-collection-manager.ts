@@ -89,7 +89,7 @@ export function handleCollectionCreated(event: CollectionCreatedEvent): void {
 
   let collectionManager = TripleACollectionManager.bind(event.address);
   let agents = TripleAAgents.bind(
-    Address.fromString("0x0c66DF3847Eae30797a62C2d2C28cf30B7af01Ce")
+    Address.fromString("0x6Cd69F14815cead961541a24a0f6cb7F8ac279cC")
   );
 
   entity.amount = collectionManager.getCollectionAmount(entity.collectionId);

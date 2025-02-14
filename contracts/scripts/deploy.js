@@ -14,14 +14,14 @@ const provider = new ethers.JsonRpcProvider(
   37111
 );
 const wallet = new ethers.Wallet("", provider);
-const collectionManagerAddress = "0x4ed83239189a803885cc888A6e470d1a13F7Ff4b";
-const marketAddress = "0x58c292A06Abe5A7996C32921e3DB48f7909D5D1B";
-const agentsAddress = "0x0c66DF3847Eae30797a62C2d2C28cf30B7af01Ce";
+const collectionManagerAddress = "0x6B434299F649eE8A908A67eeeAE4BE1E57720788";
+const marketAddress = "0x393C4D38286ef9aDEb4FeE0bF98efb8477177a2F";
+const agentsAddress = "0x6Cd69F14815cead961541a24a0f6cb7F8ac279cC";
 const fulfillerAddress = "0x49a81387572072FC2af31E7D659034D22e34b7b3";
-const accessControlsAddress = "0x0064d596558Ca3Dae49B7919AEe821330203C2A6";
-const nftAddress = "0x0aF54336b55E0F422a2E9f2a9614035AbF907791";
-const skyhuntersAcAddress = "0xBdFF7eDe4d58c95EeaAd5f5a2F4127bc5de621A1";
-const skyhuntersAgentAddress = "0xd23fd2228D0D0dD442422c1704e4DB8abb5884d9";
+const accessControlsAddress = "0x44F12767C03bfC102e70603403d64EC83aA2Fa53";
+const nftAddress = "0xF5F7234fc46171639F8ca3F3b7026E43a91DC883";
+const skyhuntersAcAddress = "0x0380cFac54F0CCff2Bd1527EB8Ff9c2Abd152eF3";
+const skyhuntersAgentAddress = "0xDb362F0D06e40180e0BCB32e6fE4B665F09bD373";
 const poolManagerAddress = "0x3D1f8A6D6584a1672d2817368783B9a2a36ae361";
 
 const WGRASS = "0xeee5a340Cdc9c179Db25dea45AcfD5FE8d4d3eB8";
@@ -157,10 +157,10 @@ const FULFILLER = "0x3D1f8A6D6584a1672d2817368783B9a2a36ae361";
   // );
 
   // await agentsContract.setCollectionManager(
-  //   "0x4ed83239189a803885cc888A6e470d1a13F7Ff4b"
+  //   "0x6B434299F649eE8A908A67eeeAE4BE1E57720788"
   // );
   // await marketContract.setCollectionManager(
-  //   "0x4ed83239189a803885cc888A6e470d1a13F7Ff4b"
+  //   "0x6B434299F649eE8A908A67eeeAE4BE1E57720788"
   // );
 
   // const res1 = await cmContract.getCollectionIsActive(2);
@@ -171,9 +171,9 @@ const FULFILLER = "0x3D1f8A6D6584a1672d2817368783B9a2a36ae361";
   // const res6 = await acContract.getTokenCycleRentLead(MONA);
   // const res7 = await acContract.getTokenCycleRentPublish(MONA);
   // const res8 = await agentsContract.getAgentActiveCollectionIds(1);
-  // const res9 = await skyhuntersAcContract.isAgent("0x5d5A2a9acd3bD842964D329f3c771CC43eE6B96D")
-  const res10 = await cmContract.getCollectionAmount(4);
-  const res11 = await cmContract.getCollectionAmountSold(4)
-  console.log({res10, res11})
+  // // const res9 = await skyhuntersAcContract.isAgent("0x5d5A2a9acd3bD842964D329f3c771CC43eE6B96D")
+  // const res10 = await cmContract.getCollectionAmount(4);
+  // const res11 = await cmContract.getCollectionAmountSold(4)
+  // console.log({res10, res11})
   // console.log({ res1, res2, res3 , res4, res5: res5 + res6 + res7, res8, res9});
 })();

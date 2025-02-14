@@ -172,7 +172,7 @@ export function handleAgentRecharged(event: AgentRechargedEvent): void {
   if (entityAgent) {
     let agents = TripleAAgents.bind(event.address);
     let collections = TripleACollectionManager.bind(
-      Address.fromString("0x4ed83239189a803885cc888A6e470d1a13F7Ff4b")
+      Address.fromString("0x6B434299F649eE8A908A67eeeAE4BE1E57720788")
     );
 
     let collectionIdHex = entity.collectionId.toHexString();
@@ -283,7 +283,7 @@ export function handleBalanceAdded(event: BalanceAddedEvent): void {
   if (entityAgent) {
     let agents = TripleAAgents.bind(event.address);
     let collections = TripleACollectionManager.bind(
-      Address.fromString("0x4ed83239189a803885cc888A6e470d1a13F7Ff4b")
+      Address.fromString("0x6B434299F649eE8A908A67eeeAE4BE1E57720788")
     );
 
     let collectionIdHex = entity.collectionId.toHexString();
@@ -426,7 +426,7 @@ export function handleWorkerAdded(event: WorkerAddedEvent): void {
       event.params.collectionId
     );
     let collectionManager = TripleACollectionManager.bind(
-      Address.fromString("0x4ed83239189a803885cc888A6e470d1a13F7Ff4b")
+      Address.fromString("0x6B434299F649eE8A908A67eeeAE4BE1E57720788")
     );
     newWorker.tokens = collectionManager
       .getCollectionERC20Tokens(event.params.collectionId)
@@ -553,7 +553,7 @@ export function handleWorkerUpdated(event: WorkerUpdatedEvent): void {
 
     if (newWorker) {
       let collectionManager = TripleACollectionManager.bind(
-        Address.fromString("0x4ed83239189a803885cc888A6e470d1a13F7Ff4b")
+        Address.fromString("0x6B434299F649eE8A908A67eeeAE4BE1E57720788")
       );
       newWorker.instructions = agents.getWorkerInstructions(
         event.params.agentId,

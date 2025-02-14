@@ -1,9 +1,9 @@
 use std::sync::LazyLock;
 
-pub static AGENTS: &'static str = "0x0c66DF3847Eae30797a62C2d2C28cf30B7af01Ce";
+pub static AGENTS: &'static str = "0x6Cd69F14815cead961541a24a0f6cb7F8ac279cC";
 pub static COIN_GECKO: &'static str =  "https://api.geckoterminal.com/api/v2";
-pub static ACCESS_CONTROLS: &'static str = "0x0064d596558Ca3Dae49B7919AEe821330203C2A6";
-pub static COLLECTION_MANAGER: &'static str = "0x4ed83239189a803885cc888A6e470d1a13F7Ff4b";
+pub static ACCESS_CONTROLS: &'static str = "0x44F12767C03bfC102e70603403d64EC83aA2Fa53";
+pub static COLLECTION_MANAGER: &'static str = "0x6B434299F649eE8A908A67eeeAE4BE1E57720788";
 pub static REMIX_FEED: &'static str = "0x";
 pub static MONA: &'static str = "0x72ab7C7f3F6FF123D08692b0be196149d4951a41";
 pub static GRASS: &'static str = "0xeee5a340Cdc9c179Db25dea45AcfD5FE8d4d3eB8";

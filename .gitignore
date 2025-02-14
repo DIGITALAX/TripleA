@@ -12,7 +12,7 @@
 
 # Docs
 /contracts/docs/
-/contracts/lib/
+/contracts/lib/*
 /contracts/.github/
 
 .github/
