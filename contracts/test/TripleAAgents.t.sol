@@ -68,7 +68,8 @@ contract TripleAAgentsTest is Test {
         );
         collectionManager = new TripleACollectionManager(
             payable(address(accessControls)),
-            payable(address(skyhuntersAccess))
+            payable(address(skyhuntersAccess)),
+            address(skyhuntersAgent)
         );
         nft = new TripleANFT("NFT", "NFT", payable(address(accessControls)));
         fulfillerManager = new TripleAFulfillerManager(

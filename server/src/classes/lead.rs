@@ -49,16 +49,16 @@ pub async fn lead_generation(
                 )
                 .await;
 
-                let _ = feed_posts(
-                    collection,
-                    &tokens.as_ref().unwrap().tokens.access_token,
-                    agent.id,
-                    agent.feeds.clone(),
-                    &agent.model,
-                    &format_instructions(&agent),
-                    &collection_instructions,
-                )
-                .await;
+                // let _ = feed_posts(
+                //     collection,
+                //     &tokens.as_ref().unwrap().tokens.access_token,
+                //     agent.id,
+                //     agent.feeds.clone(),
+                //     &agent.model,
+                //     &format_instructions(&agent),
+                //     &collection_instructions,
+                // )
+                // .await;
 
                 Ok(())
             }

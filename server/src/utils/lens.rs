@@ -261,7 +261,6 @@ pub async fn make_publication(
 ) -> Result<String, Box<dyn Error + Send + Sync>> {
     let client = initialize_api();
 
-
     let wallet = match initialize_wallet(private_key) {
         Some(wallet) => wallet,
         None => {
@@ -560,7 +559,6 @@ pub async fn search_posts(
                         }
                         metadata {
                             __typename
-                            content
                         }
                     }
                 }
@@ -623,7 +621,6 @@ pub async fn search_posts(
                 .filter_map(|post| post["author"]["address"].as_str().map(|s| s.to_string()))
                 .take(10)
                 .collect();
-
             return Ok((filtered_posts, filtered_profiles));
         } else {
             return Err("Error: Unexpected Structure for search posts".into());

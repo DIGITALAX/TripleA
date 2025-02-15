@@ -125,7 +125,6 @@ pub async fn receive_query(
 ) -> Result<String, Box<dyn Error + Send + Sync>> {
     from_filename(".env").ok();
     let venice_key: String = var("VENICE_KEY").expect("VENICE_KEY not configured in .env");
-    let max_completion_tokens = 300;
 
     let system_prompt = r#"You are an expert in search behavior analysis and information retrieval, specializing in understanding how humans naturally search for visual and creative content. Your role is to:
 
@@ -142,7 +141,7 @@ Your goal is to generate queries that would surface similar content based on bot
 Respond only with the exact requested format. Do not acknowledge instructions, use quotation marks, or include metadata about Venice AI systems. Focus solely on the required output."#;
 
     let input_prompt = format!(
-        r#"Analyze this content and generate three distinct search query approaches:
+        r#"Analyze this content and generate one distinct search query that is ONE word in total:
 
 Title: {}
 Description: {}
@@ -150,15 +149,14 @@ Description: {}
 Length: Maximum {} tokens
 
 Format the query as it would actually be typed into a search bar (lowercase, natural search syntax).
-Example formats:
-1. dark minimalist photography
-2. urban isolation art
-3. long exposure night
+Example one word response: urban
 
-Only return the search query and nothing else, for example I valid response would be "dark minimalist photography", and nothing else in your response.
+You can not exceed 30 characters for the one word response. 
+
+Only return the search query and nothing else, for example I valid response would be "urban", and nothing else in your response.
 
 Avoid generic terms like "art" or "design" unless absolutely essential to the query."#,
-        title, description, max_completion_tokens
+        title, description, 30
     );
 
     let mut messages = vec![];
@@ -176,7 +174,7 @@ Avoid generic terms like "art" or "design" unless absolutely essential to the qu
     let request_body = json!({
         "model": model,
         "messages": messages,
-        "max_completion_tokens": max_completion_tokens,
+        "max_completion_tokens": 30,
     });
 
     let response = client
@@ -318,7 +316,7 @@ use_image: [YES/NO based on whether the image would enhance or distract from you
             .trim()
             .to_string();
 
-        println!("Venice call successful for receiving query: {}", completion);
+        println!("Venice call successful for comment: {}", completion);
         Ok((completion, use_image))
     } else {
         return Err(Box::new(io::Error::new(
