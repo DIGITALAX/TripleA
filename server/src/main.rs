@@ -5,7 +5,6 @@ use rand::{
     rngs::StdRng,
     {Rng, SeedableRng},
 };
-use reqwest::Client;
 use serde_json::{from_str, json, to_string_pretty, Map, Value};
 use std::{collections::HashMap, error::Error, net::SocketAddr, sync::Arc, time::Duration};
 use tokio::{
@@ -24,10 +23,7 @@ use tokio_tungstenite::{
 };
 use tungstenite::http::method;
 use utils::{
-    constants::{AGENT_INTERFACE_URL, TRIPLEA_URI},
-    contracts::configure_key,
-    lens::handle_lens_account,
-    types::*,
+    constants::AGENT_INTERFACE_URL, contracts::configure_key, helpers::handle_agents, types::*,
 };
 mod classes;
 mod utils;
@@ -392,166 +388,4 @@ fn should_trigger(agent: &TripleAAgent) -> bool {
     let diff = (agent.clock as i32 - day_seconds as i32).abs();
 
     diff <= 500
-}
-
-async fn handle_agents() -> Result<HashMap<u32, AgentManager>, Box<dyn Error + Send + Sync>> {
-    let client = Client::new();
-
-    let query = json!({
-        "query": r#"
-        query {
-            agentCreateds(first: 100) {
-                wallets
-                SkyhuntersAgentManager_id
-                creator
-                metadata {
-                    title
-                    bio
-                    lore
-                    adjectives
-                    style
-                    knowledge
-                    messageExamples
-                    model
-                    cover
-                    customInstructions
-                    feeds
-                }
-            }
-        }
-        "#,
-    });
-
-    let res = client.post(TRIPLEA_URI).json(&query).send().await;
-
-    match res {
-        Ok(response) => {
-            let parsed: Value = response.json().await?;
-            println!("parsed {:?}", parsed);
-            let empty_vec = vec![];
-            let agent_createds = parsed["data"]["agentCreateds"]
-                .as_array()
-                .unwrap_or(&empty_vec);
-
-            let mut agents_snapshot: HashMap<u32, AgentManager> = HashMap::new();
-
-            for agent_created in agent_createds {
-                let new_id: u32 = agent_created["SkyhuntersAgentManager_id"]
-                    .as_str()
-                    .unwrap_or("0")
-                    .parse()
-                    .map_err(|_| "Failed to parse ID")?;
-
-                let mut rng = StdRng::from_entropy();
-                let mut clock;
-                loop {
-                    let random_hour = rng.gen_range(0..5);
-                    let random_minute = rng.gen_range(0..60);
-                    let random_second = rng.gen_range(0..60);
-                    clock = random_hour * 3600 + random_minute * 60 + random_second;
-
-                    if !agents_snapshot.values().any(|agent| {
-                        let agent_clock = agent.agent.clock;
-                        (clock as i32 - agent_clock as i32).abs() < 60
-                    }) {
-                        break;
-                    }
-                }
-                let wallet = agent_created["wallets"]
-                    .as_array()
-                    .unwrap_or(&vec![])
-                    .get(0)
-                    .and_then(|w| w.as_str())
-                    .unwrap_or("")
-                    .to_string();
-                let account_address = handle_lens_account(&wallet, false)
-                    .await
-                    .unwrap_or_default();
-
-                let manager = AgentManager::new(&TripleAAgent {
-                    id: new_id,
-                    name: agent_created["metadata"]["title"]
-                        .as_str()
-                        .unwrap_or("")
-                        .to_string(),
-                    bio: agent_created["metadata"]["bio"]
-                        .as_str()
-                        .unwrap_or("")
-                        .to_string(),
-                    lore: agent_created["metadata"]["lore"]
-                        .as_str()
-                        .unwrap_or("")
-                        .to_string(),
-                    adjectives: agent_created["metadata"]["adjectives"]
-                        .as_str()
-                        .unwrap_or("")
-                        .to_string(),
-                    style: agent_created["metadata"]["style"]
-                        .as_str()
-                        .unwrap_or("")
-                        .to_string(),
-                    knowledge: agent_created["metadata"]["knowledge"]
-                        .as_str()
-                        .unwrap_or("")
-                        .to_string(),
-                    message_examples: agent_created["metadata"]["message_examples"]
-                        .as_array()
-                        .unwrap_or(&vec![])
-                        .iter()
-                        .map(|v| {
-                            v.as_array()
-                                .unwrap_or(&vec![])
-                                .iter()
-                                .map(|con| {
-                                    let parsed_con: MessageExample =
-                                        serde_json::from_str(con.as_str().unwrap_or("{}"))
-                                            .unwrap_or(MessageExample {
-                                                user: "".to_string(),
-                                                content: Text {
-                                                    text: "".to_string(),
-                                                },
-                                            });
-
-                                    parsed_con
-                                })
-                                .collect::<Vec<MessageExample>>()
-                        })
-                        .collect::<Vec<Vec<MessageExample>>>(),
-                    model: agent_created["metadata"]["model"]
-                        .as_str()
-                        .unwrap_or("")
-                        .to_string(),
-                    cover: agent_created["metadata"]["cover"]
-                        .as_str()
-                        .unwrap_or("")
-                        .to_string(),
-                    custom_instructions: agent_created["metadata"]["customInstructions"]
-                        .as_str()
-                        .unwrap_or("")
-                        .to_string(),
-                    feeds: agent_created["metadata"]["feeds"]
-                        .as_array()
-                        .unwrap_or(&Vec::new())
-                        .iter()
-                        .filter_map(|value| value.as_str().map(|s| s.to_string()))
-                        .collect(),
-                    wallet,
-                    clock,
-                    last_active_time: Utc::now().timestamp() as u32,
-                    account_address,
-                });
-
-                match manager {
-                    Some(man) => {
-                        agents_snapshot.insert(new_id, man);
-                    }
-                    None => {
-                        eprintln!("Agent Not Added at id {}", new_id)
-                    }
-                }
-            }
-            Ok(agents_snapshot)
-        }
-        Err(err) => Err(Box::new(err)),
-    }
 }

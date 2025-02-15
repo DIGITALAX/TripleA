@@ -21,6 +21,7 @@ use ethers::{
 use reqwest::Client;
 use serde_json::{json, Value};
 use std::{error::Error, io, str::FromStr, sync::Arc, time::Duration};
+use tokio::task::JoinHandle;
 use tokio::time;
 
 impl AgentManager {
@@ -69,15 +70,14 @@ impl AgentManager {
                     return Ok(());
                 }
 
-                match self.pay_rent().await {
-                    Ok(_) => {
-                        println!("aqui con agent {}", self.agent.id);
-                        // let _ = self.queue_lens_activity().await;
-                    }
-                    Err(err) => {
-                        eprintln!("Error paying rent: {:?}", err);
-                    }
-                }
+                // match self.pay_rent().await {
+                //     Ok(_) => {
+                let _ = self.queue_lens_activity().await;
+                //     }
+                //     Err(err) => {
+                //         eprintln!("Error paying rent: {:?}", err);
+                //     }
+                // }
             }
             Err(err) => {
                 eprintln!("Error obtaining collection information: {:?}", err);
@@ -377,7 +377,8 @@ impl AgentManager {
                         lead
                         leadFrequency
                         publishFrequency
-                        leadFrequency
+                        remixFrequency
+                        instructions
                         collectionId
                         collection {
                             artist
@@ -526,7 +527,6 @@ impl AgentManager {
                             });
                         }
                     }
-
 
                     Ok(activities)
                 }
@@ -717,7 +717,13 @@ async fn cycle_activity(
     let total_activities = activity.worker.lead_frequency.as_u64()
         + activity.worker.publish_frequency.as_u64()
         + activity.worker.remix_frequency.as_u64();
+
+    if total_activities == 0 {
+        println!("⚠️ No activities found. Skipping cycle.");
+        return;
+    }
     let activity_interval = interval / total_activities as i64;
+
 
     let mut tasks = vec![];
     for _ in 0..activity.worker.lead_frequency.as_u64() {
@@ -731,6 +737,11 @@ async fn cycle_activity(
     }
 
     tasks = distribute_tasks(tasks);
+
+    if tasks.is_empty() {
+        println!("⚠️ No tasks available after distribution.");
+        return;
+    }
 
     let handles: Vec<_> = tasks
         .into_iter()
@@ -778,7 +789,9 @@ fn distribute_tasks(mut tasks: Vec<ActivityType>) -> Vec<ActivityType> {
         if let Some(task) = tasks.pop() {
             distributed.push(task);
         }
-        tasks.rotate_left(1);
+        if tasks.len() > 1 {
+            tasks.rotate_left(1);
+        }
     }
     distributed
 }

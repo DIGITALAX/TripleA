@@ -1,4 +1,4 @@
-use std::{env, error::Error, io, sync::Arc};
+use std::{env, error::Error, io, str::FromStr, sync::Arc};
 
 use ethers::{
     contract::{ContractInstance, FunctionCall},
@@ -6,7 +6,7 @@ use ethers::{
     middleware::{Middleware, SignerMiddleware},
     providers::{Http, Provider},
     signers::Wallet,
-    types::{Address, Eip1559TransactionRequest, NameOrAddress, H256, U256},
+    types::{Address, Eip1559TransactionRequest, NameOrAddress, H160, H256, U256},
 };
 use rand::{thread_rng, Rng};
 use reqwest::Client;
@@ -15,9 +15,10 @@ use uuid::Uuid;
 
 use crate::utils::{
     constants::{
-        BONSAI, COLLECTION_MANAGER, GRASS, LENS_CHAIN_ID, MONA, NEGATIVE_PROMPT, REMIX_FEED,
+        BONSAI, COLLECTION_MANAGER, LENS_CHAIN_ID, MONA, NEGATIVE_PROMPT, REMIX_FEED,
         STYLE_PRESETS, TRIPLEA_URI, VENICE_API,
     },
+    helpers::validate_and_fix_prices,
     ipfs::{upload_image_to_ipfs, upload_ipfs, upload_lens_storage},
     lens::make_publication,
     types::{
@@ -79,9 +80,8 @@ pub async fn remix(
                     .and_then(|v| v.as_str())
                     .unwrap_or("")
                     .to_string();
-
-                match call_image_details(&model).await {
-                    Ok((title, description, amount, prices)) => {
+                match call_image_details(&agent.model).await {
+                    Ok((title, description, amount, prices, mona_price, bonsai_price)) => {
                         match upload_image_to_ipfs(&image).await {
                             Ok(ipfs) => {
                                 let _ = mint_collection(
@@ -91,59 +91,65 @@ pub async fn remix(
                                     amount,
                                     collection_manager_contract,
                                     prices,
+                                    mona_price,
+                                    bonsai_price,
                                     &agent,
                                     collection.collection_id,
-                                    &model,
+                                    &agent.model,
                                 )
                                 .await;
 
-                                let focus = String::from("IMAGE");
-                                let schema = "https://json-schemas.lens.dev/posts/image/3.0.0.json"
-                                    .to_string();
-                                let tags = vec![
-                                    "tripleA".to_string(),
-                                    title.replace(" ", "").to_lowercase(),
-                                ];
+                                    let focus = String::from("IMAGE");
+                                    let schema = "https://json-schemas.lens.dev/posts/image/3.0.0.json"
+                                        .to_string();
+                                    let tags = vec![
+                                        "tripleA".to_string(),
+                                        title.replace(" ", "").to_lowercase(),
+                                    ];
 
-                                let publication = Publication {
-                                    schema,
-                                    lens: Content {
-                                        mainContentFocus: focus,
-                                        title,
-                                        content: description,
-                                        id: Uuid::new_v4().to_string(),
-                                        locale: "en".to_string(),
-                                        tags,
-                                        image: Some(Image {
-                                            tipo: "image/png".to_string(),
-                                            item: format!("ipfs://{}", ipfs.Hash),
-                                        }),
-                                    },
-                                };
+                                    let publication = Publication {
+                                        schema,
+                                        lens: Content {
+                                            mainContentFocus: focus,
+                                            title,
+                                            content: description,
+                                            id: Uuid::new_v4().to_string(),
+                                            locale: "en".to_string(),
+                                            tags,
+                                            image: Some(Image {
+                                                tipo: "image/png".to_string(),
+                                                item: format!("ipfs://{}", ipfs.Hash),
+                                            }),
+                                        },
+                                    };
 
-                                let publication_json = to_string(&publication)?;
+                                    let publication_json = to_string(&publication)?;
 
-                                let content = match upload_lens_storage(publication_json).await {
-                                    Ok(con) => con,
-                                    Err(e) => {
-                                        eprintln!("Error uploading content to Lens Storage: {}", e);
-                                        return Err(Box::new(io::Error::new(
-                                            io::ErrorKind::Other,
-                                            format!(
-                                                "Error uploading content to Lens Storage: {}",
-                                                e
-                                            ),
-                                        )));
-                                    }
-                                };
+                                    let content = match upload_lens_storage(publication_json).await {
+                                        Ok(con) => con,
+                                        Err(e) => {
+                                            eprintln!("Error uploading content to Lens Storage: {}", e);
+                                            return Err(Box::new(io::Error::new(
+                                                io::ErrorKind::Other,
+                                                format!(
+                                                    "Error uploading content to Lens Storage: {}",
+                                                    e
+                                                ),
+                                            )));
+                                        }
+                                    };
 
-                                let _ = make_publication(
-                                    &content,
-                                    agent.id,
-                                    &tokens.as_ref().unwrap().tokens.access_token,
-                                    Some(REMIX_FEED.to_string()),
-                                )
-                                .await;
+
+                                   let _ =   make_publication(
+                                        &content,
+                                        agent.id,
+                                        &tokens.as_ref().unwrap().tokens.access_token,
+                                        // Some(REMIX_FEED.to_string()),
+                                        None
+                                    )
+                                    .await;
+
+                                Ok(())
                             }
                             Err(err) => {
                                 return Err(Box::new(std::io::Error::new(
@@ -168,11 +174,10 @@ pub async fn remix(
             }
         }
         Err(err) => {
-            eprintln!("Error with image prompt: {}", err)
+            eprintln!("Error with image prompt: {}", err);
+            Ok(())
         }
     }
-
-    Ok(())
 }
 
 async fn mint_collection(
@@ -187,6 +192,8 @@ async fn mint_collection(
         >,
     >,
     prices: Vec<U256>,
+    mona_price: f64,
+    bonsai_price: f64,
     agent: &TripleAAgent,
     remix_collection_id: U256,
     model: &str,
@@ -201,6 +208,9 @@ async fn mint_collection(
             .await
             {
                 Ok(response) => {
+                   
+
+                    let prices = validate_and_fix_prices(prices, mona_price, bonsai_price);
                     let method = collection_manager_contract.method::<(
                         CollectionInput,
                         Vec<CollectionWorker>,
@@ -211,26 +221,27 @@ async fn mint_collection(
                         (
                             CollectionInput {
                                 tokens: vec![
-                                    MONA.to_string(),
-                                    GRASS.to_string(),
-                                    BONSAI.to_string(),
+                                    H160::from_str(MONA).unwrap(),
+                                    H160::from_str(BONSAI).unwrap(),
                                 ],
                                 prices,
+                                // prices: vec![U256::from_dec_str("300000000000000000000").unwrap(),U256::from_dec_str("300000000000000000000").unwrap()],
                                 agentIds: vec![U256::from(agent.id)],
                                 metadata: format!("ipfs://{}", response.Hash),
-                                collectionType: 0,
+                                collectionType: 0u8,
                                 amount,
                                 fulfillerId: U256::from(0),
-                                remix: true,
+                                remixable: true,
+                                remixId: remix_collection_id,
                             },
                             vec![CollectionWorker {
                                 instructions: agent.custom_instructions.to_string(),
-                                publish: true,
                                 publishFrequency: U256::from(1),
-                                remix: false,
                                 remixFrequency: U256::from(0),
-                                lead: false,
                                 leadFrequency: U256::from(0),
+                                publish: true,
+                                remix: false,
+                                lead: false,
                             }],
                             drop_metadata,
                             drop_id,

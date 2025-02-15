@@ -1,4 +1,10 @@
-import { Address, BigInt, ByteArray, Bytes } from "@graphprotocol/graph-ts";
+import {
+  Address,
+  BigInt,
+  ByteArray,
+  Bytes,
+  log,
+} from "@graphprotocol/graph-ts";
 import {
   ActivateAgent as ActivateAgentEvent,
   AgentPaidRent as AgentPaidRentEvent,
@@ -9,6 +15,9 @@ import {
   WorkerAdded as WorkerAddedEvent,
   WorkerUpdated as WorkerUpdatedEvent,
   WorkerRemoved as WorkerRemovedEvent,
+  CollectorPaid as CollectorPaidEvent,
+  OwnerPaid as OwnerPaidEvent,
+  DevTreasuryPaid as DevTreasuryPaidEvent,
 } from "../generated/TripleAAgents/TripleAAgents";
 import {
   ActivateAgent,
@@ -22,6 +31,9 @@ import {
   WorkerAdded,
   WorkerUpdated,
   WorkerRemoved,
+  CollectorPaid,
+  OwnerPaid,
+  DevTreasuryPaid,
 } from "../generated/schema";
 import { TripleACollectionManager } from "../generated/TripleACollectionManager/TripleACollectionManager";
 
@@ -77,12 +89,16 @@ export function handleAgentPaidRent(event: AgentPaidRentEvent): void {
         combinedHex = "0" + combinedHex;
       }
 
-      let newBalance = Balance.load(Bytes.fromHexString(combinedHex));
+      let newBalance = Balance.load(
+        Bytes.fromByteArray(ByteArray.fromUTF8(combinedHex))
+      );
       if (!newBalance) {
-        newBalance = new Balance(Bytes.fromHexString(combinedHex));
+        newBalance = new Balance(
+          Bytes.fromByteArray(ByteArray.fromUTF8(combinedHex))
+        );
         newBalance.collectionId = entity.collectionIds[i];
         newBalance.token = entity.tokens[i];
-        balances.push(Bytes.fromHexString(combinedHex));
+        balances.push(Bytes.fromByteArray(ByteArray.fromUTF8(combinedHex)));
       }
 
       newBalance.rentBalance = agents.getAgentRentBalance(
@@ -190,12 +206,16 @@ export function handleAgentRecharged(event: AgentRechargedEvent): void {
       balances = [];
     }
 
-    let newBalance = Balance.load(Bytes.fromHexString(combinedHex));
+    let newBalance = Balance.load(
+      Bytes.fromByteArray(ByteArray.fromUTF8(combinedHex))
+    );
     if (!newBalance) {
-      newBalance = new Balance(Bytes.fromHexString(combinedHex));
+      newBalance = new Balance(
+        Bytes.fromByteArray(ByteArray.fromUTF8(combinedHex))
+      );
       newBalance.collectionId = entity.collectionId;
       newBalance.token = entity.token;
-      balances.push(Bytes.fromHexString(combinedHex));
+      balances.push(Bytes.fromByteArray(ByteArray.fromUTF8(combinedHex)));
     }
 
     newBalance.rentBalance = agents.getAgentRentBalance(
@@ -301,12 +321,16 @@ export function handleBalanceAdded(event: BalanceAddedEvent): void {
       balances = [];
     }
 
-    let newBalance = Balance.load(Bytes.fromHexString(combinedHex));
+    let newBalance = Balance.load(
+      Bytes.fromByteArray(ByteArray.fromUTF8(combinedHex))
+    );
     if (!newBalance) {
-      newBalance = new Balance(Bytes.fromHexString(combinedHex));
+      newBalance = new Balance(
+        Bytes.fromByteArray(ByteArray.fromUTF8(combinedHex))
+      );
       newBalance.collectionId = entity.collectionId;
       newBalance.token = entity.token;
-      balances.push(Bytes.fromHexString(combinedHex));
+      balances.push(Bytes.fromByteArray(ByteArray.fromUTF8(combinedHex)));
     }
 
     newBalance.rentBalance = agents.getAgentRentBalance(
@@ -418,9 +442,11 @@ export function handleWorkerAdded(event: WorkerAddedEvent): void {
       combinedHex = "0" + combinedHex;
     }
 
+    workers.push(Bytes.fromByteArray(ByteArray.fromUTF8(combinedHex)));
     let newWorker = new CollectionWorker(
-      Bytes.fromByteArray(ByteArray.fromHexString(combinedHex))
+      Bytes.fromByteArray(ByteArray.fromUTF8(combinedHex))
     );
+
     newWorker.instructions = agents.getWorkerInstructions(
       event.params.agentId,
       event.params.collectionId
@@ -461,12 +487,9 @@ export function handleWorkerAdded(event: WorkerAddedEvent): void {
       ByteArray.fromBigInt(event.params.collectionId)
     );
 
-    newWorker.save();
-
-    workers.push(newWorker.id);
-
     entityAgent.workers = workers;
 
+    newWorker.save();
     entityAgent.save();
   }
 }
@@ -502,7 +525,7 @@ export function handleWorkerRemoved(event: WorkerRemovedEvent): void {
         }
 
         if (
-          Bytes.fromByteArray(ByteArray.fromHexString(combinedHex)) !==
+          Bytes.fromByteArray(ByteArray.fromUTF8(combinedHex)) !==
           (workers as Bytes[])[i]
         ) {
           newWorkers.push((workers as Bytes[])[i]);
@@ -548,7 +571,7 @@ export function handleWorkerUpdated(event: WorkerUpdatedEvent): void {
     }
 
     let newWorker = CollectionWorker.load(
-      Bytes.fromByteArray(ByteArray.fromHexString(combinedHex))
+      Bytes.fromByteArray(ByteArray.fromUTF8(combinedHex))
     );
 
     if (newWorker) {
@@ -595,4 +618,60 @@ export function handleWorkerUpdated(event: WorkerUpdatedEvent): void {
       newWorker.save();
     }
   }
+}
+
+export function handleOwnerPaid(event: OwnerPaidEvent): void {
+  let entity = new OwnerPaid(
+    event.transaction.hash.concatI32(event.logIndex.toI32())
+  );
+  entity.owner = event.params.owner;
+  entity.token = event.params.token;
+  entity.amount = event.params.amount;
+  entity.collectionId = event.params.collectionId;
+  entity.collection = Bytes.fromByteArray(
+    ByteArray.fromBigInt(event.params.collectionId)
+  );
+
+  entity.blockNumber = event.block.number;
+  entity.blockTimestamp = event.block.timestamp;
+  entity.transactionHash = event.transaction.hash;
+
+  entity.save();
+}
+
+export function handleCollectorPaid(event: CollectorPaidEvent): void {
+  let entity = new CollectorPaid(
+    event.transaction.hash.concatI32(event.logIndex.toI32())
+  );
+  entity.collector = event.params.collector;
+  entity.token = event.params.token;
+  entity.amount = event.params.amount;
+  entity.collectionId = event.params.collectionId;
+  entity.collection = Bytes.fromByteArray(
+    ByteArray.fromBigInt(event.params.collectionId)
+  );
+
+  entity.blockNumber = event.block.number;
+  entity.blockTimestamp = event.block.timestamp;
+  entity.transactionHash = event.transaction.hash;
+
+  entity.save();
+}
+
+export function handleDevTreasuryPaid(event: DevTreasuryPaidEvent): void {
+  let entity = new DevTreasuryPaid(
+    event.transaction.hash.concatI32(event.logIndex.toI32())
+  );
+  entity.token = event.params.token;
+  entity.amount = event.params.amount;
+  entity.collectionId = event.params.collectionId;
+  entity.collection = Bytes.fromByteArray(
+    ByteArray.fromBigInt(event.params.collectionId)
+  );
+
+  entity.blockNumber = event.block.number;
+  entity.blockTimestamp = event.block.timestamp;
+  entity.transactionHash = event.transaction.hash;
+
+  entity.save();
 }

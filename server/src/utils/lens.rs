@@ -103,7 +103,6 @@ pub async fn authenticate(
         "variables": {
             "request": {
                 "accountOwner": {
-                    "app": "0xe5439696f4057aF073c0FB2dc6e5e755392922e1",
                     "account": account_address.to_lowercase(),
                     "owner": format!("{:?}", wallet.address()).to_lowercase()
                 }
@@ -124,7 +123,6 @@ pub async fn authenticate(
         Ok(response) => {
             if response.status().is_success() {
                 let json: Value = response.json().await?;
-
                 if let Some(challenge) = json["data"]["challenge"].as_object() {
                     let text = challenge
                         .get("text")
@@ -263,12 +261,25 @@ pub async fn make_publication(
 ) -> Result<String, Box<dyn Error + Send + Sync>> {
     let client = initialize_api();
 
+
     let wallet = match initialize_wallet(private_key) {
         Some(wallet) => wallet,
         None => {
             eprintln!("Wallet initialization failed. Skipping publication.");
             return Err("Wallet initialization failed. Skipping publication.".into());
         }
+    };
+
+    let request = if feed.is_some() {
+        json!({
+            "contentUri": content,
+            "feed": feed,
+        })
+    } else {
+        json!({
+            "contentUri": content,
+
+        })
     };
 
     let query = json!({
@@ -298,10 +309,7 @@ pub async fn make_publication(
             }
         "#,
         "variables": {
-                "request": {
-                    "contentUri": content,
-                    "feed": feed,
-                }
+                "request": request
         }
     });
 
@@ -316,7 +324,6 @@ pub async fn make_publication(
         .await?;
 
     let json: Value = response.json().await?;
-
     if let Some(post_response) = json["data"]["post"].as_object() {
         if let Some(hash) = post_response.get("hash").and_then(|v| v.as_str()) {
             println!("Post Hash: {:?}", hash);

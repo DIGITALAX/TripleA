@@ -6,6 +6,7 @@ import "./TripleAErrors.sol";
 import "./TripleAAccessControls.sol";
 import "./TripleAAgents.sol";
 import "./skyhunters/SkyhuntersAccessControls.sol";
+import "./skyhunters/SkyhuntersAgentManager.sol";
 import "openzeppelin-contracts/contracts/utils/structs/EnumerableSet.sol";
 
 contract TripleACollectionManager {
@@ -16,6 +17,7 @@ contract TripleACollectionManager {
     mapping(uint256 => TripleALibrary.Collection) private _collections;
     mapping(uint256 => TripleALibrary.Drop) private _drops;
     mapping(uint256 => mapping(address => uint256)) private _collectionPrices;
+    mapping(uint256 => uint256) private _collectionToAgentId;
 
     uint256 private _collectionCounter;
     uint256 private _dropCounter;
@@ -23,6 +25,7 @@ contract TripleACollectionManager {
     TripleAAccessControls public accessControls;
     TripleAAgents public agents;
     SkyhuntersAccessControls public skyhuntersAccessControls;
+    SkyhuntersAgentManager public skyhuntersAgentManager;
 
     event CollectionCreated(
         address artist,
@@ -60,8 +63,14 @@ contract TripleACollectionManager {
         _;
     }
 
-    modifier onlyArtist(uint256 collectionId) {
-        if (_collections[collectionId].artist != msg.sender) {
+    modifier onlyArtistOrAgentOwner(uint256 collectionId) {
+        if (
+            _collections[collectionId].artist != msg.sender ||
+            !skyhuntersAgentManager.getIsAgentOwner(
+                msg.sender,
+                _collectionToAgentId[collectionId]
+            )
+        ) {
             revert TripleAErrors.NotArtist();
         }
 
@@ -70,11 +79,15 @@ contract TripleACollectionManager {
 
     constructor(
         address payable _accessControls,
-        address payable _skyhuntersAccessControls
+        address payable _skyhuntersAccessControls,
+        address _skyhuntersAgentManager
     ) payable {
         accessControls = TripleAAccessControls(_accessControls);
         skyhuntersAccessControls = SkyhuntersAccessControls(
             _skyhuntersAccessControls
+        );
+        skyhuntersAgentManager = SkyhuntersAgentManager(
+            _skyhuntersAgentManager
         );
     }
 
@@ -148,6 +161,9 @@ contract TripleACollectionManager {
 
         if (skyhuntersAccessControls.isAgent(msg.sender)) {
             _collections[_collectionCounter].agent = true;
+            _collectionToAgentId[_collectionCounter] = collectionInput.agentIds[
+                0
+            ];
         }
 
         for (uint8 i = 0; i < collectionInput.agentIds.length; i++) {
@@ -190,7 +206,7 @@ contract TripleACollectionManager {
         string[] memory customInstructions,
         uint256[] memory agentIds,
         uint256 collectionId
-    ) public onlyArtist(collectionId) {
+    ) public onlyArtistOrAgentOwner(collectionId) {
         if (_collections[collectionId].artist != msg.sender) {
             revert TripleAErrors.NotArtist();
         }
@@ -213,7 +229,7 @@ contract TripleACollectionManager {
         address token,
         uint256 collectionId,
         uint256 newPrice
-    ) external onlyArtist(collectionId) {
+    ) external onlyArtistOrAgentOwner(collectionId) {
         if (!_collections[collectionId].erc20Tokens.contains(token)) {
             revert TripleAErrors.TokenNotAccepted();
         }
@@ -225,7 +241,7 @@ contract TripleACollectionManager {
 
     function deactivateCollection(
         uint256 collectionId
-    ) external onlyArtist(collectionId) {
+    ) external onlyArtistOrAgentOwner(collectionId) {
         if (!_collections[collectionId].active) {
             revert TripleAErrors.CollectionAlreadyDeactivated();
         }
@@ -237,7 +253,7 @@ contract TripleACollectionManager {
 
     function activateCollection(
         uint256 collectionId
-    ) external onlyArtist(collectionId) {
+    ) external onlyArtistOrAgentOwner(collectionId) {
         if (_collections[collectionId].active) {
             revert TripleAErrors.CollectionAlreadyActive();
         }
@@ -249,7 +265,7 @@ contract TripleACollectionManager {
 
     function deleteCollection(
         uint256 collectionId
-    ) external onlyArtist(collectionId) {
+    ) external onlyArtistOrAgentOwner(collectionId) {
         if (_collections[collectionId].amountSold > 0) {
             revert TripleAErrors.CantDeleteSoldCollection();
         }
@@ -315,7 +331,7 @@ contract TripleACollectionManager {
     function changeRemixable(
         uint256 collectionId,
         bool remixable
-    ) external onlyArtist(collectionId) {
+    ) external onlyArtistOrAgentOwner(collectionId) {
         _collections[collectionId].remixable = remixable;
 
         emit Remixable(collectionId, remixable);
@@ -445,6 +461,12 @@ contract TripleACollectionManager {
         return _collections[collectionId].agent;
     }
 
+    function getCollectionToAgentId(
+        uint256 collectionId
+    ) public view returns (uint256) {
+        return _collectionToAgentId[collectionId];
+    }
+
     function setMarket(address _market) external onlyAdmin {
         market = _market;
     }
@@ -460,6 +482,14 @@ contract TripleACollectionManager {
     ) external onlyAdmin {
         skyhuntersAccessControls = SkyhuntersAccessControls(
             _skyhuntersAccessControls
+        );
+    }
+
+    function setSkyhuntersAgentManager(
+        address payable _skyhuntersAgentManager
+    ) external onlyAdmin {
+        skyhuntersAgentManager = SkyhuntersAgentManager(
+            _skyhuntersAgentManager
         );
     }
 

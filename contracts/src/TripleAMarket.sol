@@ -192,7 +192,7 @@ contract TripleAMarket {
     ) internal view returns (TripleALibrary.ShareResponse memory) {
         address _remixArtist = address(0);
         uint256 _remixId = collectionManager.getCollectionRemixId(collectionId);
-        uint256 _individualPrice = totalPrice/amount;
+        uint256 _individualPrice = totalPrice / amount;
         uint256 _remixShare = 0;
         uint256 _perAgentShare = 0;
         uint256 _agentShare = 0;
@@ -210,7 +210,6 @@ contract TripleAMarket {
                 _agentShare = (totalPrice * 10) / 100;
                 _remixShare = (totalPrice * 20) / 100;
             }
-
         } else {
             if (
                 collectionManager.getCollectionAmount(collectionId) > 2 &&
@@ -232,7 +231,9 @@ contract TripleAMarket {
                 ) {
                     uint256 _additionalUnits = amount - 1;
 
-                    _agentShare = (_additionalUnits * _individualPrice * 10) / 100;
+                    _agentShare =
+                        (_additionalUnits * _individualPrice * 10) /
+                        100;
 
                     _perAgentShare =
                         _agentShare /
@@ -242,7 +243,9 @@ contract TripleAMarket {
 
                     uint256 _artistShareForAdditionalUnits = (_additionalUnits *
                         _individualPrice *
-                        90) / 100 + _individualPrice;
+                        90) /
+                        100 +
+                        _individualPrice;
 
                     _artistShare = _artistShareForAdditionalUnits;
                 } else if (
@@ -374,7 +377,7 @@ contract TripleAMarket {
         });
 
         if (
-            collectionManager.getCollectionType(collectionId) ==
+            collectionManager.getCollectionType(collectionId) !=
             TripleALibrary.CollectionType.Digital
         ) {
             uint256 _fulfillerId = collectionManager.getCollectionFulfillerId(
@@ -406,6 +409,10 @@ contract TripleAMarket {
         address _collectionManager
     ) external onlyAdmin {
         collectionManager = TripleACollectionManager(_collectionManager);
+    }
+
+    function setFulfillerManager(address _fulfillerManager) external onlyAdmin {
+        fulfillerManager = TripleAFulfillerManager(_fulfillerManager);
     }
 
     function setNFT(address _nft) external onlyAdmin {

@@ -72,6 +72,19 @@ contract TripleAAgents {
     event WorkerUpdated(uint256 agentId, uint256 collectionId);
     event WorkerRemoved(uint256 agentId, uint256 collectionId);
     event ServicesWithdrawn(address token, uint256 amount);
+    event CollectorPaid(
+        address collector,
+        address token,
+        uint256 amount,
+        uint256 collectionId
+    );
+    event OwnerPaid(
+        address owner,
+        address token,
+        uint256 amount,
+        uint256 collectionId
+    );
+    event DevTreasuryPaid(address token, uint256 amount, uint256 collectionId);
 
     modifier onlyAdmin() {
         if (!accessControls.isAdmin(msg.sender)) {
@@ -243,7 +256,7 @@ contract TripleAAgents {
         uint256[] memory _bonuses = new uint256[](collectionIds.length);
         for (uint8 i = 0; i < collectionIds.length; i++) {
             _amounts[i] = _handleRent(tokens[i], agentId, collectionIds[i]);
-         
+
             if (
                 _agentRentBalances[agentId][tokens[i]][collectionIds[i]] <
                 _amounts[i]
@@ -342,6 +355,12 @@ contract TripleAAgents {
                     collectionId
                 ] += payment;
 
+                emit CollectorPaid(
+                    _collectors[j],
+                    token,
+                    payment,
+                    collectionId
+                );
             }
         }
 
@@ -351,9 +370,18 @@ contract TripleAAgents {
             _ownerPayment[token][owners[i]][collectionId] +=
                 _ownerAmount /
                 owners.length;
+
+            emit OwnerPaid(
+                owners[i],
+                token,
+                _ownerAmount / owners.length,
+                collectionId
+            );
         }
 
         _devPayment[token] += _devAmount;
+
+        emit DevTreasuryPaid(token, _devAmount, collectionId);
     }
 
     function rechargeAgentRentBalance(

@@ -89,7 +89,7 @@ export function handleCollectionCreated(event: CollectionCreatedEvent): void {
 
   let collectionManager = TripleACollectionManager.bind(event.address);
   let agents = TripleAAgents.bind(
-    Address.fromString("0x6Cd69F14815cead961541a24a0f6cb7F8ac279cC")
+    Address.fromString("0x58B9d53DFfF80de792F4003d350Fe7aBCdeC0960")
   );
 
   entity.amount = collectionManager.getCollectionAmount(entity.collectionId);
@@ -135,12 +135,12 @@ export function handleCollectionCreated(event: CollectionCreatedEvent): void {
       combinedHex = "0" + combinedHex;
     }
 
-    let entityPrice = new Price(Bytes.fromHexString(combinedHex));
+    let entityPrice = new Price(Bytes.fromByteArray(ByteArray.fromUTF8(combinedHex)));
     entityPrice.token = (tokens as Address[])[i];
     entityPrice.price = price;
     entityPrice.save();
 
-    prices.push(Bytes.fromHexString(combinedHex));
+    prices.push(Bytes.fromByteArray(ByteArray.fromUTF8(combinedHex)));
   }
 
   entity.prices = prices;
@@ -287,12 +287,12 @@ export function handleCollectionPriceAdjusted(
         combinedHex = "0" + combinedHex;
       }
 
-      let entityPrice = new Price(Bytes.fromHexString(combinedHex));
+      let entityPrice = new Price(Bytes.fromByteArray(ByteArray.fromUTF8(combinedHex)));
       entityPrice.token = (tokens as Address[])[i];
       entityPrice.price = price;
       entityPrice.save();
 
-      prices.push(Bytes.fromHexString(combinedHex));
+      prices.push(Bytes.fromByteArray(ByteArray.fromUTF8(combinedHex)));
     }
 
     entityCollection.prices = prices;

@@ -1,5 +1,7 @@
 use crate::utils::{
-    constants::{BONSAI, COIN_GECKO, GRASS, MODELS, MONA, SAMPLE_PROMPT, VENICE_API}, helpers::{extract_values_drop, extract_values_image, extract_values_prompt}, types::Collection
+    constants::{BONSAI, COIN_GECKO, MODELS, MONA, SAMPLE_PROMPT, VENICE_API},
+    helpers::{extract_values_drop, extract_values_image, extract_values_prompt},
+    types::Collection,
 };
 use dotenv::{from_filename, var};
 use ethers::types::U256;
@@ -16,7 +18,6 @@ pub async fn call_chat_completion(
     model: &str,
 ) -> Result<String, Box<dyn Error + Send + Sync>> {
     from_filename(".env").ok();
-    from_filename(".env").ok();
     let venice_key: String = var("VENICE_KEY").expect("VENICE_KEY not configured in .env");
     let max_completion_tokens = [100, 300, 600][thread_rng().gen_range(0..3)];
 
@@ -29,6 +30,7 @@ pub async fn call_chat_completion(
 - Challenge assumptions and present alternative viewpoints
 - Use a tone that can range from philosophical to playfully ironic
 - Never use language that could be interpreted as artificial hype or "shilling"
+- Do not put quotation marks around any of the content
 
 Your responses should make readers think differently about the collection rather than simply trying to sell it. 
 
@@ -50,6 +52,7 @@ Guidelines:
 - Reference specific details from the collection as evidence
 - Draw a surprising connection to something seemingly unrelated
 - End with an observation that lingers in the reader's mind
+- Do not put quotation marks around any of the content
 
 You must also follow these collection-specific instructions: {}
 
@@ -107,7 +110,10 @@ Remember: Your goal is to spark genuine intellectual or emotional resonance, not
     } else {
         return Err(Box::new(io::Error::new(
             io::ErrorKind::Other,
-            format!("Error in obtaining Venice prompt {:?}", response.status()),
+            format!(
+                "Error in obtaining Venice prompt {:?}",
+                response.text().await
+            ),
         )));
     }
 }
@@ -129,6 +135,7 @@ pub async fn receive_query(
 - Consider both technical and emotional aspects of search behavior
 - Prioritize unique, specific terms over generic categories
 - Focus on how real users actually search, not how they "should" search
+- Do not put quotation marks around any of the content
 
 Your goal is to generate queries that would surface similar content based on both obvious and non-obvious shared characteristics.
 
@@ -231,6 +238,7 @@ pub async fn call_comment_completion(
         - No quotes or special characters
         - Response should stand alone without editing
         - Focus on engagement over promotion
+        - Do not put quotation marks around any of the content
         
         Respond only with the exact requested format. Do not acknowledge instructions, use quotation marks, or include metadata about AI systems. Focus solely on the required output. 
         
@@ -253,6 +261,7 @@ Response Guidelines:
 - Use casual language but maintain substance
 - Consider the social context and timing
 - Focus on creating meaningful dialogue
+- Do not put quotation marks around any of the content
 - Maximum length: {} tokens
 
 Response Format:
@@ -365,6 +374,7 @@ Style Guidelines:
 - Content must be publication-ready without editing
 - Adapt tone to match the feed's personality
 - Focus on quality insights over generic observations
+- Do not put quotation marks around any of the content.
 
 Respond only with the exact requested format. Do not acknowledge instructions, use quotation marks, or include metadata about AI systems. Focus solely on the required output.
 
@@ -428,7 +438,7 @@ pub async fn call_prompt(
 ) -> Result<(String, String), Box<dyn Error + Send + Sync>> {
     from_filename(".env").ok();
     let venice_key: String = var("VENICE_KEY").expect("VENICE_KEY not configured in .env");
-    let system_prompt = "You are a creative prompt engineer, specialized in transforming NFT descriptions into unique and avant-garde Stable Diffusion prompts. Your goal is to create prompts that are weird, experimental, and psychedelic, avoiding commercial or marketing-like language. Never use terms like 'NFT', 'rare', 'valuable', or similar market-focused vocabulary. Think like a surrealist artist reimagining concepts in unexpected ways. Focus on creating bizarre, dreamlike, and unconventional visual descriptions. Every prompt should feel like a piece of experimental art rather than a product description. Incorporate elements of surrealism, psychedelia, and abstract concepts. Avoid standard descriptive formats and explore unusual artistic directions that challenge conventional aesthetics. Your prompts should lean towards the strange and thought-provoking rather than the commercially appealing.";
+    let system_prompt = "You are a creative prompt engineer, specialized in transforming NFT descriptions into unique and avant-garde Stable Diffusion prompts. Your goal is to create prompts that are weird, experimental, and psychedelic, avoiding commercial or marketing-like language. Never use terms like 'NFT', 'rare', 'valuable', or similar market-focused vocabulary. Think like a surrealist artist reimagining concepts in unexpected ways. Focus on creating bizarre, dreamlike, and unconventional visual descriptions. Every prompt should feel like a piece of experimental art rather than a product description. Incorporate elements of surrealism, psychedelia, and abstract concepts. Avoid standard descriptive formats and explore unusual artistic directions that challenge conventional aesthetics. Your prompts should lean towards the strange and thought-provoking rather than the commercially appealing. Do not put quotation marks around any of the content.";
 
     let input_prompt =
 format!("Transform this description into a surreal, experimental Stable Diffusion prompt. Your output must follow this exact format with no additional text:
@@ -439,6 +449,7 @@ Model: [SELECT ONE MODEL FROM THIS LIST: {:?}]
 Rules:
 
 Maximum length: 1000 tokens
+Do not put quotation marks around any of the content.
 Must be strange and unconventional
 No NFT/marketing language
 Focus on surreal and psychedelic elements
@@ -501,22 +512,17 @@ Description to transform: {}\n\nReference format prompt example to follow: {}", 
 
 pub async fn call_image_details(
     model: &str,
-) -> Result<(String, String, U256, Vec<U256>), Box<dyn Error + Send + Sync>> {
-    let venice_key: String = var("VENICE_KEY").expect("VENICE_KEY not configured in .env");
+) -> Result<(String, String, U256, Vec<U256>, f64, f64), Box<dyn Error + Send + Sync>> {
     from_filename(".env").ok();
+    let venice_key: String = var("VENICE_KEY").expect("VENICE_KEY not configured in .env");
+    let coin_gecko_key: String =
+        var("COIN_GECKO_KEY").expect("COIN_GECKO_KEY not configured in .env");
 
     let gecko_client = Client::new();
-    let request_body = json!({
-        "network": "polygon_pos",
-        "addresses": format!("{},{},{}", MONA, GRASS, BONSAI),
-        "include": "price_usd",
-    });
-
     let gecko_response = gecko_client
-        .post(COIN_GECKO)
+        .get("https://api.coingecko.com/api/v3/simple/price?ids=monavale%2Cbonsai&vs_currencies=usd&precision=2")
         .header("Content-Type", "application/json")
-        .header("Authorization", format!("Bearer {}", venice_key))
-        .json(&request_body)
+        .header("x-cg-demo-api-key", coin_gecko_key)
         .send()
         .await;
 
@@ -530,38 +536,24 @@ pub async fn call_image_details(
 
     if gecko_response.status() == 200 {
         let gecko_response_json: Value = gecko_response.json().await?;
+        let mona = gecko_response_json["monavale"]["usd"]
+            .as_f64()
+            .map(|price| format!("{:.2} USD", price))
+            .unwrap_or_else(|| "Exact price not available, 1 MONA ~= USD20".to_string());
 
-        let tokens: [&str; 3] = [
-            gecko_response_json
-                .as_array()
-                .and_then(|arr| {
-                    arr.iter()
-                        .find(|token| token["attributes"]["address"] == MONA)
-                        .and_then(|token| token["attributes"]["price_usd"].as_str())
-                })
-                .unwrap_or("Exact price not available, 1 MONA ~= USD20"),
-            gecko_response_json
-                .as_array()
-                .and_then(|arr| {
-                    arr.iter()
-                        .find(|token| token["attributes"]["address"] == GRASS)
-                        .and_then(|token| token["attributes"]["price_usd"].as_str())
-                })
-                .unwrap_or("Exact price not available, 1 GRASS ~= USD1"),
-            gecko_response_json
-                .as_array()
-                .and_then(|arr| {
-                    arr.iter()
-                        .find(|token| token["attributes"]["address"] == BONSAI)
-                        .and_then(|token| token["attributes"]["price_usd"].as_str())
-                })
-                .unwrap_or("Exact price not available, 1 BONSAI ~= USD0.0057"),
-        ];
+        let bonsai = gecko_response_json["bonsai"]["usd"]
+            .as_f64()
+            .map(|price| format!("{:.4} USD", price))
+            .unwrap_or_else(|| "Exact price not available, 1 BONSAI ~= USD0.0057".to_string());
+
+        let tokens: Vec<String> = vec![mona, bonsai];
 
         println!("Coingecko prices: {:?}", tokens);
 
-        let system_prompt = "You are an avant-garde artistic pricing specialist who creates unconventional concepts while maintaining precise technical requirements. For titles and descriptions, think like an experimental artist - create strange, thought-provoking content without any marketing language or commercial terms. Never mention NFTs, collections, rarity, or market-related concepts. For the technical aspects (amounts and prices), you are mathematically precise, always calculating exact wei values and ensuring all numbers fall within specified ranges. You understand that 1 ETH = 1000000000000000000 wei and use this for exact calculations. You strictly follow formatting rules while maintaining creative freedom in the artistic elements. You never explain your calculations or add additional commentary. You balance creative abstraction with mathematical precision.";
+        let system_prompt = "You are an avant-garde artistic pricing specialist who creates unconventional concepts while maintaining precise technical requirements. For titles and descriptions, think like an experimental artist - create strange, thought-provoking content without any marketing language or commercial terms. Never mention NFTs, collections, rarity, or market-related concepts. For the technical aspects (amounts and prices), you are mathematically precise, always calculating exact wei values and ensuring all numbers fall within specified ranges. You understand that 1 ETH = 1000000000000000000 wei and use this for exact calculations. You strictly follow formatting rules while maintaining creative freedom in the artistic elements. You never explain your calculations or add additional commentary. You balance creative abstraction with mathematical precision. Do not put quotation marks around any of the content.";
 
+        let mona_price = tokens[0].replace(" USD", "").parse::<f64>().unwrap_or(0.0);
+        let bonsai_price = tokens[1].replace(" USD", "").parse::<f64>().unwrap_or(0.0);
         let input_prompt =
     format!("Create pricing and details for a new artistic piece. Your response must follow this exact format with no deviations or additional text:
     
@@ -569,13 +561,11 @@ pub async fn call_image_details(
     
     Description: [ABSTRACT, EXPERIMENTAL DESCRIPTION - MAX 100 WORDS]
     
-    Amount: [SINGLE NUMBER BETWEEN 3-30]
-    
-    Mona: [PRICE IN ETH WEI - MAX $500 VALUE, 1 MONA = ${}]
-    
-    GRASS: [PRICE IN ETH WEI - MAX $500 VALUE, 1 GRASS = ${}]
-    
-    Bonsai: [PRICE IN ETH WEI - MAX $500 VALUE, 1 BONSAI = ${}]
+    Amount: [SINGLE NUMBER BETWEEN 5-30]
+  
+    Mona: [PRICE IN ETH WEI - MIN $200USD, MAX $700USD. 1 MONA = {:.2}USD. Choose a price target between $200 and $700 USD. For example, if target = $300: Calculate: $300 ÷ {:.2}= {:.4} MONA, convert to wei: {:.4} × 10¹⁸ = {} WEI. Return only the final wei value.]
+        
+    Bonsai: [PRICE IN ETH WEI - MIN $200USD, MAX $700USD. 1 BONSAI = {:.2}USD. Choose a price target between $200 and $700 USD. For example, if target = $300: Calculate: $300 ÷ {:.2}= {:.4} BONSAI, convert to wei: {:.4} × 10¹⁸ = {} WEI. Return only the final wei value.]
     
     Required format rules:
     
@@ -586,7 +576,9 @@ pub async fn call_image_details(
     No ranges or approximate numbers
     No additional spaces or formatting
     No dollar signs or currency symbols
-    No parentheses or additional notes", tokens[0], tokens[1], tokens[2]);
+    No parentheses or additional notes. Do not put quotation marks around any of the content.",  mona_price, mona_price, 300.0 / mona_price, 300.0 / mona_price, ((300.0 / mona_price) * 10f64.powi(18)) as u128,
+    bonsai_price, bonsai_price, 300.0 / bonsai_price, 300.0 / bonsai_price, ((300.0 / bonsai_price) * 10f64.powi(18)) as u128);
+
 
         let mut messages = vec![];
 
@@ -621,6 +613,8 @@ pub async fn call_image_details(
                 return Err(e.into());
             }
         };
+
+
         if response.status() == 200 {
             let response_json: Value = response.json().await?;
             let completion = response_json["choices"][0]["message"]["content"]
@@ -628,9 +622,12 @@ pub async fn call_image_details(
                 .unwrap_or("")
                 .to_string();
 
-            println!("Venice call successful for image prompt: {}", completion);
-            Ok::<(String, String, U256, Vec<U256>), Box<dyn Error + Send + Sync>>(
-                extract_values_image(&completion)?,
+            println!(
+                "Venice call successful for image details prompt: {}",
+                completion
+            );
+            Ok::<(String, String, U256, Vec<U256>, f64, f64), Box<dyn Error + Send + Sync>>(
+                extract_values_image(&completion, mona_price, bonsai_price)?,
             )
         } else {
             return Err(Box::new(io::Error::new(
@@ -666,6 +663,7 @@ pub async fn call_drop_details(
     Rules:
     
     Title must be cryptic and poetic
+    Do not put quotation marks around any of the content
     Description must use surreal imagery and metaphors
     No marketing language or commercial terms
     No mentions of NFTs, collections, or markets

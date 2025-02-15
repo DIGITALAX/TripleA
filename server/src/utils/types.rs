@@ -5,7 +5,7 @@ use ethers::{
     middleware::SignerMiddleware,
     providers::{Http, Provider},
     signers::Wallet,
-    types::U256,
+    types::{Address, NameOrAddress, U256},
 };
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
@@ -162,16 +162,16 @@ pub enum ActivityType {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct CollectionInput {
-    pub remix: bool,
-    pub tokens: Vec<String>,
+    pub tokens: Vec<Address>,
     pub prices: Vec<U256>,
     pub agentIds: Vec<U256>,
     pub metadata: String,
-    pub collectionType: i32,
+    pub collectionType: u8,
     pub amount: U256,
     pub fulfillerId: U256,
+    pub remixId: U256,
+    pub remixable: bool,
 }
-
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct CollectionWorker {
@@ -188,32 +188,33 @@ impl Tokenizable for CollectionInput {
     fn from_token(token: Token) -> Result<Self, InvalidOutputType> {
         match token {
             Token::Tuple(tokens) if tokens.len() == 9 => Ok(Self {
-                remix: tokens[0].clone().into_bool().unwrap(),
-                tokens: tokens[2]
+                tokens: tokens[0]
                     .clone()
                     .into_array()
                     .unwrap()
                     .into_iter()
-                    .map(|t| t.into_string().unwrap())
+                    .map(|t| t.into_address().unwrap())
                     .collect(),
-                prices: tokens[3]
-                    .clone()
-                    .into_array()
-                    .unwrap()
-                    .into_iter()
-                    .map(|t| t.into_uint().unwrap())
-                    .collect(),
-                agentIds: tokens[4]
+                prices: tokens[1]
                     .clone()
                     .into_array()
                     .unwrap()
                     .into_iter()
                     .map(|t| t.into_uint().unwrap())
                     .collect(),
-                metadata: tokens[5].clone().into_string().unwrap(),
-                collectionType: tokens[6].clone().into_int().unwrap().as_u32() as i32,
-                amount: tokens[7].clone().into_uint().unwrap(),
-                fulfillerId: tokens[8].clone().into_uint().unwrap(),
+                agentIds: tokens[2]
+                    .clone()
+                    .into_array()
+                    .unwrap()
+                    .into_iter()
+                    .map(|t| t.into_uint().unwrap())
+                    .collect(),
+                metadata: tokens[3].clone().into_string().unwrap(),
+                collectionType: tokens[4].clone().into_int().unwrap().as_u32() as u8,
+                amount: tokens[5].clone().into_uint().unwrap(),
+                fulfillerId: tokens[6].clone().into_uint().unwrap(),
+                remixId: tokens[7].clone().into_uint().unwrap(),
+                remixable: tokens[8].clone().into_bool().unwrap(),
             }),
             _ => Err(InvalidOutputType(String::from("conversion error"))),
         }
@@ -221,14 +222,15 @@ impl Tokenizable for CollectionInput {
 
     fn into_token(self) -> Token {
         Token::Tuple(vec![
-            Token::Bool(self.remix),
-            Token::Array(self.tokens.into_iter().map(Token::String).collect()),
+            Token::Array(self.tokens.into_iter().map(Token::Address).collect()),
             Token::Array(self.prices.into_iter().map(Token::Uint).collect()),
             Token::Array(self.agentIds.into_iter().map(Token::Uint).collect()),
             Token::String(self.metadata),
-            Token::Int(self.collectionType.into()),
+            Token::Uint(U256::from(self.collectionType)),
             Token::Uint(self.amount),
             Token::Uint(self.fulfillerId),
+            Token::Uint(self.remixId),
+            Token::Bool(self.remixable),
         ])
     }
 }
@@ -236,7 +238,7 @@ impl Tokenizable for CollectionInput {
 impl Tokenizable for CollectionWorker {
     fn from_token(token: Token) -> Result<Self, InvalidOutputType> {
         match token {
-            Token::Tuple(tokens) if tokens.len() == 6 => Ok(Self {
+            Token::Tuple(tokens) if tokens.len() == 7 => Ok(Self {
                 instructions: tokens[0].clone().into_string().unwrap(),
                 publishFrequency: tokens[1].clone().into_uint().unwrap(),
                 remixFrequency: tokens[2].clone().into_uint().unwrap(),
@@ -251,6 +253,7 @@ impl Tokenizable for CollectionWorker {
 
     fn into_token(self) -> Token {
         Token::Tuple(vec![
+            Token::String(self.instructions),
             Token::Uint(self.publishFrequency),
             Token::Uint(self.remixFrequency),
             Token::Uint(self.leadFrequency),

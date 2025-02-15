@@ -176,7 +176,6 @@ type WorkerRemoved @entity(immutable: false) {
   transactionHash: Bytes!
 }
 
-
 type WorkerUpdated @entity(immutable: false) {
   id: Bytes!
   agentId: BigInt! # uint256
@@ -475,6 +474,41 @@ type TokenDetailsSet @entity(immutable: false) {
   rentPublish: BigInt! # uint256
   vig: BigInt! # uint256
   base: BigInt! # uint256
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type DevTreasuryPaid @entity(immutable: false) {
+  id: Bytes!
+  token: Bytes!
+  amount: BigInt!
+  collectionId: BigInt!
+  collection: CollectionCreated!
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type CollectorPaid @entity(immutable: false) {
+  id: Bytes!
+  collector: Bytes!
+  token: Bytes!
+  amount: BigInt!
+  collectionId: BigInt!
+  collection: CollectionCreated!
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type OwnerPaid @entity(immutable: false) {
+  id: Bytes!
+  owner: Bytes!
+  token: Bytes!
+  amount: BigInt!
+  collectionId: BigInt!
+  collection: CollectionCreated!
   blockNumber: BigInt!
   blockTimestamp: BigInt!
   transactionHash: Bytes!

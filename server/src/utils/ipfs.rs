@@ -47,13 +47,11 @@ pub async fn upload_image_to_ipfs(base64_str: &str) -> Result<IPFSResponse,  Box
     let image_bytes = general_purpose::STANDARD.decode(base64_data)?;
     // let path = format!("/var/data/{}.png", Uuid::new_v4());
     let path = format!("var/data/{}.png", Uuid::new_v4());
-
     let file_result = OpenOptions::new()
         .write(true)
         .create(true)
         .open(&path)
         .await;
-
     match file_result {
         Ok(mut file) => {
             if let Err(err) = file.write_all(&image_bytes).await {
@@ -66,7 +64,6 @@ pub async fn upload_image_to_ipfs(base64_str: &str) -> Result<IPFSResponse,  Box
             }
 
             drop(file);
-
             let file_read_result = File::open(&path).await;
             match file_read_result {
                 Ok(mut file) => {
@@ -93,7 +90,6 @@ pub async fn upload_image_to_ipfs(base64_str: &str) -> Result<IPFSResponse,  Box
                     if let Err(err) = remove_file(&path).await {
                         eprintln!("Error deleting file: {:?}", err);
                     }
-
                     Ok(ipfs_response)
                 }
                 Err(err) => {

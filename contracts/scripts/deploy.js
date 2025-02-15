@@ -16,8 +16,8 @@ const provider = new ethers.JsonRpcProvider(
 const wallet = new ethers.Wallet("", provider);
 const collectionManagerAddress = "0x6B434299F649eE8A908A67eeeAE4BE1E57720788";
 const marketAddress = "0x393C4D38286ef9aDEb4FeE0bF98efb8477177a2F";
-const agentsAddress = "0x6Cd69F14815cead961541a24a0f6cb7F8ac279cC";
-const fulfillerAddress = "0x49a81387572072FC2af31E7D659034D22e34b7b3";
+const agentsAddress = "0x58B9d53DFfF80de792F4003d350Fe7aBCdeC0960";
+const fulfillerAddress = "0xc32630Eb777f2D37239eEd69C0A4AFA6b9F8cB7D";
 const accessControlsAddress = "0x44F12767C03bfC102e70603403d64EC83aA2Fa53";
 const nftAddress = "0xF5F7234fc46171639F8ca3F3b7026E43a91DC883";
 const skyhuntersAcAddress = "0x0380cFac54F0CCff2Bd1527EB8Ff9c2Abd152eF3";
@@ -123,6 +123,8 @@ const FULFILLER = "0x3D1f8A6D6584a1672d2817368783B9a2a36ae361";
   // const tx3 = await cmContract.setAgents(agentsAddress);
   // await tx3.wait();
 
+  // const tx4 = await marketContract.setFulfillerManager(fulfillerAddress);
+  // await tx4.wait();
   // const tx4 = await fmContract.setMarket(marketAddress);
   // await tx4.wait();
   // const tx5 = await acContract.addFulfiller(FULFILLER);
@@ -156,12 +158,8 @@ const FULFILLER = "0x3D1f8A6D6584a1672d2817368783B9a2a36ae361";
   //   "ipfs://QmVZhDFGHFQWnx1P7uonTvGwDmX6fVUZF5mww6VMJrRXpx"
   // );
 
-  // await agentsContract.setCollectionManager(
-  //   "0x6B434299F649eE8A908A67eeeAE4BE1E57720788"
-  // );
-  // await marketContract.setCollectionManager(
-  //   "0x6B434299F649eE8A908A67eeeAE4BE1E57720788"
-  // );
+  // await agentsContract.setCollectionManager(collectionManagerAddress);
+  // await marketContract.setCollectionManager(collectionManagerAddress);
 
   // const res1 = await cmContract.getCollectionIsActive(2);
   // const res2 = await skyhuntersAgentContract.getAgentOwners(1);
@@ -176,4 +174,19 @@ const FULFILLER = "0x3D1f8A6D6584a1672d2817368783B9a2a36ae361";
   // const res11 = await cmContract.getCollectionAmountSold(4)
   // console.log({res10, res11})
   // console.log({ res1, res2, res3 , res4, res5: res5 + res6 + res7, res8, res9});
+
+
+  const res = await acContract.getTokenThreshold(MONA);
+  const res1 = await acContract.getTokenThreshold(BONSAI);
+
+  const res2 = await acContract.getTokenCycleRentPublish(MONA);
+  const res3 = await acContract.getTokenCycleRentLead(MONA);
+  const res4 = await acContract.getTokenCycleRentRemix(MONA);
+
+
+  const res5 = await acContract.getTokenCycleRentPublish(BONSAI);
+  const res6 = await acContract.getTokenCycleRentLead(BONSAI);
+  const res7 = await acContract.getTokenCycleRentRemix(BONSAI);
+
+  console.log({res, res1, res2, res3, res4, res5, res6, res7})
 })();

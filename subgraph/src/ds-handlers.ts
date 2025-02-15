@@ -106,6 +106,7 @@ export function handleAgentMetadata(content: Bytes): void {
     if (feeds && feeds.kind === JSONValueKind.ARRAY) {
       metadata.feeds = feeds
         .toArray()
+        .filter((target: JSONValue) => target.kind === JSONValueKind.STRING)
         .map<string>((target: JSONValue) => target.toString());
     }
 

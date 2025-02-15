@@ -37,7 +37,7 @@ pub async fn publish(
             }
         },
         Err(err) => {
-            eprintln!("Error with OpenAI completion: {:?}", err);
+            eprintln!("Error with Venice completion: {:?}", err);
             Ok(())
         }
     }

@@ -1,12 +1,11 @@
 use std::sync::LazyLock;
 
-pub static AGENTS: &'static str = "0x6Cd69F14815cead961541a24a0f6cb7F8ac279cC";
+pub static AGENTS: &'static str = "0x58B9d53DFfF80de792F4003d350Fe7aBCdeC0960";
 pub static COIN_GECKO: &'static str =  "https://api.geckoterminal.com/api/v2";
 pub static ACCESS_CONTROLS: &'static str = "0x44F12767C03bfC102e70603403d64EC83aA2Fa53";
 pub static COLLECTION_MANAGER: &'static str = "0x6B434299F649eE8A908A67eeeAE4BE1E57720788";
 pub static REMIX_FEED: &'static str = "0x";
 pub static MONA: &'static str = "0x72ab7C7f3F6FF123D08692b0be196149d4951a41";
-pub static GRASS: &'static str = "0xeee5a340Cdc9c179Db25dea45AcfD5FE8d4d3eB8";
 pub static BONSAI: &'static str = "0x15B58c74A0Ef6D0A593340721055223f38F5721E";
 pub static MODELS: &[&str] = &[
     "flux-dev-uncensored",
