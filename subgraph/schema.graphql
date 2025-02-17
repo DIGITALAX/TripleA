@@ -249,6 +249,8 @@ type AgentCreated @entity(immutable: false) {
   collectionIdsHistory: [CollectionCreated!]
   activeCollectionIds: [CollectionCreated!]
   balances: [Balance!]
+  skyhunter: Boolean
+  studio: Boolean
 }
 
 type AgentMetadata @entity(immutable: false) {
@@ -516,4 +518,27 @@ type OwnerPaid @entity(immutable: false) {
   blockNumber: BigInt!
   blockTimestamp: BigInt!
   transactionHash: Bytes!
+}
+
+type ArtistPaid @entity(immutable: false) {
+  id: Bytes!
+  forArtist: Bytes!
+  token: Bytes!
+  amount: BigInt!
+  collectionId: BigInt!
+  agentId: BigInt!
+  collection: CollectionCreated!
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type CollectionPrice @entity(immutable: false) {
+  id: Bytes!
+  collectionId: BigInt!
+  soldOut: Boolean!
+  amount: BigInt!
+  amountSold: BigInt!
+  token: Bytes!
+  price: BigInt!
 }

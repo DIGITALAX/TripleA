@@ -98,6 +98,9 @@ export function handleAgentCreated(event: AgentCreatedEvent): void {
     .map<Bytes>((target: Bytes) => target);
   entity.uri = agents.getAgentMetadata(event.params.id);
 
+  entity.skyhunter = agents.getAgentSkyhunter(event.params.id);
+  entity.studio = agents.getAgentStudio(event.params.id);
+
   let ipfsHash = (entity.uri as String).split("/").pop();
   if (ipfsHash != null) {
     entity.metadata = ipfsHash;

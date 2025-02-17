@@ -1,24 +1,26 @@
 use crate::utils::{
-    constants::{INFURA_GATEWAY, INPUT_IRL_FASHION, NEGATIVE_PROMPT_IMAGE, VENICE_API},
-    helpers::mint_collection,
+    constants::{
+        INFURA_GATEWAY, INPUT_IRL_FASHION, LENS_CHAIN_ID, MARKET, NEGATIVE_PROMPT_IMAGE, VENICE_API,
+    },
+    helpers::{find_collection, mint_collection},
     ipfs::{upload_image_to_ipfs, upload_lens_storage},
     lens::make_publication,
-    types::{Content, Image, Publication, SavedTokens, TripleAAgent},
+    types::{Collection, Content, Image, Price, Publication, SavedTokens, TripleAAgent},
     venice::call_image_details,
 };
 use base64::{engine::general_purpose::STANDARD, Engine};
 use ethers::{
-    contract::ContractInstance,
+    contract::{self, ContractInstance, FunctionCall},
     core::k256::ecdsa::SigningKey,
-    middleware::SignerMiddleware,
+    middleware::{Middleware, SignerMiddleware},
     providers::{Http, Provider},
-    signers::Wallet,
-    types::U256,
+    signers::{LocalWallet, Wallet},
+    types::{Address, Eip1559TransactionRequest, NameOrAddress, H160, H256, U256},
 };
 use rand::{thread_rng, Rng};
 use reqwest::Client;
 use serde_json::{to_string, Value};
-use std::{env, error::Error, io, sync::Arc};
+use std::{env, error::Error, io, str::FromStr, sync::Arc};
 use uuid::Uuid;
 
 pub async fn mint(
@@ -31,11 +33,18 @@ pub async fn mint(
         >,
     >,
     agents_contract: Arc<
-    ContractInstance<
-        Arc<SignerMiddleware<Arc<Provider<Http>>, Wallet<SigningKey>>>,
-        SignerMiddleware<Arc<Provider<Http>>, Wallet<SigningKey>>,
+        ContractInstance<
+            Arc<SignerMiddleware<Arc<Provider<Http>>, Wallet<SigningKey>>>,
+            SignerMiddleware<Arc<Provider<Http>>, Wallet<SigningKey>>,
+        >,
     >,
->,
+    market_contract: Arc<
+        ContractInstance<
+            Arc<SignerMiddleware<Arc<Provider<Http>>, Wallet<SigningKey>>>,
+            SignerMiddleware<Arc<Provider<Http>>, Wallet<SigningKey>>,
+        >,
+    >,
+    collection: &Collection,
 ) -> Result<(), Box<dyn Error + Send + Sync>> {
     let client = Client::new();
     let venice_key = env::var("VENICE_KEY").expect("VENICE_KEY no está configurada en .env");
@@ -192,7 +201,8 @@ pub async fn mint(
                                 "flux-dev-uncensored",
                                 1u8,
                                 Some(format.to_string()),
-                                false
+                                false,
+                                &collection.artist,
                             )
                             .await;
 
@@ -239,7 +249,14 @@ pub async fn mint(
                             )
                             .await;
 
-                            let _ = collect_artists(agents_contract).await;
+                            let _ = collect_artists(
+                                agents_contract,
+                                market_contract,
+                                &collection.artist,
+                                collection.prices.clone(),
+                                &agent,
+                            )
+                            .await;
 
                             Ok(())
                         }
@@ -272,11 +289,152 @@ pub async fn mint(
     }
 }
 
+async fn collect_artists(
+    agents_contract: Arc<
+        ContractInstance<
+            Arc<SignerMiddleware<Arc<Provider<Http>>, Wallet<SigningKey>>>,
+            SignerMiddleware<Arc<Provider<Http>>, Wallet<SigningKey>>,
+        >,
+    >,
+    market_contract: Arc<
+        ContractInstance<
+            Arc<SignerMiddleware<Arc<Provider<Http>>, Wallet<SigningKey>>>,
+            SignerMiddleware<Arc<Provider<Http>>, Wallet<SigningKey>>,
+        >,
+    >,
+    artist: &str,
+    prices: Vec<Price>,
+    agent: &TripleAAgent,
+) -> Result<(), Box<dyn Error + Send + Sync>> {
+    for price in &prices {
+        let balance_method = agents_contract.method::<_, U256>(
+            "getArtistCollectBalanceByToken",
+            (
+                H160::from_str(artist).unwrap(),
+                H160::from_str(&price.token).unwrap(),
+                U256::from(agent.id),
+            ),
+        );
 
-pub async  fn collect_artists(   agents_contract: Arc<
-    ContractInstance<
-        Arc<SignerMiddleware<Arc<Provider<Http>>, Wallet<SigningKey>>>,
-        SignerMiddleware<Arc<Provider<Http>>, Wallet<SigningKey>>,
-    >>)  -> Result<(), Box<dyn Error + Send + Sync>>  {
+        match balance_method {
+            Ok(balance_call) => {
+                let balance_result: Result<
+                    U256,
+                    contract::ContractError<SignerMiddleware<Arc<Provider<Http>>, LocalWallet>>,
+                > = balance_call.call().await;
 
+                match balance_result {
+                    Ok(balance) => {
+                        if balance > U256::from(0) {
+                            let _ = find_and_buy_collection(
+                                market_contract.clone(),
+                                artist,
+                                &price.token,
+                                balance,
+                                agent,
+                            )
+                            .await;
+                        } else {
+                            println!(
+                                "No artist balance for {} and agent {} and token {}",
+                                &artist, agent.id, &price.token
+                            );
+                        }
+                    }
+                    Err(err) => {
+                        eprintln!("Error in artist balance method: {}", err);
+                    }
+                }
+            }
+            Err(err) => {
+                eprintln!("Error in artist balance method: {}", err);
+            }
+        }
+    }
+
+    Ok(())
+}
+
+async fn find_and_buy_collection(
+    market_contract: Arc<
+        ContractInstance<
+            Arc<SignerMiddleware<Arc<Provider<Http>>, Wallet<SigningKey>>>,
+            SignerMiddleware<Arc<Provider<Http>>, Wallet<SigningKey>>,
+        >,
+    >,
+    artist: &str,
+    token: &str,
+    balance: U256,
+    agent: &TripleAAgent,
+) -> Result<(), Box<dyn Error + Send + Sync>> {
+    match find_collection(balance, token, artist).await {
+        Ok(collections) => {
+            let chosen_collection = &collections[thread_rng().gen_range(0..collections.len())];
+
+            let method = market_contract.method::<(Address, U256, U256, U256), H256>(
+                "agentBuy",
+                (
+                    H160::from_str(token).unwrap(),
+                    chosen_collection.collectionId,
+                    U256::from(1),
+                    U256::from(agent.id),
+                ),
+            );
+
+            match method {
+                Ok(call) => {
+                    let FunctionCall { tx, .. } = call;
+
+                    if let Some(tx_request) = tx.as_eip1559_ref() {
+                        let gas_price = U256::from(500_000_000_000u64);
+                        let max_priority_fee = U256::from(25_000_000_000u64);
+                        let gas_limit = U256::from(300_000);
+
+                        let client = market_contract.client().clone();
+                        let chain_id = *LENS_CHAIN_ID;
+                        let req = Eip1559TransactionRequest {
+                            from: Some(agent.wallet.parse::<Address>().unwrap()),
+                            to: Some(NameOrAddress::Address(MARKET.parse::<Address>().unwrap())),
+                            gas: Some(gas_limit),
+                            value: tx_request.value,
+                            data: tx_request.data.clone(),
+                            max_priority_fee_per_gas: Some(max_priority_fee),
+                            max_fee_per_gas: Some(gas_price + max_priority_fee),
+                            chain_id: Some(chain_id.into()),
+                            ..Default::default()
+                        };
+
+                        let pending_tx = match client.send_transaction(req, None).await {
+                            Ok(tx) => tx,
+                            Err(e) => {
+                                eprintln!("Error sending the transaction for agentBuy: {:?}", e);
+                                Err(Box::new(e))?
+                            }
+                        };
+
+                        let tx_hash = match pending_tx.confirmations(1).await {
+                            Ok(hash) => hash,
+                            Err(e) => {
+                                eprintln!("Error with transaction confirmation: {:?}", e);
+                                Err(Box::new(e))?
+                            }
+                        };
+
+                        println!("Agent Buy Hash: {:?}", tx_hash);
+                    } else {
+                        eprintln!("Error in sending Transaction");
+                    }
+                }
+
+                Err(err) => {
+                    eprintln!("Error in create method for create collection: {:?}", err);
+                }
+            }
+        }
+        Err(err) => {
+            eprintln!("Error in finding collection within balance range: {}", err);
+        }
+    }
+
+    Ok(())
 }

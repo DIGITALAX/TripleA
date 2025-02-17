@@ -5,7 +5,7 @@ use ethers::{
     middleware::SignerMiddleware,
     providers::{Http, Provider},
     signers::Wallet,
-    types::{Address, NameOrAddress, U256},
+    types::{Address, U256},
 };
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
@@ -59,6 +59,12 @@ pub struct AgentManager {
     pub agent: TripleAAgent,
     pub current_queue: Vec<AgentActivity>,
     pub agents_contract: Arc<
+        ContractInstance<
+            Arc<SignerMiddleware<Arc<Provider<Http>>, Wallet<SigningKey>>>,
+            SignerMiddleware<Arc<Provider<Http>>, Wallet<SigningKey>>,
+        >,
+    >,
+    pub market_contract: Arc<
         ContractInstance<
             Arc<SignerMiddleware<Arc<Provider<Http>>, Wallet<SigningKey>>>,
             SignerMiddleware<Arc<Provider<Http>>, Wallet<SigningKey>>,
@@ -164,6 +170,13 @@ pub enum ActivityType {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct PriceCollection {
+    pub collectionId: U256,
+    pub amountSold: U256,
+    pub amount: U256,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct CollectionInput {
     pub tokens: Vec<Address>,
     pub prices: Vec<U256>,
@@ -174,6 +187,7 @@ pub struct CollectionInput {
     pub fulfillerId: U256,
     pub remixId: U256,
     pub remixable: bool,
+    pub forArtist: Address,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -192,7 +206,7 @@ pub struct CollectionWorker {
 impl Tokenizable for CollectionInput {
     fn from_token(token: Token) -> Result<Self, InvalidOutputType> {
         match token {
-            Token::Tuple(tokens) if tokens.len() == 9 => Ok(Self {
+            Token::Tuple(tokens) if tokens.len() == 10 => Ok(Self {
                 tokens: tokens[0]
                     .clone()
                     .into_array()
@@ -220,6 +234,7 @@ impl Tokenizable for CollectionInput {
                 fulfillerId: tokens[6].clone().into_uint().unwrap(),
                 remixId: tokens[7].clone().into_uint().unwrap(),
                 remixable: tokens[8].clone().into_bool().unwrap(),
+                forArtist: tokens[9].clone().into_address().unwrap(),
             }),
             _ => Err(InvalidOutputType(String::from("conversion error"))),
         }
@@ -236,6 +251,7 @@ impl Tokenizable for CollectionInput {
             Token::Uint(self.fulfillerId),
             Token::Uint(self.remixId),
             Token::Bool(self.remixable),
+            Token::Address(self.forArtist),
         ])
     }
 }

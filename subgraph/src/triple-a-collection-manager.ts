@@ -24,6 +24,7 @@ import {
   CollectionCreated,
   CollectionDeactivated,
   CollectionDeleted,
+  CollectionPrice,
   CollectionPriceAdjusted,
   DropCreated,
   DropDeleted,
@@ -72,6 +73,34 @@ export function handleCollectionActivated(
     entityCollection.active = true;
 
     entityCollection.save();
+
+    for (let i = 0; i < (entityCollection.prices as Bytes[]).length; i++) {
+      let price = Price.load((entityCollection.prices as Bytes[])[i]);
+
+      if (price) {
+        let tokenHex = (price.token as Bytes).toHexString();
+        let collectionHex = entity.collectionId.toHexString();
+        let combinedPriceHex = tokenHex + collectionHex;
+        if (combinedPriceHex.length % 2 !== 0) {
+          combinedPriceHex = "0" + combinedPriceHex;
+        }
+        let collectionPrice = CollectionPrice.load(
+          Bytes.fromByteArray(ByteArray.fromUTF8(combinedPriceHex))
+        );
+
+        let sold = entityCollection.amountSold;
+
+        if (!sold) {
+          sold = BigInt.fromI32(0);
+        }
+
+        if (collectionPrice && sold < entityCollection.amount) {
+          collectionPrice.soldOut = false;
+
+          collectionPrice.save();
+        }
+      }
+    }
   }
 }
 
@@ -135,12 +164,29 @@ export function handleCollectionCreated(event: CollectionCreatedEvent): void {
       combinedHex = "0" + combinedHex;
     }
 
-    let entityPrice = new Price(Bytes.fromByteArray(ByteArray.fromUTF8(combinedHex)));
+    let entityPrice = new Price(
+      Bytes.fromByteArray(ByteArray.fromUTF8(combinedHex))
+    );
     entityPrice.token = (tokens as Address[])[i];
     entityPrice.price = price;
     entityPrice.save();
 
     prices.push(Bytes.fromByteArray(ByteArray.fromUTF8(combinedHex)));
+
+    let collectionHex = entity.collectionId.toHexString();
+    let combinedPriceHex = tokenHex + collectionHex;
+    if (combinedPriceHex.length % 2 !== 0) {
+      combinedPriceHex = "0" + combinedPriceHex;
+    }
+    let collectionPrice = new CollectionPrice(
+      Bytes.fromByteArray(ByteArray.fromUTF8(combinedPriceHex))
+    );
+
+    collectionPrice.token = (tokens as Address[])[i];
+    collectionPrice.price = price;
+    collectionPrice.amount = entity.amount;
+
+    collectionPrice.save();
   }
 
   entity.prices = prices;
@@ -194,6 +240,28 @@ export function handleCollectionDeactivated(
     entityCollection.active = false;
 
     entityCollection.save();
+
+    for (let i = 0; i < (entityCollection.prices as Bytes[]).length; i++) {
+      let price = Price.load((entityCollection.prices as Bytes[])[i]);
+
+      if (price) {
+        let tokenHex = (price.token as Bytes).toHexString();
+        let collectionHex = entity.collectionId.toHexString();
+        let combinedPriceHex = tokenHex + collectionHex;
+        if (combinedPriceHex.length % 2 !== 0) {
+          combinedPriceHex = "0" + combinedPriceHex;
+        }
+        let collectionPrice = CollectionPrice.load(
+          Bytes.fromByteArray(ByteArray.fromUTF8(combinedPriceHex))
+        );
+
+        if (collectionPrice) {
+          collectionPrice.soldOut = true;
+
+          collectionPrice.save();
+        }
+      }
+    }
   }
 }
 
@@ -234,6 +302,26 @@ export function handleCollectionDeleted(event: CollectionDeletedEvent): void {
             }
           }
         }
+      }
+    }
+
+    for (let i = 0; i < (entityCollection.prices as Bytes[]).length; i++) {
+      let price = Price.load((entityCollection.prices as Bytes[])[i]);
+
+      if (price) {
+        let tokenHex = (price.token as Bytes).toHexString();
+        let collectionHex = entity.collectionId.toHexString();
+        let combinedPriceHex = tokenHex + collectionHex;
+        if (combinedPriceHex.length % 2 !== 0) {
+          combinedPriceHex = "0" + combinedPriceHex;
+        }
+
+        store.remove(
+          "CollectionPrice",
+          Bytes.fromByteArray(
+            ByteArray.fromUTF8(combinedPriceHex)
+          ).toHexString()
+        );
       }
     }
 
@@ -287,12 +375,29 @@ export function handleCollectionPriceAdjusted(
         combinedHex = "0" + combinedHex;
       }
 
-      let entityPrice = new Price(Bytes.fromByteArray(ByteArray.fromUTF8(combinedHex)));
+      let entityPrice = new Price(
+        Bytes.fromByteArray(ByteArray.fromUTF8(combinedHex))
+      );
       entityPrice.token = (tokens as Address[])[i];
       entityPrice.price = price;
       entityPrice.save();
 
       prices.push(Bytes.fromByteArray(ByteArray.fromUTF8(combinedHex)));
+
+      let collectionHex = entity.collectionId.toHexString();
+      let combinedPriceHex = tokenHex + collectionHex;
+      if (combinedPriceHex.length % 2 !== 0) {
+        combinedPriceHex = "0" + combinedPriceHex;
+      }
+      let collectionPrice = CollectionPrice.load(
+        Bytes.fromByteArray(ByteArray.fromUTF8(combinedPriceHex))
+      );
+
+      if (collectionPrice) {
+        collectionPrice.price = price;
+
+        collectionPrice.save();
+      }
     }
 
     entityCollection.prices = prices;
@@ -360,15 +465,16 @@ export function handleDropDeleted(event: DropDeletedEvent): void {
         );
 
         if (entityCollection) {
-
           let agents = entityCollection.agentIds;
 
           if (agents) {
             for (let i = 0; i < (agents as BigInt[]).length; i++) {
               let entityAgent = AgentCreated.load(
-                Bytes.fromByteArray(ByteArray.fromBigInt((agents as BigInt[])[i]))
+                Bytes.fromByteArray(
+                  ByteArray.fromBigInt((agents as BigInt[])[i])
+                )
               );
-      
+
               if (entityAgent) {
                 let workers = entityAgent.workers;
                 if (workers) {
@@ -382,7 +488,33 @@ export function handleDropDeleted(event: DropDeletedEvent): void {
               }
             }
           }
-          
+
+          for (
+            let i = 0;
+            i < (entityCollection.prices as Bytes[]).length;
+            i++
+          ) {
+            let price = Price.load((entityCollection.prices as Bytes[])[i]);
+
+            if (price) {
+              let tokenHex = (price.token as Bytes).toHexString();
+              let collectionHex = (entityDrop.collections as Bytes[])[
+                i
+              ].toHexString();
+              let combinedPriceHex = tokenHex + collectionHex;
+              if (combinedPriceHex.length % 2 !== 0) {
+                combinedPriceHex = "0" + combinedPriceHex;
+              }
+
+              store.remove(
+                "CollectionPrice",
+                Bytes.fromByteArray(
+                  ByteArray.fromUTF8(combinedPriceHex)
+                ).toHexString()
+              );
+            }
+          }
+
           store.remove(
             "CollectionCreated",
             (entityDrop.collections as Bytes[])[i].toHexString()

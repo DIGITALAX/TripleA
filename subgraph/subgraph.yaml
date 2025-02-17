@@ -74,6 +74,7 @@ dataSources:
         - CollectorPaid
         - OwnerPaid
         - DevTreasuryPaid
+        - ArtistPaid
       abis:
         - name: TripleAAgents
           file: ./abis/TripleAAgents.json
@@ -100,6 +101,8 @@ dataSources:
           handler: handleOwnerPaid
         - event: CollectorPaid(address,address,uint256,uint256)
           handler: handleCollectorPaid
+        - event: ArtistPaid(address,address,uint256,uint256,uint256)
+          handler: handleArtistPaid
         - event: DevTreasuryPaid(address,uint256,uint256)
           handler: handleDevTreasuryPaid
 

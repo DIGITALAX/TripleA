@@ -150,7 +150,7 @@ contract TripleAAgentsTest is Test {
         address[] memory owners = new address[](2);
         owners[0] = agentOwner;
         owners[1] = agentOwner3;
-        skyhuntersAgent.createAgent(wallets, owners, metadata);
+        skyhuntersAgent.createAgent(wallets, owners, metadata, false, false);
         uint256 agentId = skyhuntersAgent.getAgentCounter();
         assertEq(agentId, 1);
         assertEq(skyhuntersAgent.getAgentWallets(agentId)[0], agentWallet);
@@ -167,7 +167,7 @@ contract TripleAAgentsTest is Test {
         address[] memory owners = new address[](2);
         owners[0] = agentOwner;
         owners[1] = agentOwner3;
-        skyhuntersAgent.createAgent(wallets, owners, metadata);
+        skyhuntersAgent.createAgent(wallets, owners, metadata, false, false);
 
         uint256 agentId = skyhuntersAgent.getAgentCounter();
         string memory newMetadata = "Updated Metadata";
@@ -186,7 +186,7 @@ contract TripleAAgentsTest is Test {
         address[] memory owners = new address[](2);
         owners[0] = agentOwner;
         owners[1] = agentOwner3;
-        skyhuntersAgent.createAgent(wallets, owners, metadata);
+        skyhuntersAgent.createAgent(wallets, owners, metadata, false, false);
         uint256 agentId = skyhuntersAgent.getAgentCounter();
         vm.stopPrank();
 
@@ -206,7 +206,7 @@ contract TripleAAgentsTest is Test {
         address[] memory owners = new address[](2);
         owners[0] = agentOwner;
         owners[1] = agentOwner3;
-        skyhuntersAgent.createAgent(wallets, owners, metadata);
+        skyhuntersAgent.createAgent(wallets, owners, metadata, false, false);
 
         uint256 agentId = skyhuntersAgent.getAgentCounter();
 
@@ -222,7 +222,7 @@ contract TripleAAgentsTest is Test {
         address[] memory owners = new address[](2);
         owners[0] = agentOwner;
         owners[1] = agentOwner3;
-        skyhuntersAgent.createAgent(wallets, owners, metadata);
+        skyhuntersAgent.createAgent(wallets, owners, metadata, false, false);
         uint256 agentId = skyhuntersAgent.getAgentCounter();
         vm.stopPrank();
 
@@ -242,14 +242,20 @@ contract TripleAAgentsTest is Test {
         address[] memory owners = new address[](2);
         owners[0] = admin;
         owners[1] = agentOwner2;
-        skyhuntersAgent.createAgent(wallets, owners, metadata);
+        skyhuntersAgent.createAgent(wallets, owners, metadata, false, false);
         uint256 firstAgentId = skyhuntersAgent.getAgentCounter();
 
         address[] memory newWallets = new address[](1);
         newWallets[0] = address(0xDEF);
         address[] memory newOwners = new address[](1);
         newOwners[0] = agentOwner3;
-        skyhuntersAgent.createAgent(newWallets, newOwners, "Another Metadata");
+        skyhuntersAgent.createAgent(
+            newWallets,
+            newOwners,
+            "Another Metadata",
+            false,
+            false
+        );
         uint256 secondAgentId = skyhuntersAgent.getAgentCounter();
 
         assertEq(firstAgentId, 1);
@@ -266,7 +272,7 @@ contract TripleAAgentsTest is Test {
         address[] memory owners = new address[](2);
         owners[0] = agentOwner;
         owners[1] = agentOwner3;
-        skyhuntersAgent.createAgent(wallets, owners, metadata);
+        skyhuntersAgent.createAgent(wallets, owners, metadata, false, false);
         vm.stopPrank();
 
         vm.startPrank(artist);
@@ -348,7 +354,7 @@ contract TripleAAgentsTest is Test {
         address[] memory owners = new address[](2);
         owners[0] = agentOwner;
         owners[1] = agentOwner3;
-        skyhuntersAgent.createAgent(wallets, owners, metadata);
+        skyhuntersAgent.createAgent(wallets, owners, metadata, false, false);
         vm.stopPrank();
 
         vm.startPrank(artist);
@@ -468,7 +474,7 @@ contract TripleAAgentsTest is Test {
         address[] memory owners = new address[](2);
         owners[0] = agentOwner;
         owners[1] = agentOwner3;
-        skyhuntersAgent.createAgent(wallets, owners, metadata);
+        skyhuntersAgent.createAgent(wallets, owners, metadata, false, false);
         vm.stopPrank();
 
         vm.startPrank(agentWallet);
@@ -575,7 +581,7 @@ contract TripleAAgentsTest is Test {
         address[] memory owners = new address[](2);
         owners[0] = agentOwner;
         owners[1] = agentOwner3;
-        skyhuntersAgent.createAgent(wallets, owners, metadata);
+        skyhuntersAgent.createAgent(wallets, owners, metadata, false, false);
         vm.stopPrank();
 
         vm.startPrank(agentWallet);
@@ -635,7 +641,7 @@ contract TripleAAgentsTest is Test {
         address[] memory owners = new address[](2);
         owners[0] = agentOwner;
         owners[1] = agentOwner3;
-        skyhuntersAgent.createAgent(wallets, owners, metadata);
+        skyhuntersAgent.createAgent(wallets, owners, metadata, false, false);
         vm.stopPrank();
 
         vm.startPrank(agentWallet);
@@ -691,8 +697,10 @@ contract TripleAAgentsTest is Test {
         uint256 agentsExpectedBalance = agentsInitialBalance +
             50 ether -
             fulfillerExpectedBalance;
-            uint256 price = 50 ether - fulfillerExpectedBalance;
-        uint256 collectExpectedBalance = (price / 5 )+  90 * ((price * 4 / 5 )) /100;
+        uint256 price = 50 ether - fulfillerExpectedBalance;
+        uint256 collectExpectedBalance = (price / 5) +
+            (90 * (((price * 4) / 5))) /
+            100;
 
         assertEq(buyerExpectedBalance, token1.balanceOf(buyer));
         assertEq(0, token1.balanceOf(artist2));
@@ -709,7 +717,6 @@ contract TripleAAgentsTest is Test {
     }
 
     function testAgentBuysCollection() public {
-
         testBuyAgentCollection();
 
         vm.startPrank(agentWallet);
@@ -743,9 +750,6 @@ contract TripleAAgentsTest is Test {
         market.buy("fulfillment details", address(token1), 2, 5, 1);
         vm.stopPrank();
 
-        
-
-
         vm.startPrank(agentOwner);
 
         address[] memory wallets = new address[](1);
@@ -753,7 +757,7 @@ contract TripleAAgentsTest is Test {
         address[] memory owners = new address[](2);
         owners[0] = agentOwner;
         owners[1] = agentOwner3;
-        skyhuntersAgent.createAgent(wallets, owners, metadata);
+        skyhuntersAgent.createAgent(wallets, owners, metadata, false, false);
         vm.stopPrank();
 
         vm.startPrank(artist2);
@@ -796,7 +800,7 @@ contract TripleAAgentsTest is Test {
         uint256 artistsInitialBalance = token1.balanceOf(address(artist2));
 
         vm.startPrank(buyer);
-        token1.approve(address(market),100 ether);
+        token1.approve(address(market), 100 ether);
         token1.allowance(buyer, address(market));
         vm.expectRevert(
             abi.encodeWithSelector(TripleAErrors.NotAgent.selector)
@@ -810,25 +814,29 @@ contract TripleAAgentsTest is Test {
         market.agentBuy(address(token1), 3, 2, 1);
         vm.stopPrank();
 
- 
-        uint256 agentsExpectedBalance = agentsInitialBalance - 14 ether - (90 * 14 ether)/100;
-         uint256 artistExpectedBalance = artistsInitialBalance + 14 ether + (90 * 14 ether)/100;
+        uint256 agentsExpectedBalance = agentsInitialBalance -
+            14 ether -
+            (90 * 14 ether) /
+            100;
+        uint256 artistExpectedBalance = artistsInitialBalance +
+            14 ether +
+            (90 * 14 ether) /
+            100;
 
-  assertEq(artistExpectedBalance, token1.balanceOf(artist2));
-     assertEq(agentsExpectedBalance, token1.balanceOf(address(agents)));
-           assertEq(0, token1.balanceOf(agentWallet));
-          
+        assertEq(artistExpectedBalance, token1.balanceOf(artist2));
+        assertEq(agentsExpectedBalance, token1.balanceOf(address(agents)));
+        assertEq(0, token1.balanceOf(agentWallet));
     }
 
     function buyOneCollection() public {
-         vm.startPrank(agentOwner);
+        vm.startPrank(agentOwner);
 
         address[] memory wallets = new address[](1);
         wallets[0] = agentWallet;
         address[] memory owners = new address[](2);
         owners[0] = agentOwner;
         owners[1] = agentOwner3;
-        skyhuntersAgent.createAgent(wallets, owners, metadata);
+        skyhuntersAgent.createAgent(wallets, owners, metadata, false, false);
         vm.stopPrank();
 
         vm.startPrank(artist);
@@ -867,7 +875,7 @@ contract TripleAAgentsTest is Test {
         collectionManager.create(inputs_1, workers_1, "some drop uri", 0);
         vm.stopPrank();
 
-           token1.mint(buyer, 200 ether);
+        token1.mint(buyer, 200 ether);
         uint256 buyerInitialBalance = token1.balanceOf(buyer);
         uint256 artistInitialBalance = token1.balanceOf(artist);
 
@@ -877,15 +885,11 @@ contract TripleAAgentsTest is Test {
         market.buy("fulfillment details", address(token1), 1, 1, 1);
         vm.stopPrank();
 
-
-         uint256 buyerExpectedBalance = buyerInitialBalance - 10 ether;
+        uint256 buyerExpectedBalance = buyerInitialBalance - 10 ether;
         uint256 artistExpectedBalance = artistInitialBalance + 10 ether;
 
         assertEq(buyerExpectedBalance, token1.balanceOf(buyer));
-        assertEq(
-            artistExpectedBalance,
-           token1.balanceOf(artist)
-        );
+        assertEq(artistExpectedBalance, token1.balanceOf(artist));
     }
 
     function testDeleteByAgentOwner() public {
@@ -896,7 +900,7 @@ contract TripleAAgentsTest is Test {
         address[] memory owners = new address[](2);
         owners[0] = agentOwner;
         owners[1] = agentOwner3;
-        skyhuntersAgent.createAgent(wallets, owners, metadata);
+        skyhuntersAgent.createAgent(wallets, owners, metadata, false, false);
         vm.stopPrank();
 
         vm.startPrank(agentWallet);
@@ -1039,7 +1043,7 @@ contract TripleAAgentsTest is Test {
         address[] memory owners = new address[](2);
         owners[0] = agentOwner;
         owners[1] = agentOwner3;
-        skyhuntersAgent.createAgent(wallets, owners, metadata);
+        skyhuntersAgent.createAgent(wallets, owners, metadata, false, false);
         vm.stopPrank();
 
         vm.startPrank(artist);
@@ -1134,7 +1138,7 @@ contract TripleAAgentsTest is Test {
         address[] memory owners = new address[](2);
         owners[0] = agentOwner;
         owners[1] = agentOwner3;
-        skyhuntersAgent.createAgent(wallets, owners, metadata);
+        skyhuntersAgent.createAgent(wallets, owners, metadata, false, false);
         vm.stopPrank();
 
         vm.startPrank(artist);
@@ -1226,7 +1230,6 @@ contract TripleAAgentsTest is Test {
         uint256 agentExpectedBalance = agentInitialBalance + (25 ether);
         vm.stopPrank();
 
-
         assertEq(buyerExpectedBalance, token1.balanceOf(buyer));
         assertEq(artistExpectedBalance, token1.balanceOf(artist));
         assertEq(agentExpectedBalance, token1.balanceOf(address(agents)));
@@ -1240,7 +1243,7 @@ contract TripleAAgentsTest is Test {
         address[] memory owners = new address[](2);
         owners[0] = agentOwner;
         owners[1] = agentOwner3;
-        skyhuntersAgent.createAgent(wallets, owners, metadata);
+        skyhuntersAgent.createAgent(wallets, owners, metadata, false, false);
         vm.stopPrank();
 
         vm.startPrank(artist);
@@ -1348,7 +1351,7 @@ contract TripleAAgentsTest is Test {
         address[] memory owners = new address[](2);
         owners[0] = agentOwner;
         owners[1] = agentOwner3;
-        skyhuntersAgent.createAgent(wallets, owners, metadata);
+        skyhuntersAgent.createAgent(wallets, owners, metadata, false, false);
         vm.stopPrank();
 
         vm.startPrank(artist);
@@ -1472,7 +1475,7 @@ contract TripleAAgentsTest is Test {
         address[] memory owners = new address[](2);
         owners[0] = agentOwner;
         owners[1] = agentOwner3;
-        skyhuntersAgent.createAgent(wallets, owners, metadata);
+        skyhuntersAgent.createAgent(wallets, owners, metadata, false, false);
         vm.stopPrank();
 
         vm.startPrank(artist);
@@ -1587,7 +1590,7 @@ contract TripleAAgentsTest is Test {
         address[] memory owners = new address[](2);
         owners[0] = agentOwner;
         owners[1] = agentOwner3;
-        skyhuntersAgent.createAgent(wallets, owners, metadata);
+        skyhuntersAgent.createAgent(wallets, owners, metadata, false, false);
         vm.stopPrank();
 
         vm.startPrank(artist);
@@ -1676,7 +1679,7 @@ contract TripleAAgentsTest is Test {
         address[] memory owners = new address[](2);
         owners[0] = agentOwner;
         owners[1] = agentOwner3;
-        skyhuntersAgent.createAgent(wallets, owners, metadata);
+        skyhuntersAgent.createAgent(wallets, owners, metadata, false, false);
         vm.stopPrank();
 
         vm.startPrank(artist);
@@ -1806,7 +1809,7 @@ contract TripleAAgentsTest is Test {
         address[] memory owners = new address[](2);
         owners[0] = agentOwner;
         owners[1] = agentOwner3;
-        skyhuntersAgent.createAgent(wallets, owners, metadata);
+        skyhuntersAgent.createAgent(wallets, owners, metadata, false, false);
         vm.stopPrank();
 
         vm.startPrank(artist);
@@ -1876,7 +1879,13 @@ contract TripleAAgentsTest is Test {
         address[] memory owners_2 = new address[](2);
         owners_2[0] = agentOwner2;
         owners_2[1] = agentOwner3;
-        skyhuntersAgent.createAgent(wallets_2, owners_2, metadata2);
+        skyhuntersAgent.createAgent(
+            wallets_2,
+            owners_2,
+            metadata2,
+            false,
+            false
+        );
         vm.stopPrank();
 
         vm.startPrank(artist);

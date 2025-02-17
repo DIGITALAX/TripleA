@@ -1,8 +1,6 @@
-use std::{
-    error::Error,
-    sync::{Arc, Mutex, Once},
+use crate::utils::constants::{
+    ACCESS_CONTROLS, AGENTS, COLLECTION_MANAGER, LENS_CHAIN_ID, LENS_RPC_URL, MARKET,
 };
-use crate::utils::constants::{ACCESS_CONTROLS, AGENTS, LENS_CHAIN_ID, LENS_RPC_URL, COLLECTION_MANAGER};
 use aes_gcm::{
     aead::{Aead, KeyInit},
     {Aes256Gcm, Nonce},
@@ -19,6 +17,10 @@ use ethers::{
 };
 use reqwest::Client;
 use serde_json::{from_str, Value};
+use std::{
+    error::Error,
+    sync::{Arc, Mutex, Once},
+};
 
 static INIT_PROVIDER: Once = Once::new();
 static INIT_LENS: Once = Once::new();
@@ -29,6 +31,9 @@ static AGENTS_CONTRACT: Mutex<
     Option<Arc<Contract<SignerMiddleware<Arc<Provider<Http>>, LocalWallet>>>>,
 > = Mutex::new(None);
 static COLLECTION_MANAGER_CONTRACT: Mutex<
+    Option<Arc<Contract<SignerMiddleware<Arc<Provider<Http>>, LocalWallet>>>>,
+> = Mutex::new(None);
+static MARKET_CONTRACT: Mutex<
     Option<Arc<Contract<SignerMiddleware<Arc<Provider<Http>>, LocalWallet>>>>,
 > = Mutex::new(None);
 static PROVIDER: Mutex<Option<Arc<Provider<Http>>>> = Mutex::new(None);
@@ -106,8 +111,8 @@ pub fn initialize_wallet(private_key: u32) -> Option<LocalWallet> {
 
             match std::fs::
             // read_to_string("/var/data/data.json")
-            read_to_string("var/data/data.json")  
-             {
+            read_to_string("var/data/data.json")
+            {
                 Ok(json_data) => {
                     let parsed_json: Value =
                         from_str(&json_data).expect("Failed to parse data.json");
@@ -210,6 +215,7 @@ pub fn initialize_contracts(
     Arc<Contract<SignerMiddleware<Arc<Provider<Http>>, LocalWallet>>>,
     Arc<Contract<SignerMiddleware<Arc<Provider<Http>>, LocalWallet>>>,
     Arc<Contract<SignerMiddleware<Arc<Provider<Http>>, LocalWallet>>>,
+    Arc<Contract<SignerMiddleware<Arc<Provider<Http>>, LocalWallet>>>,
 )> {
     let provider = initialize_provider();
     dotenv().ok();
@@ -230,8 +236,9 @@ pub fn initialize_contracts(
     let access_controls_address = ACCESS_CONTROLS
         .parse::<Address>()
         .expect("Error in parsing ACCESS_CONTROLS");
-    let access_controls_abi: Abi = from_str(include_str!("./../../abis/TripleAAccessControls.json"))
-        .expect("Error in loading AccessControls ABI");
+    let access_controls_abi: Abi =
+        from_str(include_str!("./../../abis/TripleAAccessControls.json"))
+            .expect("Error in loading AccessControls ABI");
     let access_controls_contract = Contract::new(
         access_controls_address,
         access_controls_abi,
@@ -240,22 +247,29 @@ pub fn initialize_contracts(
     *ACCESS_CONTROLS_CONTRACT.lock().unwrap() = Some(Arc::new(access_controls_contract));
 
     let agents_address = AGENTS.parse::<Address>().expect("Error in parsing AGENTS");
-    let agents_abi: Abi =
-        from_str(include_str!("./../../abis/TripleAAgents.json")).expect("Error in loading Agents ABI");
+    let agents_abi: Abi = from_str(include_str!("./../../abis/TripleAAgents.json"))
+        .expect("Error in loading Agents ABI");
     let agents_contract = Contract::new(agents_address, agents_abi, client.clone());
     *AGENTS_CONTRACT.lock().unwrap() = Some(Arc::new(agents_contract));
 
     let collection_manager_address = COLLECTION_MANAGER
         .parse::<Address>()
         .expect("Error in parsing COLLECTION_MANAGER");
-    let collection_manager_abi: Abi = from_str(include_str!("./../../abis/TripleACollectionManager.json"))
-        .expect("Error in loading CollectionManager ABI");
+    let collection_manager_abi: Abi =
+        from_str(include_str!("./../../abis/TripleACollectionManager.json"))
+            .expect("Error in loading CollectionManager ABI");
     let collection_manager_contract = Contract::new(
         collection_manager_address,
         collection_manager_abi,
         client.clone(),
     );
     *COLLECTION_MANAGER_CONTRACT.lock().unwrap() = Some(Arc::new(collection_manager_contract));
+
+    let market_address = MARKET.parse::<Address>().expect("Error in parsing MARKET");
+    let market_abi: Abi = from_str(include_str!("./../../abis/TripleAMarket.json"))
+        .expect("Error in loading Market ABI");
+    let market_contract = Contract::new(market_address, market_abi, client.clone());
+    *MARKET_CONTRACT.lock().unwrap() = Some(Arc::new(market_contract));
 
     Some((
         ACCESS_CONTROLS_CONTRACT
@@ -273,6 +287,11 @@ pub fn initialize_contracts(
             .unwrap()
             .clone()
             .expect("COLLECTION_MANAGER_CONTRACT not initialized"),
+        MARKET_CONTRACT
+            .lock()
+            .unwrap()
+            .clone()
+            .expect("MARKET_CONTRACT not initialized"),
     ))
 }
 

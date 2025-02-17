@@ -18,6 +18,7 @@ import {
   CollectorPaid as CollectorPaidEvent,
   OwnerPaid as OwnerPaidEvent,
   DevTreasuryPaid as DevTreasuryPaidEvent,
+  ArtistPaid as ArtistPaidEvent,
 } from "../generated/TripleAAgents/TripleAAgents";
 import {
   ActivateAgent,
@@ -34,6 +35,7 @@ import {
   CollectorPaid,
   OwnerPaid,
   DevTreasuryPaid,
+  ArtistPaid,
 } from "../generated/schema";
 import { TripleACollectionManager } from "../generated/TripleACollectionManager/TripleACollectionManager";
 
@@ -681,6 +683,26 @@ export function handleDevTreasuryPaid(event: DevTreasuryPaidEvent): void {
   entity.token = event.params.token;
   entity.amount = event.params.amount;
   entity.collectionId = event.params.collectionId;
+  entity.collection = Bytes.fromByteArray(
+    ByteArray.fromBigInt(event.params.collectionId)
+  );
+
+  entity.blockNumber = event.block.number;
+  entity.blockTimestamp = event.block.timestamp;
+  entity.transactionHash = event.transaction.hash;
+
+  entity.save();
+}
+
+export function handleArtistPaid(event: ArtistPaidEvent): void {
+  let entity = new ArtistPaid(
+    event.transaction.hash.concatI32(event.logIndex.toI32())
+  );
+  entity.forArtist = event.params.forArtist;
+  entity.token = event.params.token;
+  entity.amount = event.params.amount;
+  entity.collectionId = event.params.collectionId;
+  entity.agentId = event.params.agentId;
   entity.collection = Bytes.fromByteArray(
     ByteArray.fromBigInt(event.params.collectionId)
   );

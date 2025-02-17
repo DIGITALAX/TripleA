@@ -30,12 +30,13 @@ impl AgentManager {
         initialize_api();
 
         match contracts {
-            Some((access_controls_contract, agents_contract, collection_manager_contract)) => {
+            Some((access_controls_contract, agents_contract, collection_manager_contract, market_contract)) => {
                 Some(AgentManager {
                     agent: agent.clone(),
                     current_queue: Vec::new(),
                     agents_contract,
                     access_controls_contract,
+                    market_contract,
                     tokens: None,
                     collection_manager_contract,
                 })
@@ -235,7 +236,7 @@ impl AgentManager {
 
                                 match self.calculate_rent(collection, &price.token).await {
                                     Ok(cycle_rent) => {
-                                        if balance >= (cycle_rent) {
+                                        if balance >= cycle_rent {
                                             rent_tokens.push(H160::from_str(&price.token).unwrap());
                                             rent_collection_ids.push(collection.collection_id);
                                             break;
@@ -595,6 +596,7 @@ impl AgentManager {
                     let tokens = self.tokens.clone();
                     let collection_contract = self.collection_manager_contract.clone();
                     let agents_contract = self.agents_contract.clone();
+                    let market_contract=self.market_contract.clone();
 
                     tokio::spawn(async move {
                         cycle_activity(
@@ -604,6 +606,7 @@ impl AgentManager {
                             interval,
                             collection_contract,
                             agents_contract,
+                            market_contract
                         )
                         .await;
                     });
@@ -762,6 +765,12 @@ async fn cycle_activity(
             SignerMiddleware<Arc<Provider<Http>>, Wallet<SigningKey>>,
         >,
     >,
+    market_contract: Arc<
+    ContractInstance<
+        Arc<SignerMiddleware<Arc<Provider<Http>>, Wallet<SigningKey>>>,
+        SignerMiddleware<Arc<Provider<Http>>, Wallet<SigningKey>>,
+    >,
+>,
 ) {
     let total_activities = activity.worker.lead_frequency.as_u64()
         + activity.worker.publish_frequency.as_u64()
@@ -805,6 +814,7 @@ async fn cycle_activity(
             let instructions = activity.worker.instructions.clone();
             let collection_contract = collection_manager_contract.clone();
             let agents_contract = agents_contract.clone();
+            let market_contract= market_contract.clone();
             tokio::spawn(async move {
                 tokio::time::sleep(std::time::Duration::from_secs(
                     (i as i64 * activity_interval) as u64,
@@ -813,7 +823,15 @@ async fn cycle_activity(
 
                 match task {
                     ActivityType::Mint => {
-                        let _ = mint(&agent, tokens, collection_contract, agents_contract).await;
+                        let _ = mint(
+                            &agent,
+                            tokens,
+                            collection_contract,
+                            agents_contract,
+                            market_contract,
+                            &collection,
+                        )
+                        .await;
                     }
                     ActivityType::Lead => {
                         let _ = lead_generation(&agent, &collection, tokens, &instructions).await;

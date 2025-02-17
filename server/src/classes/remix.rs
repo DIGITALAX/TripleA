@@ -13,7 +13,7 @@ use std::{env, error::Error, io, sync::Arc};
 use uuid::Uuid;
 
 use crate::utils::{
-    constants::{INFURA_GATEWAY, NEGATIVE_PROMPT, REMIX_FEED, STYLE_PRESETS, VENICE_API},
+    constants::{INFURA_GATEWAY, NEGATIVE_PROMPT, REMIX_FEED, STYLE_PRESETS, VENICE_API, ZERO_ADDRESS},
     helpers::mint_collection,
     ipfs::{upload_image_to_ipfs, upload_lens_storage},
     lens::make_publication,
@@ -108,7 +108,8 @@ pub async fn remix(
                                         &model,
                                         0u8,
                                         None,
-                                        true
+                                        true,
+                                        ZERO_ADDRESS
                                     )
                                     .await;
 

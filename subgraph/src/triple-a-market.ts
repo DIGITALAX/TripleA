@@ -6,8 +6,10 @@ import {
 } from "../generated/TripleAMarket/TripleAMarket";
 import {
   CollectionCreated,
+  CollectionPrice,
   CollectionPurchased,
   FulfillmentUpdated,
+  Price,
 } from "../generated/schema";
 import { TripleACollectionManager } from "../generated/TripleACollectionManager/TripleACollectionManager";
 
@@ -42,23 +44,53 @@ export function handleCollectionPurchased(
     ByteArray.fromBigInt(event.params.collectionId)
   );
   entity.fulfillment = market.getOrderFulfillmentDetails(event.params.orderId);
-  entity.fulfiller = collectionManager.getCollectionFulfillerId(event.params.collectionId);
+  entity.fulfiller = collectionManager.getCollectionFulfillerId(
+    event.params.collectionId
+  );
   entity.save();
-
 
   let entityCollection = CollectionCreated.load(
     Bytes.fromByteArray(ByteArray.fromBigInt(event.params.collectionId))
   );
 
   if (entityCollection) {
-    entityCollection.tokenIds = collectionManager.getCollectionTokenIds(
-      event.params.collectionId
-    );
-    entityCollection.amountSold = collectionManager.getCollectionAmountSold(
+    let sold = collectionManager.getCollectionAmountSold(
       event.params.collectionId
     );
 
+    entityCollection.tokenIds = collectionManager.getCollectionTokenIds(
+      event.params.collectionId
+    );
+    entityCollection.amountSold = sold;
+
     entityCollection.save();
+
+    for (let i = 0; i < (entityCollection.prices as Bytes[]).length; i++) {
+      let price = Price.load((entityCollection.prices as Bytes[])[i]);
+
+      if (price) {
+        let tokenHex = (price.token as Bytes).toHexString();
+        let collectionHex = entity.collectionId.toHexString();
+        let combinedPriceHex = tokenHex + collectionHex;
+        if (combinedPriceHex.length % 2 !== 0) {
+          combinedPriceHex = "0" + combinedPriceHex;
+        }
+
+        let collectionPrice = CollectionPrice.load(
+          Bytes.fromByteArray(ByteArray.fromUTF8(combinedPriceHex))
+        );
+
+        if (collectionPrice) {
+          collectionPrice.amountSold = sold;
+
+          if ((sold = entityCollection.amount)) {
+            collectionPrice.soldOut = true;
+          }
+
+          collectionPrice.save();
+        }
+      }
+    }
   }
 }
 

@@ -2,7 +2,10 @@ use crate::utils::{
     constants::{BONSAI, COLLECTION_MANAGER, INFURA_GATEWAY, LENS_CHAIN_ID, MONA, TRIPLEA_URI},
     ipfs::upload_ipfs,
     lens::handle_lens_account,
-    types::{AgentManager, CollectionInput, CollectionWorker, MessageExample, Text, TripleAAgent},
+    types::{
+        AgentManager, CollectionInput, CollectionWorker, MessageExample, PriceCollection, Text,
+        TripleAAgent,
+    },
     venice::call_drop_details,
 };
 use chrono::Utc;
@@ -339,6 +342,7 @@ pub async fn mint_collection(
     collection_type: u8,
     format: Option<String>,
     worker: bool,
+    for_artist: &str,
 ) -> Result<(), Box<dyn Error + Send + Sync>> {
     match get_drop_details(remix_collection_id, description, agent.id, image, &model).await {
         Ok((drop_metadata, drop_id)) => {
@@ -386,6 +390,7 @@ pub async fn mint_collection(
                                     vec![]
                                 },
                                 metadata: format!("ipfs://{}", response.Hash),
+                                forArtist: H160::from_str(for_artist).unwrap(),
                                 collectionType: collection_type,
                                 amount,
                                 fulfillerId: if collection_type == 0u8 {
@@ -571,4 +576,68 @@ async fn get_drop_details(
     }
 
     Ok((drop_metadata, drop_id))
+}
+
+pub async fn find_collection(
+    balance: U256,
+    token: &str,
+    artist: &str,
+) -> Result<Vec<PriceCollection>, Box<dyn Error + Send + Sync>> {
+    let client = Client::new();
+
+    let query = json!({
+        "query": r#"
+        query($token: $String!, $artist: String!, $soldOut: Bool!, $maxPrice: Int!) {
+            collectionPrices(where: { token: $token, artist: $artist, soldOut: $soldOut, price_lte: $maxPrice }, first: 100) {
+                collectionId
+                amount
+                amountSold
+            }
+        }
+        "#,
+        "variables": {
+            "request": {
+                "soldOut": false,
+                "maxPrice": balance,
+                "artist": artist,
+                "token": token
+            }
+        }
+    });
+
+    let res = client.post(TRIPLEA_URI).json(&query).send().await;
+
+    match res {
+        Ok(response) => {
+            let parsed: Value = response.json().await?;
+            let empty_vec = vec![];
+            let collections_snapshot = parsed["data"]["collectionPrices"]
+                .as_array()
+                .unwrap_or(&empty_vec);
+
+            let mut collections: Vec<PriceCollection> = vec![];
+
+            for collection in collections_snapshot {
+                collections.push(PriceCollection {
+                    collectionId: collection["collectionId"]
+                        .as_str()
+                        .unwrap_or("0")
+                        .parse()
+                        .map_err(|_| "Failed to parse collectionId")?,
+                    amount: collection["amount"]
+                        .as_str()
+                        .unwrap_or("0")
+                        .parse()
+                        .map_err(|_| "Failed to parse amount")?,
+                    amountSold: collection["amountSold"]
+                        .as_str()
+                        .unwrap_or("0")
+                        .parse()
+                        .map_err(|_| "Failed to parse amountSold")?,
+                })
+            }
+            Ok(collections)
+        }
+        Err(err) => Err(Box::new(err)),
+    }
 }
