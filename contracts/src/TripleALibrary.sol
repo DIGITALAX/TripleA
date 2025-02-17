@@ -11,10 +11,11 @@ contract TripleALibrary {
 
     struct Collection {
         EnumerableSet.AddressSet erc20Tokens;
-        uint256[] agentIds;
+        EnumerableSet.UintSet agentIds;
         uint256[] tokenIds;
         string metadata;
         address artist;
+        address forArtist;
         uint256 id;
         uint256 fulfillerId;
         uint256 dropId;
@@ -39,6 +40,7 @@ contract TripleALibrary {
         uint256[] prices;
         uint256[] agentIds;
         string metadata;
+        address forArtist;
         CollectionType collectionType;
         uint256 amount;
         uint256 fulfillerId;
@@ -56,9 +58,11 @@ contract TripleALibrary {
         uint256 publishFrequency;
         uint256 remixFrequency;
         uint256 leadFrequency;
+        uint256 mintFrequency;
         bool publish;
         bool remix;
         bool lead;
+        bool mint;
     }
 
     struct Order {

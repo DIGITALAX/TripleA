@@ -1,3 +1,4 @@
+use crate::classes::mint::mint;
 use crate::classes::{lead::lead_generation, publish::publish, remix::remix};
 use crate::utils::types::{Balance, Price};
 use crate::utils::{
@@ -374,8 +375,10 @@ impl AgentManager {
                         publish
                         remix
                         lead
+                        mint
                         leadFrequency
                         publishFrequency
+                        mintFrequency
                         remixFrequency
                         instructions
                         collectionId
@@ -509,6 +512,7 @@ impl AgentManager {
                                         .to_string(),
                                     lead: worker["lead"].as_bool().unwrap_or_default(),
                                     publish: worker["publish"].as_bool().unwrap_or_default(),
+                                    mint: worker["mint"].as_bool().unwrap_or_default(),
                                     remix: worker["remix"].as_bool().unwrap_or_default(),
                                     lead_frequency: U256::from_dec_str(
                                         worker["leadFrequency"].as_str().unwrap_or("0"),
@@ -520,6 +524,10 @@ impl AgentManager {
                                     .unwrap_or_default(),
                                     remix_frequency: U256::from_dec_str(
                                         worker["remixFrequency"].as_str().unwrap_or("0"),
+                                    )
+                                    .unwrap_or_default(),
+                                    mint_frequency: U256::from_dec_str(
+                                        worker["mintFrequency"].as_str().unwrap_or("0"),
                                     )
                                     .unwrap_or_default(),
                                 },
@@ -585,10 +593,19 @@ impl AgentManager {
 
                     let agent = self.agent.clone();
                     let tokens = self.tokens.clone();
-                    let contract = self.collection_manager_contract.clone();
+                    let collection_contract = self.collection_manager_contract.clone();
+                    let agents_contract = self.agents_contract.clone();
 
                     tokio::spawn(async move {
-                        cycle_activity(&agent, tokens, &activity, interval, contract).await;
+                        cycle_activity(
+                            &agent,
+                            tokens,
+                            &activity,
+                            interval,
+                            collection_contract,
+                            agents_contract,
+                        )
+                        .await;
                     });
                 }
 
@@ -697,6 +714,33 @@ impl AgentManager {
             }
         }
 
+        if activity.worker.mint {
+            let rent_method = self
+                .access_controls_contract
+                .method::<_, U256>("getTokenCycleRentMint", H160::from_str(token).unwrap());
+
+            match rent_method {
+                Ok(rent_call) => {
+                    let token_result: Result<
+                        U256,
+                        contract::ContractError<SignerMiddleware<Arc<Provider<Http>>, LocalWallet>>,
+                    > = rent_call.call().await;
+
+                    match token_result {
+                        Ok(rent_threshold) => {
+                            rent_total += rent_threshold * activity.worker.mint_frequency;
+                        }
+                        Err(err) => {
+                            eprintln!("Error in rent method mint: {}", err);
+                        }
+                    }
+                }
+                Err(err) => {
+                    eprintln!("Error in rent method mint: {}", err);
+                }
+            }
+        }
+
         Ok(rent_total)
     }
 }
@@ -712,10 +756,17 @@ async fn cycle_activity(
             SignerMiddleware<Arc<Provider<Http>>, Wallet<SigningKey>>,
         >,
     >,
+    agents_contract: Arc<
+        ContractInstance<
+            Arc<SignerMiddleware<Arc<Provider<Http>>, Wallet<SigningKey>>>,
+            SignerMiddleware<Arc<Provider<Http>>, Wallet<SigningKey>>,
+        >,
+    >,
 ) {
     let total_activities = activity.worker.lead_frequency.as_u64()
         + activity.worker.publish_frequency.as_u64()
-        + activity.worker.remix_frequency.as_u64();
+        + activity.worker.remix_frequency.as_u64()
+        + activity.worker.mint_frequency.as_u64();
 
     if total_activities == 0 {
         println!("⚠️ No activities found. Skipping cycle.");
@@ -732,6 +783,9 @@ async fn cycle_activity(
     }
     for _ in 0..activity.worker.remix_frequency.as_u64() {
         tasks.push(ActivityType::Remix);
+    }
+    for _ in 0..activity.worker.mint_frequency.as_u64() {
+        tasks.push(ActivityType::Mint);
     }
 
     tasks = distribute_tasks(tasks);
@@ -750,6 +804,7 @@ async fn cycle_activity(
             let collection = activity.collection.clone();
             let instructions = activity.worker.instructions.clone();
             let collection_contract = collection_manager_contract.clone();
+            let agents_contract = agents_contract.clone();
             tokio::spawn(async move {
                 tokio::time::sleep(std::time::Duration::from_secs(
                     (i as i64 * activity_interval) as u64,
@@ -757,6 +812,9 @@ async fn cycle_activity(
                 .await;
 
                 match task {
+                    ActivityType::Mint => {
+                        let _ = mint(&agent, tokens, collection_contract, agents_contract).await;
+                    }
                     ActivityType::Lead => {
                         let _ = lead_generation(&agent, &collection, tokens, &instructions).await;
                     }

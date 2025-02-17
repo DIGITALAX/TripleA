@@ -87,7 +87,9 @@ contract TripleAAgentsTest is Test {
             address(collectionManager),
             payable(address(accessControls)),
             payable(address(agents)),
-            address(fulfillerManager)
+            address(fulfillerManager),
+            payable(address(skyhuntersAccess)),
+            address(skyhuntersAgent)
         );
         token1 = new MockERC20("Token1", "TK1");
         token2 = new MockERC20("Token2", "TK2");
@@ -98,21 +100,23 @@ contract TripleAAgentsTest is Test {
         accessControls.addFulfiller(fulfiller);
         accessControls.setTokenDetails(
             address(token1),
-            3000000000000000000,
-            1500000000000000000,
-            6000000000000000000,
-            4000000000000000000,
+            10000000000000000000,
+            15000000000000000,
+            60000000000000000,
+            40000000000000000,
+            20000000000000000,
             6,
-            2000000000000000000
+            20000000000000000
         );
         accessControls.setTokenDetails(
             address(token2),
             100000000000000000,
             10000000000000000,
-            50000000000000000,
-            30000000000000000,
+            20000000000000000,
+            10000000000000000,
+            10000000000000000,
             10,
-            200000000000000000
+            20000000000000000
         );
 
         vm.startPrank(admin);
@@ -276,7 +280,8 @@ contract TripleAAgentsTest is Test {
                 collectionType: TripleALibrary.CollectionType.Digital,
                 fulfillerId: 1,
                 remixId: 0,
-                remixable: true
+                remixable: true,
+                forArtist: address(0)
             });
 
         inputs_1.tokens[0] = address(token1);
@@ -293,6 +298,8 @@ contract TripleAAgentsTest is Test {
             publishFrequency: 1,
             remixFrequency: 1,
             leadFrequency: 1,
+            mintFrequency: 1,
+            mint: true,
             instructions: "custom"
         });
 
@@ -355,11 +362,12 @@ contract TripleAAgentsTest is Test {
                 collectionType: TripleALibrary.CollectionType.Digital,
                 fulfillerId: 1,
                 remixId: 0,
-                remixable: true
+                remixable: true,
+                forArtist: address(0)
             });
 
         inputs_1.tokens[0] = address(token1);
-        inputs_1.prices[0] = 5 ether;
+        inputs_1.prices[0] = 40 ether;
         inputs_1.agentIds[0] = 1;
 
         TripleALibrary.CollectionWorker[]
@@ -372,6 +380,8 @@ contract TripleAAgentsTest is Test {
             publishFrequency: 1,
             remixFrequency: 1,
             leadFrequency: 1,
+            mintFrequency: 1,
+            mint: true,
             instructions: "custom"
         });
         collectionManager.create(inputs_1, workers_1, "some drop uri", 0);
@@ -379,7 +389,7 @@ contract TripleAAgentsTest is Test {
 
         vm.startPrank(admin);
         token1.mint(recharger, 500 ether);
-        token1.mint(buyer, 100 ether);
+        token1.mint(buyer, 600 ether);
         vm.stopPrank();
 
         vm.startPrank(recharger);
@@ -417,23 +427,24 @@ contract TripleAAgentsTest is Test {
         uint256 artistInitialBalance = token1.balanceOf(artist);
 
         vm.startPrank(buyer);
-        token1.approve(address(market), 100 ether);
+        token1.approve(address(market), 300 ether);
         token1.allowance(buyer, address(market));
-        market.buy("fulfillment details", address(token1), 1, 5);
-        uint256 buyerExpectedBalance = buyerInitialBalance - (25 ether);
-        uint256 artistExpectedBalance = artistInitialBalance + (23 ether);
+        market.buy("fulfillment details", address(token1), 1, 2, 0);
+        uint256 buyerExpectedBalance = buyerInitialBalance - (80 ether);
+        uint256 artistExpectedBalance = artistInitialBalance + (76 ether);
         vm.stopPrank();
 
         assertEq(buyerExpectedBalance, token1.balanceOf(buyer));
         assertEq(artistExpectedBalance, token1.balanceOf(artist));
 
         vm.startPrank(buyer);
-        market.buy("fulfillment details", address(token1), 1, 1);
+        market.buy("fulfillment details", address(token1), 1, 1, 0);
         vm.stopPrank();
 
         uint256 rent = accessControls.getTokenCycleRentLead(address(token1)) +
             accessControls.getTokenCycleRentPublish(address(token1)) +
-            accessControls.getTokenCycleRentRemix(address(token1));
+            accessControls.getTokenCycleRentRemix(address(token1)) +
+            accessControls.getTokenCycleRentMint(address(token1));
         uint256 activeBalance_after = agents.getAgentRentBalance(
             address(token1),
             1,
@@ -445,8 +456,579 @@ contract TripleAAgentsTest is Test {
             1
         );
 
-        assertEq(bonusBalance_after, 0);
         assertEq(activeBalance_after, 123400000 + rent * 2);
+        assertEq(bonusBalance_after, 8 ether - rent * 2);
+    }
+
+    function testBuyRemixFromAgent() public {
+        vm.startPrank(agentOwner);
+
+        address[] memory wallets = new address[](1);
+        wallets[0] = agentWallet;
+        address[] memory owners = new address[](2);
+        owners[0] = agentOwner;
+        owners[1] = agentOwner3;
+        skyhuntersAgent.createAgent(wallets, owners, metadata);
+        vm.stopPrank();
+
+        vm.startPrank(agentWallet);
+        TripleALibrary.CollectionInput memory inputs_agent = TripleALibrary
+            .CollectionInput({
+                tokens: new address[](1),
+                prices: new uint256[](1),
+                agentIds: new uint256[](1),
+                metadata: "Metadata 1",
+                amount: 5,
+                collectionType: TripleALibrary.CollectionType.Digital,
+                fulfillerId: 1,
+                remixId: 0,
+                remixable: true,
+                forArtist: address(0)
+            });
+
+        inputs_agent.tokens[0] = address(token1);
+        inputs_agent.prices[0] = 10 ether;
+        inputs_agent.agentIds[0] = 1;
+
+        TripleALibrary.CollectionWorker[]
+            memory workers_1 = new TripleALibrary.CollectionWorker[](1);
+
+        workers_1[0] = TripleALibrary.CollectionWorker({
+            publish: true,
+            remix: true,
+            lead: true,
+            publishFrequency: 1,
+            remixFrequency: 1,
+            leadFrequency: 1,
+            mintFrequency: 1,
+            mint: true,
+            instructions: "algo"
+        });
+        collectionManager.create(inputs_agent, workers_1, "some drop uri", 0);
+        vm.stopPrank();
+
+        vm.startPrank(artist);
+        TripleALibrary.CollectionInput memory inputs_1 = TripleALibrary
+            .CollectionInput({
+                tokens: new address[](1),
+                prices: new uint256[](1),
+                agentIds: new uint256[](1),
+                metadata: "Metadata 1",
+                amount: 5,
+                collectionType: TripleALibrary.CollectionType.Digital,
+                fulfillerId: 1,
+                remixId: 1,
+                remixable: true,
+                forArtist: address(0)
+            });
+
+        inputs_1.tokens[0] = address(token1);
+        inputs_1.prices[0] = 10 ether;
+        inputs_1.agentIds[0] = 1;
+
+        TripleALibrary.CollectionWorker[]
+            memory workers_2 = new TripleALibrary.CollectionWorker[](1);
+
+        workers_2[0] = TripleALibrary.CollectionWorker({
+            publish: true,
+            remix: true,
+            lead: true,
+            publishFrequency: 1,
+            remixFrequency: 1,
+            leadFrequency: 1,
+            mintFrequency: 1,
+            mint: true,
+            instructions: "algo"
+        });
+        collectionManager.create(inputs_1, workers_2, "some drop uri", 0);
+        vm.stopPrank();
+
+        vm.startPrank(admin);
+        token1.mint(buyer, 500 ether);
+        vm.stopPrank();
+
+        uint256 agentsInitialBalance = token1.balanceOf(address(agents));
+        uint256 buyerInitialBalance = token1.balanceOf(buyer);
+        uint256 artistInitialBalance = token1.balanceOf(artist);
+
+        vm.startPrank(buyer);
+        token1.approve(address(market), 600 ether);
+        token1.allowance(buyer, address(market));
+        market.buy("fulfillment details", address(token1), 2, 5, 0);
+        vm.stopPrank();
+
+        uint256 buyerExpectedBalance = buyerInitialBalance - 50 ether;
+        uint256 artistExpectedBalance = artistInitialBalance + 35 ether;
+        uint256 agentsExpectedBalance = agentsInitialBalance + 15 ether;
+
+        assertEq(agentsExpectedBalance, token1.balanceOf(address(agents)));
+        assertEq(buyerExpectedBalance, token1.balanceOf(buyer));
+        assertEq(artistExpectedBalance, token1.balanceOf(artist));
+        assertEq(token1.balanceOf(agentWallet), 0);
+    }
+
+    function testBuyAgentCollection() public {
+        vm.startPrank(agentOwner);
+
+        address[] memory wallets = new address[](1);
+        wallets[0] = agentWallet;
+        address[] memory owners = new address[](2);
+        owners[0] = agentOwner;
+        owners[1] = agentOwner3;
+        skyhuntersAgent.createAgent(wallets, owners, metadata);
+        vm.stopPrank();
+
+        vm.startPrank(agentWallet);
+        TripleALibrary.CollectionInput memory inputs_1 = TripleALibrary
+            .CollectionInput({
+                tokens: new address[](1),
+                prices: new uint256[](1),
+                agentIds: new uint256[](0),
+                metadata: "Metadata 1",
+                amount: 20,
+                collectionType: TripleALibrary.CollectionType.Digital,
+                fulfillerId: 1,
+                remixId: 0,
+                remixable: true,
+                forArtist: artist2
+            });
+
+        inputs_1.tokens[0] = address(token1);
+        inputs_1.prices[0] = 10 ether;
+
+        TripleALibrary.CollectionWorker[]
+            memory workers_1 = new TripleALibrary.CollectionWorker[](0);
+
+        collectionManager.create(inputs_1, workers_1, "some drop uri", 0);
+        vm.stopPrank();
+        token1.mint(buyer, 200 ether);
+
+        uint256 buyerInitialBalance = token1.balanceOf(buyer);
+        uint256 agentsInitialBalance = token1.balanceOf(address(agents));
+        vm.startPrank(buyer);
+        token1.approve(address(market), 200 ether);
+        token1.allowance(buyer, address(market));
+        market.buy("fulfillment details", address(token1), 1, 5, 1);
+        vm.stopPrank();
+
+        uint256 buyerExpectedBalance = buyerInitialBalance - 50 ether;
+        uint256 agentsExpectedBalance = agentsInitialBalance + 50 ether;
+
+        assertEq(buyerExpectedBalance, token1.balanceOf(buyer));
+        assertEq(0, token1.balanceOf(artist2));
+        assertEq(agentsExpectedBalance, token1.balanceOf(address(agents)));
+        assertEq(
+            50 ether,
+            agents.getArtistCollectBalanceByToken(
+                address(artist2),
+                address(token1),
+                1
+            )
+        );
+    }
+
+    function testBuyAgentCollectionIRLAgents() public {
+        vm.startPrank(agentOwner);
+
+        address[] memory wallets = new address[](1);
+        wallets[0] = agentWallet;
+        address[] memory owners = new address[](2);
+        owners[0] = agentOwner;
+        owners[1] = agentOwner3;
+        skyhuntersAgent.createAgent(wallets, owners, metadata);
+        vm.stopPrank();
+
+        vm.startPrank(agentWallet);
+        TripleALibrary.CollectionInput memory inputs_1 = TripleALibrary
+            .CollectionInput({
+                tokens: new address[](1),
+                prices: new uint256[](1),
+                agentIds: new uint256[](1),
+                metadata: "Metadata 1",
+                amount: 5,
+                collectionType: TripleALibrary.CollectionType.IRL,
+                fulfillerId: 1,
+                remixId: 0,
+                remixable: true,
+                forArtist: artist2
+            });
+
+        inputs_1.tokens[0] = address(token1);
+        inputs_1.prices[0] = 10 ether;
+        inputs_1.agentIds[0] = 1;
+
+        TripleALibrary.CollectionWorker[]
+            memory workers_1 = new TripleALibrary.CollectionWorker[](1);
+        workers_1[0] = TripleALibrary.CollectionWorker({
+            publish: true,
+            remix: true,
+            lead: true,
+            publishFrequency: 1,
+            remixFrequency: 1,
+            leadFrequency: 1,
+            mintFrequency: 1,
+            mint: true,
+            instructions: "algo"
+        });
+
+        collectionManager.create(inputs_1, workers_1, "some drop uri", 0);
+        vm.stopPrank();
+        token1.mint(buyer, 200 ether);
+        uint256 buyerInitialBalance = token1.balanceOf(buyer);
+        uint256 agentsInitialBalance = token1.balanceOf(address(agents));
+
+        vm.startPrank(buyer);
+        token1.approve(address(market), 200 ether);
+        token1.allowance(buyer, address(market));
+        market.buy("fulfillment details", address(token1), 1, 5, 1);
+        vm.stopPrank();
+
+        uint256 buyerExpectedBalance = buyerInitialBalance - 50 ether;
+        uint256 fulfillerExpectedBalance = (50 ether *
+            accessControls.getTokenVig(address(token1))) /
+            100 +
+            accessControls.getTokenBase(address(token1));
+        uint256 agentsExpectedBalance = agentsInitialBalance +
+            50 ether -
+            fulfillerExpectedBalance;
+            uint256 price = 50 ether - fulfillerExpectedBalance;
+        uint256 collectExpectedBalance = (price / 5 )+  90 * ((price * 4 / 5 )) /100;
+
+        assertEq(buyerExpectedBalance, token1.balanceOf(buyer));
+        assertEq(0, token1.balanceOf(artist2));
+        assertEq(agentsExpectedBalance, token1.balanceOf(address(agents)));
+        assertEq(fulfillerExpectedBalance, token1.balanceOf(fulfiller));
+        assertEq(
+            collectExpectedBalance,
+            agents.getArtistCollectBalanceByToken(
+                address(artist2),
+                address(token1),
+                1
+            )
+        );
+    }
+
+    function testAgentBuysCollection() public {
+
+        testBuyAgentCollection();
+
+        vm.startPrank(agentWallet);
+        TripleALibrary.CollectionInput memory inputs_1 = TripleALibrary
+            .CollectionInput({
+                tokens: new address[](1),
+                prices: new uint256[](1),
+                agentIds: new uint256[](0),
+                metadata: "Metadata 1",
+                amount: 20,
+                collectionType: TripleALibrary.CollectionType.Digital,
+                fulfillerId: 1,
+                remixId: 0,
+                remixable: true,
+                forArtist: artist2
+            });
+
+        inputs_1.tokens[0] = address(token1);
+        inputs_1.prices[0] = 200 ether;
+
+        TripleALibrary.CollectionWorker[]
+            memory workers_1 = new TripleALibrary.CollectionWorker[](0);
+
+        collectionManager.create(inputs_1, workers_1, "some drop uri", 0);
+        vm.stopPrank();
+        token1.mint(buyer, 2000 ether);
+
+        vm.startPrank(buyer);
+        token1.approve(address(market), 2000 ether);
+        token1.allowance(buyer, address(market));
+        market.buy("fulfillment details", address(token1), 2, 5, 1);
+        vm.stopPrank();
+
+        
+
+
+        vm.startPrank(agentOwner);
+
+        address[] memory wallets = new address[](1);
+        wallets[0] = agentWallet2;
+        address[] memory owners = new address[](2);
+        owners[0] = agentOwner;
+        owners[1] = agentOwner3;
+        skyhuntersAgent.createAgent(wallets, owners, metadata);
+        vm.stopPrank();
+
+        vm.startPrank(artist2);
+        TripleALibrary.CollectionInput memory inputs_buy = TripleALibrary
+            .CollectionInput({
+                tokens: new address[](1),
+                prices: new uint256[](1),
+                agentIds: new uint256[](1),
+                metadata: "Metadata 1",
+                amount: 5,
+                collectionType: TripleALibrary.CollectionType.Digital,
+                fulfillerId: 1,
+                remixId: 0,
+                remixable: true,
+                forArtist: address(0)
+            });
+
+        inputs_buy.tokens[0] = address(token1);
+        inputs_buy.prices[0] = 14 ether;
+        inputs_buy.agentIds[0] = 1;
+
+        TripleALibrary.CollectionWorker[]
+            memory workers_buy = new TripleALibrary.CollectionWorker[](1);
+        workers_buy[0] = TripleALibrary.CollectionWorker({
+            publish: true,
+            remix: true,
+            lead: true,
+            publishFrequency: 1,
+            remixFrequency: 1,
+            leadFrequency: 1,
+            mintFrequency: 1,
+            mint: true,
+            instructions: "algo"
+        });
+
+        collectionManager.create(inputs_buy, workers_buy, "some drop uri", 0);
+        vm.stopPrank();
+        token1.mint(buyer, 100 ether);
+        uint256 agentsInitialBalance = token1.balanceOf(address(agents));
+        uint256 artistsInitialBalance = token1.balanceOf(address(artist2));
+
+        vm.startPrank(buyer);
+        token1.approve(address(market),100 ether);
+        token1.allowance(buyer, address(market));
+        vm.expectRevert(
+            abi.encodeWithSelector(TripleAErrors.NotAgent.selector)
+        );
+        market.agentBuy(address(token1), 3, 2, 1);
+        vm.stopPrank();
+
+        vm.startPrank(agentWallet);
+        token1.approve(address(market), 20 ether);
+        token1.allowance(agentWallet, address(market));
+        market.agentBuy(address(token1), 3, 2, 1);
+        vm.stopPrank();
+
+ 
+        uint256 agentsExpectedBalance = agentsInitialBalance - 14 ether - (90 * 14 ether)/100;
+         uint256 artistExpectedBalance = artistsInitialBalance + 14 ether + (90 * 14 ether)/100;
+
+  assertEq(artistExpectedBalance, token1.balanceOf(artist2));
+     assertEq(agentsExpectedBalance, token1.balanceOf(address(agents)));
+           assertEq(0, token1.balanceOf(agentWallet));
+          
+    }
+
+    function buyOneCollection() public {
+         vm.startPrank(agentOwner);
+
+        address[] memory wallets = new address[](1);
+        wallets[0] = agentWallet;
+        address[] memory owners = new address[](2);
+        owners[0] = agentOwner;
+        owners[1] = agentOwner3;
+        skyhuntersAgent.createAgent(wallets, owners, metadata);
+        vm.stopPrank();
+
+        vm.startPrank(artist);
+        TripleALibrary.CollectionInput memory inputs_1 = TripleALibrary
+            .CollectionInput({
+                tokens: new address[](1),
+                prices: new uint256[](1),
+                agentIds: new uint256[](1),
+                metadata: "Metadata 1",
+                amount: 5,
+                collectionType: TripleALibrary.CollectionType.Digital,
+                fulfillerId: 1,
+                remixId: 0,
+                remixable: true,
+                forArtist: address(0)
+            });
+
+        inputs_1.tokens[0] = address(token1);
+        inputs_1.prices[0] = 10 ether;
+        inputs_1.agentIds[0] = 1;
+
+        TripleALibrary.CollectionWorker[]
+            memory workers_1 = new TripleALibrary.CollectionWorker[](1);
+        workers_1[0] = TripleALibrary.CollectionWorker({
+            publish: true,
+            remix: true,
+            lead: true,
+            publishFrequency: 1,
+            remixFrequency: 1,
+            leadFrequency: 1,
+            mintFrequency: 1,
+            mint: true,
+            instructions: "algo"
+        });
+
+        collectionManager.create(inputs_1, workers_1, "some drop uri", 0);
+        vm.stopPrank();
+
+           token1.mint(buyer, 200 ether);
+        uint256 buyerInitialBalance = token1.balanceOf(buyer);
+        uint256 artistInitialBalance = token1.balanceOf(artist);
+
+        vm.startPrank(buyer);
+        token1.approve(address(market), 200 ether);
+        token1.allowance(buyer, address(market));
+        market.buy("fulfillment details", address(token1), 1, 1, 1);
+        vm.stopPrank();
+
+
+         uint256 buyerExpectedBalance = buyerInitialBalance - 10 ether;
+        uint256 artistExpectedBalance = artistInitialBalance + 10 ether;
+
+        assertEq(buyerExpectedBalance, token1.balanceOf(buyer));
+        assertEq(
+            artistExpectedBalance,
+           token1.balanceOf(artist)
+        );
+    }
+
+    function testDeleteByAgentOwner() public {
+        vm.startPrank(agentOwner);
+
+        address[] memory wallets = new address[](1);
+        wallets[0] = agentWallet;
+        address[] memory owners = new address[](2);
+        owners[0] = agentOwner;
+        owners[1] = agentOwner3;
+        skyhuntersAgent.createAgent(wallets, owners, metadata);
+        vm.stopPrank();
+
+        vm.startPrank(agentWallet);
+        TripleALibrary.CollectionInput memory inputs_1 = TripleALibrary
+            .CollectionInput({
+                tokens: new address[](1),
+                prices: new uint256[](1),
+                agentIds: new uint256[](1),
+                metadata: "Metadata 1",
+                amount: 5,
+                collectionType: TripleALibrary.CollectionType.Digital,
+                fulfillerId: 1,
+                remixId: 0,
+                remixable: true,
+                forArtist: address(0)
+            });
+
+        inputs_1.tokens[0] = address(token1);
+        inputs_1.prices[0] = 10 ether;
+        inputs_1.agentIds[0] = 1;
+
+        TripleALibrary.CollectionWorker[]
+            memory workers_1 = new TripleALibrary.CollectionWorker[](1);
+        workers_1[0] = TripleALibrary.CollectionWorker({
+            publish: true,
+            remix: true,
+            lead: true,
+            publishFrequency: 1,
+            remixFrequency: 1,
+            leadFrequency: 1,
+            mintFrequency: 1,
+            mint: true,
+            instructions: "algo"
+        });
+
+        collectionManager.create(inputs_1, workers_1, "some drop uri", 0);
+        vm.stopPrank();
+
+        vm.expectRevert(
+            abi.encodeWithSelector(TripleAErrors.NotArtist.selector)
+        );
+        vm.startPrank(agentOwner3);
+        collectionManager.deleteCollection(1, 0);
+
+        collectionManager.deleteCollection(1, 1);
+        vm.stopPrank();
+
+        vm.startPrank(agentWallet);
+        TripleALibrary.CollectionInput memory inputs_2 = TripleALibrary
+            .CollectionInput({
+                tokens: new address[](1),
+                prices: new uint256[](1),
+                agentIds: new uint256[](1),
+                metadata: "Metadata 1",
+                amount: 5,
+                collectionType: TripleALibrary.CollectionType.Digital,
+                fulfillerId: 1,
+                remixId: 0,
+                remixable: true,
+                forArtist: address(0)
+            });
+
+        inputs_2.tokens[0] = address(token1);
+        inputs_2.prices[0] = 10 ether;
+        inputs_2.agentIds[0] = 1;
+
+        TripleALibrary.CollectionWorker[]
+            memory workers_2 = new TripleALibrary.CollectionWorker[](1);
+        workers_2[0] = TripleALibrary.CollectionWorker({
+            publish: true,
+            remix: true,
+            lead: true,
+            publishFrequency: 1,
+            remixFrequency: 1,
+            leadFrequency: 1,
+            mintFrequency: 1,
+            mint: true,
+            instructions: "algo"
+        });
+
+        collectionManager.create(inputs_2, workers_2, "some drop uri", 0);
+        vm.stopPrank();
+
+        vm.expectRevert(
+            abi.encodeWithSelector(TripleAErrors.NotArtist.selector)
+        );
+        vm.startPrank(agentOwner3);
+        collectionManager.deleteDrop(2, 0);
+
+        collectionManager.deleteDrop(2, 1);
+        vm.stopPrank();
+    }
+
+    function testCollectionWithoutAgents() public {
+        vm.startPrank(artist);
+        TripleALibrary.CollectionInput memory inputs_1 = TripleALibrary
+            .CollectionInput({
+                tokens: new address[](1),
+                prices: new uint256[](1),
+                agentIds: new uint256[](0),
+                metadata: "Metadata 1",
+                amount: 5,
+                collectionType: TripleALibrary.CollectionType.Digital,
+                fulfillerId: 1,
+                remixId: 0,
+                remixable: true,
+                forArtist: address(0)
+            });
+
+        inputs_1.tokens[0] = address(token1);
+        inputs_1.prices[0] = 10 ether;
+
+        TripleALibrary.CollectionWorker[]
+            memory workers_1 = new TripleALibrary.CollectionWorker[](0);
+
+        collectionManager.create(inputs_1, workers_1, "some drop uri", 0);
+        vm.stopPrank();
+
+        token1.mint(buyer, 50 ether);
+        uint256 buyerInitialBalance = token1.balanceOf(buyer);
+        uint256 artistInitialBalance = token1.balanceOf(artist);
+
+        vm.startPrank(buyer);
+        token1.approve(address(market), 50 ether);
+        token1.allowance(buyer, address(market));
+        market.buy("fulfillment details", address(token1), 1, 5, 0);
+        vm.stopPrank();
+        uint256 buyerExpectedBalance = buyerInitialBalance - 50 ether;
+        uint256 artistExpectedBalance = artistInitialBalance + 50 ether;
+
+        assertEq(buyerExpectedBalance, token1.balanceOf(buyer));
+        assertEq(artistExpectedBalance, token1.balanceOf(artist));
     }
 
     function testPayRentWithoutBonus() public {
@@ -471,7 +1053,8 @@ contract TripleAAgentsTest is Test {
                 collectionType: TripleALibrary.CollectionType.Digital,
                 fulfillerId: 1,
                 remixId: 0,
-                remixable: true
+                remixable: true,
+                forArtist: address(0)
             });
 
         inputs_1.tokens[0] = address(token1);
@@ -488,6 +1071,8 @@ contract TripleAAgentsTest is Test {
             publishFrequency: 1,
             remixFrequency: 1,
             leadFrequency: 1,
+            mintFrequency: 1,
+            mint: true,
             instructions: "algo"
         });
         collectionManager.create(inputs_1, workers_1, "some drop uri", 0);
@@ -499,7 +1084,8 @@ contract TripleAAgentsTest is Test {
 
         uint256 rent = accessControls.getTokenCycleRentLead(address(token1)) +
             accessControls.getTokenCycleRentPublish(address(token1)) +
-            accessControls.getTokenCycleRentRemix(address(token1));
+            accessControls.getTokenCycleRentRemix(address(token1)) +
+            accessControls.getTokenCycleRentMint(address(token1));
 
         vm.startPrank(recharger);
         token1.approve(address(agents), 50 ether);
@@ -562,7 +1148,8 @@ contract TripleAAgentsTest is Test {
                 collectionType: TripleALibrary.CollectionType.Digital,
                 fulfillerId: 1,
                 remixId: 0,
-                remixable: true
+                remixable: true,
+                forArtist: address(0)
             });
 
         inputs_1.tokens[0] = address(token1);
@@ -579,6 +1166,8 @@ contract TripleAAgentsTest is Test {
             publishFrequency: 1,
             remixFrequency: 1,
             leadFrequency: 1,
+            mintFrequency: 1,
+            mint: true,
             instructions: "custom"
         });
 
@@ -596,7 +1185,8 @@ contract TripleAAgentsTest is Test {
                 collectionType: TripleALibrary.CollectionType.Digital,
                 fulfillerId: 1,
                 remixId: 1,
-                remixable: true
+                remixable: true,
+                forArtist: address(0)
             });
 
         inputs_2.tokens[0] = address(token1);
@@ -613,6 +1203,8 @@ contract TripleAAgentsTest is Test {
             publishFrequency: 1,
             remixFrequency: 1,
             leadFrequency: 1,
+            mintFrequency: 1,
+            mint: true,
             instructions: "custom"
         });
 
@@ -627,12 +1219,13 @@ contract TripleAAgentsTest is Test {
         vm.startPrank(buyer);
         token1.approve(address(market), 600 ether);
         token1.allowance(buyer, address(market));
-        market.buy("fulfillment details", address(token1), 2, 5);
+        market.buy("fulfillment details", address(token1), 2, 5, 0);
 
         uint256 buyerExpectedBalance = buyerInitialBalance - (50 ether);
         uint256 artistExpectedBalance = artistInitialBalance + (25 ether);
         uint256 agentExpectedBalance = agentInitialBalance + (25 ether);
         vm.stopPrank();
+
 
         assertEq(buyerExpectedBalance, token1.balanceOf(buyer));
         assertEq(artistExpectedBalance, token1.balanceOf(artist));
@@ -661,7 +1254,8 @@ contract TripleAAgentsTest is Test {
                 collectionType: TripleALibrary.CollectionType.Digital,
                 fulfillerId: 1,
                 remixId: 0,
-                remixable: true
+                remixable: true,
+                forArtist: address(0)
             });
 
         inputs_1.tokens[0] = address(token1);
@@ -678,6 +1272,8 @@ contract TripleAAgentsTest is Test {
             publishFrequency: 1,
             remixFrequency: 1,
             leadFrequency: 1,
+            mintFrequency: 1,
+            mint: true,
             instructions: "custom"
         });
 
@@ -695,7 +1291,8 @@ contract TripleAAgentsTest is Test {
                 collectionType: TripleALibrary.CollectionType.Digital,
                 fulfillerId: 1,
                 remixId: 1,
-                remixable: true
+                remixable: true,
+                forArtist: address(0)
             });
 
         inputs_2.tokens[0] = address(token1);
@@ -712,6 +1309,8 @@ contract TripleAAgentsTest is Test {
             publishFrequency: 1,
             remixFrequency: 1,
             leadFrequency: 1,
+            mintFrequency: 1,
+            mint: true,
             instructions: "custom"
         });
 
@@ -727,7 +1326,7 @@ contract TripleAAgentsTest is Test {
         vm.startPrank(buyer);
         token1.approve(address(market), 600 ether);
         token1.allowance(buyer, address(market));
-        market.buy("fulfillment details", address(token1), 2, 5);
+        market.buy("fulfillment details", address(token1), 2, 5, 0);
 
         uint256 buyerExpectedBalance = buyerInitialBalance - (50 ether);
         uint256 artistExpectedBalance = artistInitialBalance + (35 ether);
@@ -763,7 +1362,8 @@ contract TripleAAgentsTest is Test {
                 collectionType: TripleALibrary.CollectionType.IRL,
                 fulfillerId: 1,
                 remixId: 0,
-                remixable: true
+                remixable: true,
+                forArtist: address(0)
             });
 
         inputs_1.tokens[0] = address(token1);
@@ -780,6 +1380,8 @@ contract TripleAAgentsTest is Test {
             publishFrequency: 1,
             remixFrequency: 1,
             leadFrequency: 1,
+            mintFrequency: 1,
+            mint: true,
             instructions: "custom"
         });
 
@@ -797,7 +1399,8 @@ contract TripleAAgentsTest is Test {
                 collectionType: TripleALibrary.CollectionType.IRL,
                 fulfillerId: 1,
                 remixId: 1,
-                remixable: true
+                remixable: true,
+                forArtist: address(0)
             });
 
         inputs_2.tokens[0] = address(token1);
@@ -814,6 +1417,8 @@ contract TripleAAgentsTest is Test {
             publishFrequency: 1,
             remixFrequency: 1,
             leadFrequency: 1,
+            mintFrequency: 1,
+            mint: true,
             instructions: "custom"
         });
 
@@ -830,7 +1435,7 @@ contract TripleAAgentsTest is Test {
         vm.startPrank(buyer);
         token1.approve(address(market), 600 ether);
         token1.allowance(buyer, address(market));
-        market.buy("fulfillment details", address(token1), 2, 5);
+        market.buy("fulfillment details", address(token1), 2, 5, 0);
 
         uint256 fulfillerShare = (50 ether *
             accessControls.getTokenVig(address(token1))) /
@@ -881,7 +1486,8 @@ contract TripleAAgentsTest is Test {
                 collectionType: TripleALibrary.CollectionType.IRL,
                 fulfillerId: 1,
                 remixId: 0,
-                remixable: true
+                remixable: true,
+                forArtist: address(0)
             });
 
         inputs_1.tokens[0] = address(token1);
@@ -898,6 +1504,8 @@ contract TripleAAgentsTest is Test {
             publishFrequency: 1,
             remixFrequency: 1,
             leadFrequency: 1,
+            mintFrequency: 1,
+            mint: true,
             instructions: "custom"
         });
 
@@ -915,7 +1523,8 @@ contract TripleAAgentsTest is Test {
                 collectionType: TripleALibrary.CollectionType.IRL,
                 fulfillerId: 1,
                 remixId: 1,
-                remixable: true
+                remixable: true,
+                forArtist: address(0)
             });
 
         inputs_2.tokens[0] = address(token1);
@@ -932,6 +1541,8 @@ contract TripleAAgentsTest is Test {
             publishFrequency: 1,
             remixFrequency: 1,
             leadFrequency: 1,
+            mintFrequency: 1,
+            mint: true,
             instructions: "custom"
         });
 
@@ -953,7 +1564,7 @@ contract TripleAAgentsTest is Test {
         vm.startPrank(buyer);
         token1.approve(address(market), 600 ether);
         token1.allowance(buyer, address(market));
-        market.buy("fulfillment details", address(token1), 2, 5);
+        market.buy("fulfillment details", address(token1), 2, 5, 0);
 
         uint256 buyerExpectedBalance = buyerInitialBalance - (50 ether);
         uint256 artistExpectedBalance = artistInitialBalance + otherShare / 2;
@@ -990,7 +1601,8 @@ contract TripleAAgentsTest is Test {
                 collectionType: TripleALibrary.CollectionType.IRL,
                 fulfillerId: 1,
                 remixId: 0,
-                remixable: false
+                remixable: false,
+                forArtist: address(0)
             });
 
         inputs_1.tokens[0] = address(token1);
@@ -1007,6 +1619,8 @@ contract TripleAAgentsTest is Test {
             publishFrequency: 1,
             remixFrequency: 1,
             leadFrequency: 1,
+            mintFrequency: 1,
+            mint: true,
             instructions: "custom"
         });
 
@@ -1024,7 +1638,8 @@ contract TripleAAgentsTest is Test {
                 collectionType: TripleALibrary.CollectionType.IRL,
                 fulfillerId: 1,
                 remixId: 1,
-                remixable: true
+                remixable: true,
+                forArtist: address(0)
             });
 
         inputs_2.tokens[0] = address(token1);
@@ -1041,6 +1656,8 @@ contract TripleAAgentsTest is Test {
             publishFrequency: 1,
             remixFrequency: 1,
             leadFrequency: 1,
+            mintFrequency: 1,
+            mint: true,
             instructions: "custom"
         });
 
@@ -1073,7 +1690,8 @@ contract TripleAAgentsTest is Test {
                 collectionType: TripleALibrary.CollectionType.Digital,
                 fulfillerId: 1,
                 remixId: 0,
-                remixable: false
+                remixable: false,
+                forArtist: address(0)
             });
 
         inputs_1.tokens[0] = address(token1);
@@ -1092,6 +1710,8 @@ contract TripleAAgentsTest is Test {
             publishFrequency: 1,
             remixFrequency: 1,
             leadFrequency: 1,
+            mintFrequency: 1,
+            mint: true,
             instructions: "aqui"
         });
         collectionManager.create(inputs_1, workers_1, "some drop uri", 0);
@@ -1115,8 +1735,8 @@ contract TripleAAgentsTest is Test {
         token1.mint(buyer, 400 ether);
         token1.approve(address(market), 400 ether);
         token1.allowance(buyer, address(market));
-        market.buy("fulfillment details", address(token1), 1, 4);
-        market.buy("fulfillment details", address(token1), 1, 3);
+        market.buy("fulfillment details", address(token1), 1, 4, 0);
+        market.buy("fulfillment details", address(token1), 1, 3, 0);
         vm.stopPrank();
 
         address[] memory tokens = new address[](1);
@@ -1132,10 +1752,12 @@ contract TripleAAgentsTest is Test {
 
         uint256 rent = accessControls.getTokenCycleRentLead(address(token1)) +
             accessControls.getTokenCycleRentPublish(address(token1)) +
-            accessControls.getTokenCycleRentRemix(address(token1));
+            accessControls.getTokenCycleRentRemix(address(token1)) +
+            accessControls.getTokenCycleRentMint(address(token1));
         uint256 rent1 = accessControls.getTokenCycleRentLead(address(token2)) +
             accessControls.getTokenCycleRentPublish(address(token2)) +
-            accessControls.getTokenCycleRentRemix(address(token2));
+            accessControls.getTokenCycleRentRemix(address(token2)) +
+            accessControls.getTokenCycleRentMint(address(token2));
 
         uint256 allServices = agents.getAllTimeServices(address(token1));
         uint256 oneServices = agents.getServicesPaidByToken(address(token1));
@@ -1198,7 +1820,8 @@ contract TripleAAgentsTest is Test {
                 collectionType: TripleALibrary.CollectionType.Digital,
                 fulfillerId: 1,
                 remixId: 0,
-                remixable: false
+                remixable: false,
+                forArtist: address(0)
             });
 
         inputs_1.tokens[0] = address(token1);
@@ -1215,6 +1838,8 @@ contract TripleAAgentsTest is Test {
             publishFrequency: 1,
             remixFrequency: 1,
             leadFrequency: 1,
+            mintFrequency: 1,
+            mint: true,
             instructions: "algo"
         });
         collectionManager.create(inputs_1, workers_1, "some drop uri", 0);
@@ -1227,7 +1852,8 @@ contract TripleAAgentsTest is Test {
 
         uint256 rent = accessControls.getTokenCycleRentLead(address(token1)) +
             accessControls.getTokenCycleRentPublish(address(token1)) +
-            accessControls.getTokenCycleRentRemix(address(token1));
+            accessControls.getTokenCycleRentRemix(address(token1)) +
+            accessControls.getTokenCycleRentMint(address(token1));
 
         vm.startPrank(recharger);
         token1.approve(address(agents), 300 ether);
@@ -1237,8 +1863,8 @@ contract TripleAAgentsTest is Test {
         vm.startPrank(buyer);
         token1.approve(address(market), 300 ether);
         token1.allowance(buyer, address(market));
-        market.buy("fulfillment details", address(token1), 1, 10);
-        market.buy("fulfillment details", address(token1), 1, 1);
+        market.buy("fulfillment details", address(token1), 1, 10, 0);
+        market.buy("fulfillment details", address(token1), 1, 1, 0);
         vm.stopPrank();
     }
 
@@ -1264,7 +1890,8 @@ contract TripleAAgentsTest is Test {
                 collectionType: TripleALibrary.CollectionType.Digital,
                 fulfillerId: 1,
                 remixId: 0,
-                remixable: false
+                remixable: false,
+                forArtist: address(0)
             });
 
         inputs_2.tokens[0] = address(token1);
@@ -1282,6 +1909,8 @@ contract TripleAAgentsTest is Test {
             publishFrequency: 1,
             remixFrequency: 1,
             leadFrequency: 1,
+            mintFrequency: 1,
+            mint: true,
             instructions: "algo"
         });
         workers_1[1] = TripleALibrary.CollectionWorker({
@@ -1291,6 +1920,8 @@ contract TripleAAgentsTest is Test {
             publishFrequency: 1,
             remixFrequency: 1,
             leadFrequency: 1,
+            mintFrequency: 1,
+            mint: true,
             instructions: "algo"
         });
         collectionManager.create(inputs_2, workers_1, "some drop uri2", 0);
@@ -1303,7 +1934,8 @@ contract TripleAAgentsTest is Test {
 
         uint256 rent = accessControls.getTokenCycleRentLead(address(token1)) +
             accessControls.getTokenCycleRentPublish(address(token1)) +
-            accessControls.getTokenCycleRentRemix(address(token1));
+            accessControls.getTokenCycleRentRemix(address(token1)) +
+            accessControls.getTokenCycleRentMint(address(token1));
 
         vm.startPrank(recharger2);
         token1.approve(address(agents), 500 ether);
@@ -1315,8 +1947,8 @@ contract TripleAAgentsTest is Test {
         vm.startPrank(buyer2);
         token1.approve(address(market), 500 ether);
         token1.allowance(buyer2, address(market));
-        market.buy("fulfillment details", address(token1), 2, 20);
-        market.buy("fulfillment details", address(token1), 2, 1);
+        market.buy("fulfillment details", address(token1), 2, 20, 0);
+        market.buy("fulfillment details", address(token1), 2, 1, 0);
         vm.stopPrank();
     }
 
@@ -1330,6 +1962,7 @@ contract TripleAAgentsTest is Test {
             15000000000000000,
             60000000000000000,
             40000000000000000,
+            20000000000000000,
             6,
             2000000000000000000
         );
@@ -1339,6 +1972,7 @@ contract TripleAAgentsTest is Test {
             10000000000000000,
             50000000000000000,
             30000000000000000,
+            20000000000000000,
             10,
             200000000000000000
         );
@@ -1372,7 +2006,8 @@ contract TripleAAgentsTest is Test {
 
         uint256 rent = accessControls.getTokenCycleRentLead(address(token1)) +
             accessControls.getTokenCycleRentPublish(address(token1)) +
-            accessControls.getTokenCycleRentRemix(address(token1));
+            accessControls.getTokenCycleRentRemix(address(token1)) +
+            accessControls.getTokenCycleRentMint(address(token1));
 
         uint256 allServices = agents.getAllTimeServices(address(token1));
         uint256 oneServices = agents.getServicesPaidByToken(address(token1));
@@ -1400,7 +2035,8 @@ contract TripleAAgentsTest is Test {
     ) internal view {
         uint256 rent = accessControls.getTokenCycleRentLead(address(token1)) +
             accessControls.getTokenCycleRentPublish(address(token1)) +
-            accessControls.getTokenCycleRentRemix(address(token1));
+            accessControls.getTokenCycleRentRemix(address(token1)) +
+            accessControls.getTokenCycleRentMint(address(token1));
 
         uint256 bonusAmount = (((5 ether * 32) - 10 ether) * 10) / 100;
 
@@ -1431,8 +2067,8 @@ contract TripleAAgentsTest is Test {
         uint256 ownerTotal = ((30 * (bonusAmount - rent * 6)) / 100);
 
         // owners
-        assertEq(token1.balanceOf(agentOwner), (ownerTotal / 6)  * 2);
-        assertEq(token1.balanceOf(agentOwner2), ownerTotal /6);
+        assertEq(token1.balanceOf(agentOwner), (ownerTotal / 6) * 2);
+        assertEq(token1.balanceOf(agentOwner2), ownerTotal / 6);
         assertEq(token1.balanceOf(agentOwner3), (ownerTotal / 6) * 3);
     }
 
@@ -1444,13 +2080,7 @@ contract TripleAAgentsTest is Test {
         agents.withdrawServices(address(token1));
         vm.stopPrank();
 
-        assertEq(
-            agents.getAllTimeServices(address(token1)),
-            historical
-        );
-        assertEq(
-            agents.getServicesPaidByToken(address(token1)),
-            0
-        );
+        assertEq(agents.getAllTimeServices(address(token1)), historical);
+        assertEq(agents.getServicesPaidByToken(address(token1)), 0);
     }
 }

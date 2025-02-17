@@ -1,15 +1,24 @@
 use crate::utils::{
-    constants::{INFURA_GATEWAY, TRIPLEA_URI},
+    constants::{BONSAI, COLLECTION_MANAGER, INFURA_GATEWAY, LENS_CHAIN_ID, MONA, TRIPLEA_URI},
+    ipfs::upload_ipfs,
     lens::handle_lens_account,
-    types::{AgentManager, MessageExample, Text, TripleAAgent},
+    types::{AgentManager, CollectionInput, CollectionWorker, MessageExample, Text, TripleAAgent},
+    venice::call_drop_details,
 };
 use chrono::Utc;
-use ethers::types::U256;
+use ethers::{
+    contract::{ContractInstance, FunctionCall},
+    core::k256::ecdsa::SigningKey,
+    middleware::SignerMiddleware,
+    providers::{Http, Middleware, Provider},
+    signers::Wallet,
+    types::{Address, Eip1559TransactionRequest, NameOrAddress, H160, H256, U256},
+};
 use rand::{rngs::StdRng, Rng, SeedableRng};
 use regex::Regex;
 use reqwest::Client;
-use serde_json::{json, Value};
-use std::{collections::HashMap, error::Error};
+use serde_json::{json, to_string, Value};
+use std::{collections::HashMap, error::Error, io, str::FromStr, sync::Arc};
 
 pub fn extract_values_prompt(
     input: &str,
@@ -306,4 +315,260 @@ pub fn validate_and_fix_prices(prices: Vec<U256>, mona_price: f64, bonsai_price:
     }
 
     new_prices
+}
+
+pub async fn mint_collection(
+    description: &str,
+    image: &str,
+    title: &str,
+    amount: U256,
+    collection_manager_contract: Arc<
+        ContractInstance<
+            Arc<SignerMiddleware<Arc<Provider<Http>>, Wallet<SigningKey>>>,
+            SignerMiddleware<Arc<Provider<Http>>, Wallet<SigningKey>>,
+        >,
+    >,
+    prices: Vec<U256>,
+    mona_price: f64,
+    bonsai_price: f64,
+    agent: &TripleAAgent,
+    remix_collection_id: U256,
+    model: &str,
+    image_prompt: &str,
+    image_model: &str,
+    collection_type: u8,
+    format: Option<String>,
+    worker: bool,
+) -> Result<(), Box<dyn Error + Send + Sync>> {
+    match get_drop_details(remix_collection_id, description, agent.id, image, &model).await {
+        Ok((drop_metadata, drop_id)) => {
+            match upload_ipfs(if collection_type == 0u8 {
+                to_string(&json!({
+                    "title": title,
+                    "description": description,
+                    "image": image,
+                    "model": image_model,
+                    "prompt": image_prompt
+                }))?
+            } else {
+                to_string(&json!({
+                    "title": title,
+                    "description": description,
+                    "image": image,
+                    "model": image_model,
+                    "prompt": image_prompt,
+                    "sizes": vec!["XS", "S", "M", "L", "XL", "2XL"],
+                    "colors": vec!["White", "Black"],
+                    "format": format.unwrap()
+                }))?
+            })
+            .await
+            {
+                Ok(response) => {
+                    let prices = validate_and_fix_prices(prices, mona_price, bonsai_price);
+                    let method = collection_manager_contract.method::<(
+                        CollectionInput,
+                        Vec<CollectionWorker>,
+                        String,
+                        U256,
+                    ), H256>(
+                        "create",
+                        (
+                            CollectionInput {
+                                tokens: vec![
+                                    H160::from_str(MONA).unwrap(),
+                                    H160::from_str(BONSAI).unwrap(),
+                                ],
+                                prices,
+                                agentIds: if worker {
+                                    vec![U256::from(agent.id)]
+                                } else {
+                                    vec![]
+                                },
+                                metadata: format!("ipfs://{}", response.Hash),
+                                collectionType: collection_type,
+                                amount,
+                                fulfillerId: if collection_type == 0u8 {
+                                    U256::from(0)
+                                } else {
+                                    U256::from(1)
+                                },
+                                remixable: true,
+                                remixId: remix_collection_id,
+                            },
+                            if worker {
+                                vec![CollectionWorker {
+                                    instructions: agent.custom_instructions.to_string(),
+                                    publishFrequency: U256::from(1),
+                                    remixFrequency: U256::from(0),
+                                    leadFrequency: U256::from(0),
+                                    mintFrequency: U256::from(1),
+                                    publish: true,
+                                    remix: false,
+                                    lead: false,
+                                    mint: true,
+                                }]
+                            } else {
+                                vec![]
+                            },
+                            drop_metadata,
+                            drop_id,
+                        ),
+                    );
+
+                    match method {
+                        Ok(call) => {
+                            let FunctionCall { tx, .. } = call;
+
+                            if let Some(tx_request) = tx.as_eip1559_ref() {
+                                let gas_price = U256::from(500_000_000_000u64);
+                                let max_priority_fee = U256::from(25_000_000_000u64);
+                                let gas_limit = U256::from(300_000);
+
+                                let client = collection_manager_contract.client().clone();
+                                let chain_id = *LENS_CHAIN_ID;
+                                let req = Eip1559TransactionRequest {
+                                    from: Some(agent.wallet.parse::<Address>().unwrap()),
+                                    to: Some(NameOrAddress::Address(
+                                        COLLECTION_MANAGER.parse::<Address>().unwrap(),
+                                    )),
+                                    gas: Some(gas_limit),
+                                    value: tx_request.value,
+                                    data: tx_request.data.clone(),
+                                    max_priority_fee_per_gas: Some(max_priority_fee),
+                                    max_fee_per_gas: Some(gas_price + max_priority_fee),
+                                    chain_id: Some(chain_id.into()),
+                                    ..Default::default()
+                                };
+
+                                let pending_tx = match client.send_transaction(req, None).await {
+                                    Ok(tx) => tx,
+                                    Err(e) => {
+                                        eprintln!(
+                                            "Error sending the transaction for payRent: {:?}",
+                                            e
+                                        );
+                                        Err(Box::new(e))?
+                                    }
+                                };
+
+                                let tx_hash = match pending_tx.confirmations(1).await {
+                                    Ok(hash) => hash,
+                                    Err(e) => {
+                                        eprintln!("Error with transaction confirmation: {:?}", e);
+                                        Err(Box::new(e))?
+                                    }
+                                };
+
+                                println!("Remix Hash: {:?}", tx_hash);
+
+                                Ok(())
+                            } else {
+                                eprintln!("Error in sending Transaction");
+                                Err(Box::new(io::Error::new(
+                                    io::ErrorKind::Other,
+                                    "Error in sending Transaction",
+                                )))
+                            }
+                        }
+
+                        Err(err) => {
+                            eprintln!("Error in create method for create collection: {:?}", err);
+                            Err(Box::new(err))
+                        }
+                    }
+                }
+                Err(err) => {
+                    eprintln!("Error in IPFS upload for create collection: {:?}", err);
+                    Err(Box::new(io::Error::new(
+                        io::ErrorKind::Other,
+                        "Error in IPFS upload",
+                    )))
+                }
+            }
+        }
+        Err(err) => {
+            eprintln!("Error with drop details: {}", err);
+            Err(Box::new(io::Error::new(
+                io::ErrorKind::Other,
+                "Error with drop details",
+            )))
+        }
+    }
+}
+
+async fn get_drop_details(
+    remix_collection_id: U256,
+    remix_collection_description: &str,
+    agent_id: u32,
+    image: &str,
+    model: &str,
+) -> Result<(String, U256), Box<dyn Error + Send + Sync>> {
+    let mut drop_metadata = String::from("");
+    let mut drop_id = U256::from(0);
+
+    let client = Client::new();
+
+    let query = json!({
+        "query": r#"
+        query(TripleAAgents_id: Int!, remixId: Int!) {
+            agentRemixes(first: 1, where: {
+            TripleAAgents_id: $TripleAAgents_id, remixId: $remixId
+            }) {
+                dropId
+            }
+        }
+        "#,
+        "variables": {
+            "request": {
+                "TripleAAgents_id": agent_id,
+                "remixId": remix_collection_id
+            }
+    }
+    });
+
+    let res = client.post(TRIPLEA_URI).json(&query).send().await;
+
+    match res {
+        Ok(response) => {
+            let parsed: Value = response.json().await?;
+
+            if let Some(value) = parsed["data"]["agentRemixes"]
+                .as_array()
+                .map(|arr| arr.first())
+                .flatten()
+                .and_then(|value| value.get("dropId"))
+                .and_then(|drop_id| drop_id.as_str())
+                .map(String::from)
+            {
+                let id: u32 = value.parse().expect("Error converting drop value to u32");
+                drop_id = U256::from(id);
+            } else {
+                match call_drop_details(&remix_collection_description, &model).await {
+                    Ok((title, description)) => {
+                        match upload_ipfs(to_string(&json!({
+                            "title": title,
+                            "description": description,
+                            "image": image
+                        }))?)
+                        .await
+                        {
+                            Ok(ipfs) => drop_metadata = format!("ipfs://{}", ipfs.Hash),
+                            Err(err) => {
+                                eprintln!("Error with IPFS upload for drop: {}", err)
+                            }
+                        }
+                    }
+                    Err(err) => {
+                        eprintln!("Error with drop AI call: {}", err)
+                    }
+                }
+            }
+        }
+        Err(err) => {
+            eprintln!("Error with drop details: {}", err)
+        }
+    }
+
+    Ok((drop_metadata, drop_id))
 }

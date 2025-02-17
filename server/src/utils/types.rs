@@ -46,9 +46,11 @@ pub struct TripleAWorker {
     pub lead: bool,
     pub publish: bool,
     pub remix: bool,
+    pub mint: bool,
     pub lead_frequency: U256,
     pub publish_frequency: U256,
     pub remix_frequency: U256,
+    pub mint_frequency: U256,
     pub instructions: String,
 }
 
@@ -158,6 +160,7 @@ pub enum ActivityType {
     Publish,
     Lead,
     Remix,
+    Mint,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -179,9 +182,11 @@ pub struct CollectionWorker {
     pub publishFrequency: U256,
     pub remixFrequency: U256,
     pub leadFrequency: U256,
+    pub mintFrequency: U256,
     pub publish: bool,
     pub remix: bool,
     pub lead: bool,
+    pub mint: bool,
 }
 
 impl Tokenizable for CollectionInput {
@@ -243,9 +248,11 @@ impl Tokenizable for CollectionWorker {
                 publishFrequency: tokens[1].clone().into_uint().unwrap(),
                 remixFrequency: tokens[2].clone().into_uint().unwrap(),
                 leadFrequency: tokens[3].clone().into_uint().unwrap(),
-                publish: tokens[4].clone().into_bool().unwrap(),
-                remix: tokens[5].clone().into_bool().unwrap(),
-                lead: tokens[6].clone().into_bool().unwrap(),
+                mintFrequency: tokens[4].clone().into_uint().unwrap(),
+                publish: tokens[5].clone().into_bool().unwrap(),
+                remix: tokens[6].clone().into_bool().unwrap(),
+                lead: tokens[7].clone().into_bool().unwrap(),
+                mint: tokens[8].clone().into_bool().unwrap(),
             }),
             _ => Err(InvalidOutputType(String::from("conversion error"))),
         }
@@ -257,9 +264,11 @@ impl Tokenizable for CollectionWorker {
             Token::Uint(self.publishFrequency),
             Token::Uint(self.remixFrequency),
             Token::Uint(self.leadFrequency),
+            Token::Uint(self.mintFrequency),
             Token::Bool(self.publish),
             Token::Bool(self.remix),
             Token::Bool(self.lead),
+            Token::Bool(self.mint),
         ])
     }
 }

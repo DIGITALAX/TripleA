@@ -74,6 +74,7 @@ contract TripleACollectionManagerTest is Test {
             1500000000000000000,
             6000000000000000000,
             4000000000000000000,
+            8000000000000000000,
             6,
             20000000000000000000
         );
@@ -83,6 +84,7 @@ contract TripleACollectionManagerTest is Test {
             10000000000000000,
             50000000000000000,
             30000000000000000,
+            7000000000000000000,
             10,
             2000000000000000000
         );
@@ -122,7 +124,8 @@ contract TripleACollectionManagerTest is Test {
                 collectionType: TripleALibrary.CollectionType.Digital,
                 fulfillerId: 1,
                 remixId: 0,
-                remixable: true
+                remixable: true,
+                forArtist: address(0)
             });
         inputs_1.tokens[0] = address(token1);
         inputs_1.tokens[1] = address(token2);
@@ -142,7 +145,8 @@ contract TripleACollectionManagerTest is Test {
                 collectionType: TripleALibrary.CollectionType.Digital,
                 fulfillerId: 1,
                 remixId: 0,
-                remixable: true
+                remixable: true,
+                forArtist: address(0)
             });
 
         inputs_2.tokens[0] = address(token2);
@@ -159,6 +163,8 @@ contract TripleACollectionManagerTest is Test {
             publishFrequency: 1,
             remixFrequency: 1,
             leadFrequency: 1,
+            mintFrequency: 1,
+            mint: true,
             instructions: "instruction 1"
         });
         workers_1[1] = TripleALibrary.CollectionWorker({
@@ -168,6 +174,8 @@ contract TripleACollectionManagerTest is Test {
             publishFrequency: 1,
             remixFrequency: 1,
             leadFrequency: 1,
+            mintFrequency: 1,
+            mint: true,
             instructions: "instruction 2"
         });
         workers_1[2] = TripleALibrary.CollectionWorker({
@@ -177,6 +185,8 @@ contract TripleACollectionManagerTest is Test {
             publishFrequency: 1,
             remixFrequency: 1,
             leadFrequency: 1,
+            mintFrequency: 1,
+            mint: true,
             instructions: "instruction 3"
         });
 
@@ -190,6 +200,8 @@ contract TripleACollectionManagerTest is Test {
             publishFrequency: 1,
             remixFrequency: 1,
             leadFrequency: 1,
+            mintFrequency: 1,
+            mint: true,
             instructions: "instruction 4"
         });
 
@@ -300,7 +312,8 @@ contract TripleACollectionManagerTest is Test {
                 collectionType: TripleALibrary.CollectionType.Digital,
                 fulfillerId: 1,
                 remixId: 0,
-                remixable: true
+                remixable: true,
+                forArtist: address(0)
             });
         inputs_1.tokens[0] = address(token1);
         inputs_1.tokens[1] = address(token2);
@@ -320,7 +333,8 @@ contract TripleACollectionManagerTest is Test {
                 collectionType: TripleALibrary.CollectionType.Digital,
                 fulfillerId: 1,
                 remixId: 0,
-                remixable: true
+                remixable: true,
+                forArtist: address(0)
             });
 
         inputs_2.tokens[0] = address(token2);
@@ -337,7 +351,9 @@ contract TripleACollectionManagerTest is Test {
             publishFrequency: 1,
             remixFrequency: 1,
             leadFrequency: 1,
-            instructions: "instruction 1"
+            instructions: "instruction 1",
+            mintFrequency: 1,
+            mint: true
         });
         workers_1[1] = TripleALibrary.CollectionWorker({
             publish: true,
@@ -346,7 +362,9 @@ contract TripleACollectionManagerTest is Test {
             publishFrequency: 1,
             remixFrequency: 1,
             leadFrequency: 1,
-            instructions: "instruction 2"
+            instructions: "instruction 2",
+            mintFrequency: 1,
+            mint: true
         });
         workers_1[2] = TripleALibrary.CollectionWorker({
             publish: true,
@@ -355,7 +373,9 @@ contract TripleACollectionManagerTest is Test {
             publishFrequency: 1,
             remixFrequency: 1,
             leadFrequency: 1,
-            instructions: "instruction 3"
+            instructions: "instruction 3",
+            mintFrequency: 1,
+            mint: true
         });
 
         TripleALibrary.CollectionWorker[]
@@ -368,7 +388,9 @@ contract TripleACollectionManagerTest is Test {
             publishFrequency: 1,
             remixFrequency: 1,
             leadFrequency: 1,
-            instructions: "instruction 4"
+            instructions: "instruction 4",
+            mintFrequency: 1,
+            mint: true
         });
 
         collectionManager.create(inputs_1, workers_1, "", 1);
@@ -394,13 +416,13 @@ contract TripleACollectionManagerTest is Test {
         testCreateDropAndCollections();
 
         vm.startPrank(artist);
-        collectionManager.deleteCollection(1);
+        collectionManager.deleteCollection(1,0);
 
         vm.startPrank(admin);
         vm.expectRevert(
             abi.encodeWithSelector(TripleAErrors.NotArtist.selector)
         );
-        collectionManager.deleteCollection(2);
+        collectionManager.deleteCollection(2,0);
 
         uint256[] memory dropIds = collectionManager.getDropIdsByArtist(artist);
         assertEq(dropIds.length, 1);
@@ -413,7 +435,7 @@ contract TripleACollectionManagerTest is Test {
         assertEq(collectionIds[0], 2);
 
         vm.startPrank(artist);
-        collectionManager.deleteCollection(2);
+        collectionManager.deleteCollection(2,0);
 
         uint256[] memory dropIds_saved = collectionManager.getDropIdsByArtist(
             artist
@@ -429,11 +451,12 @@ contract TripleACollectionManagerTest is Test {
         assertEq(dropIds_first.length, 1);
 
         vm.startPrank(artist);
-        collectionManager.deleteDrop(1);
+        collectionManager.deleteDrop(1,0);
 
         uint256[] memory dropIds = collectionManager.getDropIdsByArtist(artist);
         assertEq(dropIds.length, 0);
     }
+    
 
     function testSetMarket() public {
         vm.startPrank(admin);

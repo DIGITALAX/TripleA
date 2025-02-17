@@ -45,6 +45,8 @@ contract TripleAAgents {
     mapping(address => uint256) private _devPayment;
     mapping(address => uint256) private _currentRewards;
     mapping(address => uint256) private _rewardsHistory;
+    mapping(uint256 => mapping(address => mapping(address => uint256)))
+        private _artistCollectBalanceByToken;
 
     event ActivateAgent(address wallet, uint256 agentId);
     event BalanceAdded(
@@ -53,6 +55,29 @@ contract TripleAAgents {
         uint256 amount,
         uint256 collectionId
     );
+    event ArtistCollectBalanceAdded(
+        address forArtist,
+        address token,
+        uint256 agentId,
+        uint256 amount
+    );
+    event ArtistPaid(
+        address forArtist,
+        address token,
+        uint256 agentId,
+        uint256 collectionId,
+        uint256 amount
+    );
+    event ArtistCollectBalanceSpent(
+        address forArtist,
+        address to,
+        address token,
+        uint256 agentId,
+        uint256 collectionId,
+        uint256 amount
+    );
+    event BalanceTransferred(address artist, uint256 agentId);
+    event AgentMarketWalletEdited(address wallet, uint256 agentId);
     event RewardsCalculated(address token, uint256 amount);
     event AgentPaidRent(
         address[] tokens,
@@ -68,6 +93,7 @@ contract TripleAAgents {
         uint256 collectionId,
         uint256 amount
     );
+    event ServicesAdded(address token, uint256 amount);
     event WorkerAdded(uint256 agentId, uint256 collectionId);
     event WorkerUpdated(uint256 agentId, uint256 collectionId);
     event WorkerRemoved(uint256 agentId, uint256 collectionId);
@@ -125,6 +151,13 @@ contract TripleAAgents {
         _;
     }
 
+    modifier onlyValidWorker(TripleALibrary.CollectionWorker memory worker) {
+        if (!worker.remix && !worker.publish && !worker.lead && !worker.mint) {
+            revert TripleAErrors.InvalidWorker();
+        }
+        _;
+    }
+
     constructor(
         address payable _accessControls,
         address _collectionManager,
@@ -153,11 +186,7 @@ contract TripleAAgents {
         TripleALibrary.CollectionWorker memory worker,
         uint256 agentId,
         uint256 collectionId
-    ) external onlyCollectionManager {
-        if (!worker.remix && !worker.publish && !worker.lead) {
-            revert TripleAErrors.InvalidWorker();
-        }
-
+    ) external onlyCollectionManager onlyValidWorker(worker) {
         _workers[agentId][collectionId] = worker;
 
         emit WorkerAdded(agentId, collectionId);
@@ -167,11 +196,7 @@ contract TripleAAgents {
         TripleALibrary.CollectionWorker memory worker,
         uint256 agentId,
         uint256 collectionId
-    ) external onlyCollectionManager {
-        if (!worker.remix && !worker.publish && !worker.lead) {
-            revert TripleAErrors.InvalidWorker();
-        }
-
+    ) external onlyCollectionManager onlyValidWorker(worker) {
         _workers[agentId][collectionId] = worker;
 
         emit WorkerUpdated(agentId, collectionId);
@@ -200,6 +225,70 @@ contract TripleAAgents {
         emit WorkerRemoved(agentId, collectionId);
     }
 
+    function transferBalance(
+        address[] memory tokens,
+        address artist,
+        uint256 agentId
+    ) external onlyCollectionManager {
+        for (uint8 i = 0; i < tokens.length; i++) {
+            _services[tokens[i]] += _artistCollectBalanceByToken[agentId][
+                tokens[i]
+            ][artist];
+            _allTimeServices[tokens[i]] += _artistCollectBalanceByToken[
+                agentId
+            ][tokens[i]][artist];
+            _artistCollectBalanceByToken[agentId][tokens[i]][artist] = 0;
+        }
+
+        emit BalanceTransferred(artist, agentId);
+    }
+
+    function addArtistCollectBalance(
+        address forArtist,
+        address token,
+        uint256 agentId,
+        uint256 amount
+    ) external onlyMarket {
+        _artistCollectBalanceByToken[agentId][token][forArtist] += amount;
+
+        emit ArtistCollectBalanceAdded(forArtist, token, agentId, amount);
+    }
+
+    function spendArtistCollectBalance(
+        address forArtist,
+        address to,
+        address token,
+        uint256 agentId,
+        uint256 amount,
+        uint256 collectionId,
+        bool spend
+    ) external onlyMarket {
+        if (amount > _artistCollectBalanceByToken[agentId][token][forArtist]) {
+            revert TripleAErrors.InsufficientBalance();
+        }
+
+        if (spend) {
+            if (!IERC20(token).transfer(address(to), amount)) {
+                revert TripleAErrors.PaymentFailed();
+            }
+        }
+
+        _artistCollectBalanceByToken[agentId][token][forArtist] -= amount;
+
+        if (to == forArtist) {
+            emit ArtistPaid(forArtist, token, agentId, collectionId, amount);
+        } else {
+            emit ArtistCollectBalanceSpent(
+                forArtist,
+                to,
+                token,
+                agentId,
+                collectionId,
+                amount
+            );
+        }
+    }
+
     function addBalance(
         address token,
         uint256 agentId,
@@ -213,6 +302,7 @@ contract TripleAAgents {
         if (amount >= _rent) {
             _bonus = amount - _rent;
         }
+
         _agentRentBalances[agentId][token][collectionId] += _rent;
         _agentHistoricalRentBalances[agentId][token][collectionId] += _rent;
         _agentBonusBalances[agentId][token][collectionId] += _bonus;
@@ -237,6 +327,16 @@ contract TripleAAgents {
         }
 
         emit BalanceAdded(token, agentId, amount, collectionId);
+    }
+
+    function addRemixServices(
+        address token,
+        uint256 amount
+    ) external onlyMarket {
+        _services[token] += amount;
+        _allTimeServices[token] += amount;
+
+        emit ServicesAdded(token, amount);
     }
 
     function payRent(
@@ -318,6 +418,10 @@ contract TripleAAgents {
 
         if (_workers[agentId][collectionId].publish) {
             _rent += accessControls.getTokenCycleRentPublish(token);
+        }
+
+        if (_workers[agentId][collectionId].mint) {
+            _rent += accessControls.getTokenCycleRentMint(token);
         }
 
         return _rent;
@@ -532,6 +636,16 @@ contract TripleAAgents {
         return _activatedAgents[agentId].activeCollectionIds.values();
     }
 
+    function getIsActiveCollectionId(
+        uint256 agentId,
+        uint256 collectionId
+    ) public view returns (bool) {
+        return
+            _activatedAgents[agentId].activeCollectionIds.contains(
+                collectionId
+            );
+    }
+
     function getCollectorPaymentByToken(
         address token,
         address collector,
@@ -567,6 +681,13 @@ contract TripleAAgents {
         return _workers[agentId][collectionId].publish;
     }
 
+    function getWorkerMint(
+        uint256 agentId,
+        uint256 collectionId
+    ) public view returns (bool) {
+        return _workers[agentId][collectionId].mint;
+    }
+
     function getWorkerLead(
         uint256 agentId,
         uint256 collectionId
@@ -588,6 +709,13 @@ contract TripleAAgents {
         return _workers[agentId][collectionId].publishFrequency;
     }
 
+    function getWorkerMintFrequency(
+        uint256 agentId,
+        uint256 collectionId
+    ) public view returns (uint256) {
+        return _workers[agentId][collectionId].mintFrequency;
+    }
+
     function getWorkerLeadFrequency(
         uint256 agentId,
         uint256 collectionId
@@ -607,6 +735,14 @@ contract TripleAAgents {
         uint256 collectionId
     ) public view returns (string memory) {
         return _workers[agentId][collectionId].instructions;
+    }
+
+    function getArtistCollectBalanceByToken(
+        address artist,
+        address token,
+        uint256 agentId
+    ) public view returns (uint256) {
+        return _artistCollectBalanceByToken[agentId][token][artist];
     }
 
     function getDevPaymentByToken(address token) public view returns (uint256) {

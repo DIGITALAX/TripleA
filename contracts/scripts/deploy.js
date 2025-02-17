@@ -8,6 +8,7 @@ const fulfillerAbi = require("./../../server/abis/TripleAFulfillerManager.json")
 const nftAbi = require("./../../server/abis/TripleANFT.json");
 const skyhuntersAcAbi = require("./../../server/abis/SkyhuntersAccessControls.json");
 const skyhuntersAgentsAbi = require("./../../server/abis/SkyhuntersAgentManager.json");
+const feedAbi = require("./../../server/abis/AgentFeedRule.json");
 
 const provider = new ethers.JsonRpcProvider(
   "https://rpc.testnet.lens.dev",
@@ -23,6 +24,7 @@ const nftAddress = "0xF5F7234fc46171639F8ca3F3b7026E43a91DC883";
 const skyhuntersAcAddress = "0x0380cFac54F0CCff2Bd1527EB8Ff9c2Abd152eF3";
 const skyhuntersAgentAddress = "0xDb362F0D06e40180e0BCB32e6fE4B665F09bD373";
 const poolManagerAddress = "0x3D1f8A6D6584a1672d2817368783B9a2a36ae361";
+const feedAddress = "0x27dfD1dc2867850E6c0930c1B5066854de0182e4";
 
 const WGRASS = "0xeee5a340Cdc9c179Db25dea45AcfD5FE8d4d3eB8";
 const MONA = "0x72ab7C7f3F6FF123D08692b0be196149d4951a41";
@@ -66,6 +68,8 @@ const FULFILLER = "0x3D1f8A6D6584a1672d2817368783B9a2a36ae361";
 
   const nftContract = new ethers.Contract(nftAddress, nftAbi, wallet);
 
+  const feedContract = new ethers.Contract(feedAddress, feedAbi, wallet);
+
   // Configura contratos
   // const grassToken = await skyhuntersAcContract.setAcceptedToken(WGRASS);
   // await grassToken.wait();
@@ -75,6 +79,7 @@ const FULFILLER = "0x3D1f8A6D6584a1672d2817368783B9a2a36ae361";
   //   "10000000000000000",
   //   "50000000000000000",
   //   "30000000000000000",
+  //   "70000000000000000",
   //   10,
   //   "2000000000000000000"
   // );
@@ -88,6 +93,7 @@ const FULFILLER = "0x3D1f8A6D6584a1672d2817368783B9a2a36ae361";
   //   "1500000000000000000",
   //   "6000000000000000000",
   //   "4000000000000000000",
+  //   "80000000000000000",
   //   6,
   //   "20000000000000000000"
   // );
@@ -161,6 +167,13 @@ const FULFILLER = "0x3D1f8A6D6584a1672d2817368783B9a2a36ae361";
   // await agentsContract.setCollectionManager(collectionManagerAddress);
   // await marketContract.setCollectionManager(collectionManagerAddress);
 
+  const encodedData = ethers.AbiCoder.defaultAbiCoder().encode(
+    ["address"],
+    [skyhuntersAcAddress]
+  );
+
+  await feedContract.configure(encodedData);
+
   // const res1 = await cmContract.getCollectionIsActive(2);
   // const res2 = await skyhuntersAgentContract.getAgentOwners(1);
   // const res3 = await marketContract.getAllCollectorsByCollectionId(2);
@@ -175,18 +188,16 @@ const FULFILLER = "0x3D1f8A6D6584a1672d2817368783B9a2a36ae361";
   // console.log({res10, res11})
   // console.log({ res1, res2, res3 , res4, res5: res5 + res6 + res7, res8, res9});
 
+  // const res = await acContract.getTokenThreshold(MONA);
+  // const res1 = await acContract.getTokenThreshold(BONSAI);
 
-  const res = await acContract.getTokenThreshold(MONA);
-  const res1 = await acContract.getTokenThreshold(BONSAI);
+  // const res2 = await acContract.getTokenCycleRentPublish(MONA);
+  // const res3 = await acContract.getTokenCycleRentLead(MONA);
+  // const res4 = await acContract.getTokenCycleRentRemix(MONA);
 
-  const res2 = await acContract.getTokenCycleRentPublish(MONA);
-  const res3 = await acContract.getTokenCycleRentLead(MONA);
-  const res4 = await acContract.getTokenCycleRentRemix(MONA);
+  // const res5 = await acContract.getTokenCycleRentPublish(BONSAI);
+  // const res6 = await acContract.getTokenCycleRentLead(BONSAI);
+  // const res7 = await acContract.getTokenCycleRentRemix(BONSAI);
 
-
-  const res5 = await acContract.getTokenCycleRentPublish(BONSAI);
-  const res6 = await acContract.getTokenCycleRentLead(BONSAI);
-  const res7 = await acContract.getTokenCycleRentRemix(BONSAI);
-
-  console.log({res, res1, res2, res3, res4, res5, res6, res7})
+  // console.log({res, res1, res2, res3, res4, res5, res6, res7})
 })();

@@ -48,6 +48,16 @@ export function handleCollectionMetadata(content: Bytes): void {
       metadata.format = format.toString();
     }
 
+    let model = value.get("model");
+    if (model && model.kind === JSONValueKind.STRING) {
+      metadata.model = model.toString();
+    }
+
+    let prompt = value.get("prompt");
+    if (prompt && prompt.kind === JSONValueKind.STRING) {
+      metadata.prompt = prompt.toString();
+    }
+
     metadata.save();
   }
 }

@@ -483,6 +483,14 @@ export function handleWorkerAdded(event: WorkerAddedEvent): void {
       event.params.agentId,
       event.params.collectionId
     );
+    // newWorker.mintFrequency = agents.getWorkerMintFrequency(
+    //   event.params.agentId,
+    //   event.params.collectionId
+    // );
+    // newWorker.mint = agents.getWorkerMint(
+    //   event.params.agentId,
+    //   event.params.collectionId
+    // );
     newWorker.collection = Bytes.fromByteArray(
       ByteArray.fromBigInt(event.params.collectionId)
     );
@@ -611,6 +619,14 @@ export function handleWorkerUpdated(event: WorkerUpdatedEvent): void {
         event.params.agentId,
         event.params.collectionId
       );
+      // newWorker.mintFrequency = agents.getWorkerMintFrequency(
+      //   event.params.agentId,
+      //   event.params.collectionId
+      // );
+      // newWorker.mint = agents.getWorkerMint(
+      //   event.params.agentId,
+      //   event.params.collectionId
+      // );
       newWorker.collection = Bytes.fromByteArray(
         ByteArray.fromBigInt(event.params.collectionId)
       );

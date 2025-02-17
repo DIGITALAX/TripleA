@@ -1,5 +1,5 @@
 use crate::utils::{
-    constants::{BONSAI, COIN_GECKO, MODELS, MONA, SAMPLE_PROMPT, VENICE_API},
+    constants::{MODELS, SAMPLE_PROMPT, VENICE_API},
     helpers::{extract_values_drop, extract_values_image, extract_values_prompt},
     types::Collection,
 };
@@ -9,6 +9,8 @@ use rand::{thread_rng, Rng};
 use reqwest::Client;
 use serde_json::{json, Value};
 use std::{error::Error, io};
+
+use super::constants::COIN_GECKO;
 
 pub async fn call_chat_completion(
     collection: &Collection,
@@ -511,14 +513,17 @@ Description to transform: {}\n\nReference format prompt example to follow: {}", 
 pub async fn call_image_details(
     model: &str,
 ) -> Result<(String, String, U256, Vec<U256>, f64, f64), Box<dyn Error + Send + Sync>> {
+    let client = Client::new();
     from_filename(".env").ok();
     let venice_key: String = var("VENICE_KEY").expect("VENICE_KEY not configured in .env");
     let coin_gecko_key: String =
         var("COIN_GECKO_KEY").expect("COIN_GECKO_KEY not configured in .env");
 
-    let gecko_client = Client::new();
-    let gecko_response = gecko_client
-        .get("https://api.coingecko.com/api/v3/simple/price?ids=monavale%2Cbonsai&vs_currencies=usd&precision=2")
+    let gecko_response = client
+        .get(format!(
+            "{}simple/price?ids=monavale%2Cbonsai&vs_currencies=usd&precision=2",
+            COIN_GECKO
+        ))
         .header("Content-Type", "application/json")
         .header("x-cg-demo-api-key", coin_gecko_key)
         .send()
@@ -577,7 +582,6 @@ pub async fn call_image_details(
     No parentheses or additional notes. Do not put quotation marks around any of the content.",  mona_price, mona_price, 300.0 / mona_price, 300.0 / mona_price, ((300.0 / mona_price) * 10f64.powi(18)) as u128,
     bonsai_price, bonsai_price, 300.0 / bonsai_price, 300.0 / bonsai_price, ((300.0 / bonsai_price) * 10f64.powi(18)) as u128);
 
-
         let mut messages = vec![];
 
         messages.push(json!({
@@ -589,7 +593,6 @@ pub async fn call_image_details(
             "content": input_prompt
         }));
 
-        let client = Client::new();
         let request_body = json!({
             "model": model,
             "messages": messages,
@@ -611,7 +614,6 @@ pub async fn call_image_details(
                 return Err(e.into());
             }
         };
-
 
         if response.status() == 200 {
             let response_json: Value = response.json().await?;

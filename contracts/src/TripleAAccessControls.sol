@@ -15,6 +15,7 @@ contract TripleAAccessControls {
     mapping(address => uint256) private _cycleRentRemix;
     mapping(address => uint256) private _cycleRentLead;
     mapping(address => uint256) private _cycleRentPublish;
+    mapping(address => uint256) private _cycleRentMint;
 
     event AdminAdded(address indexed admin);
     event AdminRemoved(address indexed admin);
@@ -27,6 +28,7 @@ contract TripleAAccessControls {
         uint256 rentLead,
         uint256 rentRemix,
         uint256 rentPublish,
+        uint256 rentMint,
         uint256 vig,
         uint256 base
     );
@@ -90,6 +92,7 @@ contract TripleAAccessControls {
         uint256 rentLead,
         uint256 rentRemix,
         uint256 rentPublish,
+        uint256 rentMint,
         uint256 vig,
         uint256 base
     ) external onlyAdmin {
@@ -101,6 +104,7 @@ contract TripleAAccessControls {
         _cycleRentLead[token] = rentLead;
         _cycleRentRemix[token] = rentRemix;
         _cycleRentPublish[token] = rentPublish;
+        _cycleRentMint[token] = rentMint;
         _vig[token] = vig;
         _base[token] = base;
 
@@ -110,18 +114,20 @@ contract TripleAAccessControls {
             rentLead,
             rentRemix,
             rentPublish,
+            rentMint,
             vig,
             base
         );
     }
 
-    function removeTokenDetails(address token) onlyAdmin external {
+    function removeTokenDetails(address token) external onlyAdmin {
         if (!skyhuntersAccessControls.isAcceptedToken(token)) {
             revert TripleAErrors.TokenDoesntExist();
         }
 
         delete _thresholds[token];
         delete _cycleRentLead[token];
+        delete _cycleRentMint[token];
         delete _cycleRentPublish[token];
         delete _cycleRentRemix[token];
         delete _vig[token];
@@ -154,6 +160,12 @@ contract TripleAAccessControls {
         return _cycleRentPublish[token];
     }
 
+    function getTokenCycleRentMint(
+        address token
+    ) public view returns (uint256) {
+        return _cycleRentMint[token];
+    }
+
     function getTokenCycleRentRemix(
         address token
     ) public view returns (uint256) {
@@ -168,11 +180,7 @@ contract TripleAAccessControls {
         return _base[token];
     }
 
-    function faucet(
-        address payable to,
-        uint256 amount,
-        uint256 gas
-    ) external  {
+    function faucet(address payable to, uint256 amount, uint256 gas) external {
         if (address(this).balance < amount) {
             revert TripleAErrors.InsufficientFunds();
         }

@@ -41,6 +41,10 @@ contract TripleAErrors {
     error InsufficientBalance();
     error NoActiveAgents();
     error CollectionSoldOut();
+    error InvalidWallet();
+    error AgentCantBuyIRL();
+    error NotAgentWallet();
+    error CantChangeAgents();
 
     error CollectionAlreadyDeactivated();
     error CollectionAlreadyActive();
@@ -50,4 +54,5 @@ contract TripleAErrors {
     error ActiveOrders();
 
     error OnlyCollector();
+    error NoShares();
 }
