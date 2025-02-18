@@ -1,10 +1,10 @@
 use std::sync::LazyLock;
 
-pub static AGENTS: &'static str = "0x58B9d53DFfF80de792F4003d350Fe7aBCdeC0960";
+pub static AGENTS: &'static str = "0xeD6a08221D7A3E69635dC2C4FaE9205bC45E18Ed";
 pub static COIN_GECKO: &'static str = "https://api.coingecko.com/api/v3/";
-pub static ACCESS_CONTROLS: &'static str = "0x44F12767C03bfC102e70603403d64EC83aA2Fa53";
-pub static COLLECTION_MANAGER: &'static str = "0x6B434299F649eE8A908A67eeeAE4BE1E57720788";
-pub static MARKET: &'static str = "0x393C4D38286ef9aDEb4FeE0bF98efb8477177a2F";
+pub static ACCESS_CONTROLS: &'static str = "0x4695Df1FDC39Ad972915545EA2E2403d4860592B";
+pub static COLLECTION_MANAGER: &'static str = "0xAFA95137afe705526bc3afb17D1AAdf554d07160";
+pub static MARKET: &'static str = "0x9F101Db166174A33ADd019cFf54Daa7965b14251";
 pub static REMIX_FEED: &'static str = "0x";
 pub static ZERO_ADDRESS: &'static str = "0x0000000000000000000000000000000000000000";
 pub static MONA: &'static str = "0x72ab7C7f3F6FF123D08692b0be196149d4951a41";

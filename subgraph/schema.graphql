@@ -478,6 +478,7 @@ type TokenDetailsSet @entity(immutable: false) {
   rentLead: BigInt! # uint256
   rentRemix: BigInt! # uint256
   rentPublish: BigInt! # uint256
+  rentMint: BigInt!
   vig: BigInt! # uint256
   base: BigInt! # uint256
   blockNumber: BigInt!

@@ -32,7 +32,6 @@ contract TripleACollectionManagerTest is Test {
     address private artist = address(0x456);
     address private market = address(0x789);
     address private fulfiller = address(0x1324);
-    address private poolManager = address(0x154);
 
     MockERC20 private token1;
     MockERC20 private token2;
@@ -58,8 +57,7 @@ contract TripleACollectionManagerTest is Test {
             payable(address(accessControls)),
             address(collectionManager),
             payable(address(skyhuntersAccess)),
-            address(skyhuntersAgent),
-            payable(address(poolManager))
+            address(skyhuntersAgent)
         );
         token1 = new MockERC20("Token1", "TK1");
         token2 = new MockERC20("Token2", "TK2");
@@ -416,13 +414,13 @@ contract TripleACollectionManagerTest is Test {
         testCreateDropAndCollections();
 
         vm.startPrank(artist);
-        collectionManager.deleteCollection(1,0);
+        collectionManager.deleteCollection(1, 0);
 
         vm.startPrank(admin);
         vm.expectRevert(
             abi.encodeWithSelector(TripleAErrors.NotArtist.selector)
         );
-        collectionManager.deleteCollection(2,0);
+        collectionManager.deleteCollection(2, 0);
 
         uint256[] memory dropIds = collectionManager.getDropIdsByArtist(artist);
         assertEq(dropIds.length, 1);
@@ -435,7 +433,7 @@ contract TripleACollectionManagerTest is Test {
         assertEq(collectionIds[0], 2);
 
         vm.startPrank(artist);
-        collectionManager.deleteCollection(2,0);
+        collectionManager.deleteCollection(2, 0);
 
         uint256[] memory dropIds_saved = collectionManager.getDropIdsByArtist(
             artist
@@ -451,12 +449,11 @@ contract TripleACollectionManagerTest is Test {
         assertEq(dropIds_first.length, 1);
 
         vm.startPrank(artist);
-        collectionManager.deleteDrop(1,0);
+        collectionManager.deleteDrop(1, 0);
 
         uint256[] memory dropIds = collectionManager.getDropIdsByArtist(artist);
         assertEq(dropIds.length, 0);
     }
-    
 
     function testSetMarket() public {
         vm.startPrank(admin);

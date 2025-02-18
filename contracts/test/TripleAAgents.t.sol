@@ -53,7 +53,6 @@ contract TripleAAgentsTest is Test {
     address private buyer = address(0x132);
     address private buyer2 = address(0x1323);
     address private fulfiller = address(0x1324);
-    address private poolManager = address(0x154);
 
     MockERC20 private token1;
     MockERC20 private token2;
@@ -79,8 +78,7 @@ contract TripleAAgentsTest is Test {
             payable(address(accessControls)),
             address(collectionManager),
             payable(address(skyhuntersAccess)),
-            address(skyhuntersAgent),
-            payable(address(poolManager))
+            address(skyhuntersAgent)
         );
         market = new TripleAMarket(
             address(nft),

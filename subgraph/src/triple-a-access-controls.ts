@@ -125,6 +125,7 @@ export function handleTokenDetailsSet(event: TokenDetailsSetEvent): void {
   entity.rentLead = event.params.rentLead;
   entity.rentRemix = event.params.rentRemix;
   entity.rentPublish = event.params.rentPublish;
+  entity.rentMint = event.params.rentMint;
   entity.vig = event.params.vig;
   entity.base = event.params.base;
 

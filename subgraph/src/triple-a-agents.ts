@@ -190,7 +190,7 @@ export function handleAgentRecharged(event: AgentRechargedEvent): void {
   if (entityAgent) {
     let agents = TripleAAgents.bind(event.address);
     let collections = TripleACollectionManager.bind(
-      Address.fromString("0x6B434299F649eE8A908A67eeeAE4BE1E57720788")
+      Address.fromString("0xAFA95137afe705526bc3afb17D1AAdf554d07160")
     );
 
     let collectionIdHex = entity.collectionId.toHexString();
@@ -305,7 +305,7 @@ export function handleBalanceAdded(event: BalanceAddedEvent): void {
   if (entityAgent) {
     let agents = TripleAAgents.bind(event.address);
     let collections = TripleACollectionManager.bind(
-      Address.fromString("0x6B434299F649eE8A908A67eeeAE4BE1E57720788")
+      Address.fromString("0xAFA95137afe705526bc3afb17D1AAdf554d07160")
     );
 
     let collectionIdHex = entity.collectionId.toHexString();
@@ -454,7 +454,7 @@ export function handleWorkerAdded(event: WorkerAddedEvent): void {
       event.params.collectionId
     );
     let collectionManager = TripleACollectionManager.bind(
-      Address.fromString("0x6B434299F649eE8A908A67eeeAE4BE1E57720788")
+      Address.fromString("0xAFA95137afe705526bc3afb17D1AAdf554d07160")
     );
     newWorker.tokens = collectionManager
       .getCollectionERC20Tokens(event.params.collectionId)
@@ -485,14 +485,14 @@ export function handleWorkerAdded(event: WorkerAddedEvent): void {
       event.params.agentId,
       event.params.collectionId
     );
-    // newWorker.mintFrequency = agents.getWorkerMintFrequency(
-    //   event.params.agentId,
-    //   event.params.collectionId
-    // );
-    // newWorker.mint = agents.getWorkerMint(
-    //   event.params.agentId,
-    //   event.params.collectionId
-    // );
+    newWorker.mintFrequency = agents.getWorkerMintFrequency(
+      event.params.agentId,
+      event.params.collectionId
+    );
+    newWorker.mint = agents.getWorkerMint(
+      event.params.agentId,
+      event.params.collectionId
+    );
     newWorker.collection = Bytes.fromByteArray(
       ByteArray.fromBigInt(event.params.collectionId)
     );
@@ -586,7 +586,7 @@ export function handleWorkerUpdated(event: WorkerUpdatedEvent): void {
 
     if (newWorker) {
       let collectionManager = TripleACollectionManager.bind(
-        Address.fromString("0x6B434299F649eE8A908A67eeeAE4BE1E57720788")
+        Address.fromString("0xAFA95137afe705526bc3afb17D1AAdf554d07160")
       );
       newWorker.instructions = agents.getWorkerInstructions(
         event.params.agentId,
@@ -621,14 +621,14 @@ export function handleWorkerUpdated(event: WorkerUpdatedEvent): void {
         event.params.agentId,
         event.params.collectionId
       );
-      // newWorker.mintFrequency = agents.getWorkerMintFrequency(
-      //   event.params.agentId,
-      //   event.params.collectionId
-      // );
-      // newWorker.mint = agents.getWorkerMint(
-      //   event.params.agentId,
-      //   event.params.collectionId
-      // );
+      newWorker.mintFrequency = agents.getWorkerMintFrequency(
+        event.params.agentId,
+        event.params.collectionId
+      );
+      newWorker.mint = agents.getWorkerMint(
+        event.params.agentId,
+        event.params.collectionId
+      );
       newWorker.collection = Bytes.fromByteArray(
         ByteArray.fromBigInt(event.params.collectionId)
       );

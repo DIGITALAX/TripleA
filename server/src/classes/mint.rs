@@ -128,6 +128,7 @@ pub async fn mint(
             "fauxhawk",
         ][thread_rng().gen_range(0..8)]
     };
+    let preset = ["Legend of Zelda", "Surrealist"][thread_rng().gen_range(0..2)];
 
     let prompt= format!("An abstract drawing deconstucivist Fashion of a 24 year old {} with {} skin and {} colored eyes and {} hair. The skin pores and texture are clearly visible and in focus. Wearing a {} {} with {} with large text \"{}\" typography on the streetwear, standing in the colorful graffiti filled pop art alley ways of {} in the {}, {}, pop art urban background, highly detailed, in the background subway stations and graffiti murals, abstract cuts, rule of thirds, in the background Disjointed wooden planks forming a pathway, in the style of H. R. Giger, in the style of Enki Bilal.", gender, color_skin, color_eyes, style_hair, color_fashion, format, graphics, typography, location, time, standing_position );
 
@@ -152,7 +153,7 @@ pub async fn mint(
             "hide_watermark": true,
             "return_binary": false,
             "cfg_scale": 3.5,
-            "style_preset": "Legend of Zelda",
+            "style_preset": preset,
             "negative_prompt": NEGATIVE_PROMPT_IMAGE,
             "safe_mode": false,
             "inpaint": {

@@ -8,7 +8,6 @@ import "./TripleACollectionManager.sol";
 import "./TripleAMarket.sol";
 import "./skyhunters/SkyhuntersAgentManager.sol";
 import "./skyhunters/SkyhuntersAccessControls.sol";
-import "./skyhunters/SkyhuntersPoolManager.sol";
 import "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import "openzeppelin-contracts/contracts/utils/structs/EnumerableSet.sol";
 
@@ -162,8 +161,7 @@ contract TripleAAgents {
         address payable _accessControls,
         address _collectionManager,
         address payable _skyhuntersAccessControls,
-        address _agentManager,
-        address payable _poolManager
+        address _agentManager
     ) payable {
         accessControls = TripleAAccessControls(_accessControls);
         collectionManager = TripleACollectionManager(_collectionManager);
@@ -171,7 +169,6 @@ contract TripleAAgents {
             _skyhuntersAccessControls
         );
         agentManager = SkyhuntersAgentManager(_agentManager);
-        poolManager = _poolManager;
     }
 
     function activateAgent(
@@ -529,7 +526,7 @@ contract TripleAAgents {
         if (
             !IERC20(token).transferFrom(
                 msg.sender,
-                address(poolManager),
+                address(this),
                 amount
             )
         ) {
@@ -775,12 +772,6 @@ contract TripleAAgents {
         address _collectionManager
     ) external onlyAdmin {
         collectionManager = TripleACollectionManager(_collectionManager);
-    }
-
-    function setSkyhuntersPoolManager(
-        address payable _poolManager
-    ) external onlyAdmin {
-        poolManager = _poolManager;
     }
 
     function setAmounts(

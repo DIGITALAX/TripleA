@@ -36,7 +36,7 @@ export function handleCollectionPurchased(
   let market = TripleAMarket.bind(event.address);
 
   let collectionManager = TripleACollectionManager.bind(
-    Address.fromString("0x6B434299F649eE8A908A67eeeAE4BE1E57720788")
+    Address.fromString("0xAFA95137afe705526bc3afb17D1AAdf554d07160")
   );
   entity.mintedTokens = market.getOrderMintedTokens(event.params.orderId);
   entity.totalPrice = market.getOrderTotalPrice(event.params.orderId);

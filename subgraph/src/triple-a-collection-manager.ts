@@ -118,7 +118,7 @@ export function handleCollectionCreated(event: CollectionCreatedEvent): void {
 
   let collectionManager = TripleACollectionManager.bind(event.address);
   let agents = TripleAAgents.bind(
-    Address.fromString("0x58B9d53DFfF80de792F4003d350Fe7aBCdeC0960")
+    Address.fromString("0xeD6a08221D7A3E69635dC2C4FaE9205bC45E18Ed")
   );
 
   entity.amount = collectionManager.getCollectionAmount(entity.collectionId);
@@ -185,6 +185,9 @@ export function handleCollectionCreated(event: CollectionCreatedEvent): void {
     collectionPrice.token = (tokens as Address[])[i];
     collectionPrice.price = price;
     collectionPrice.amount = entity.amount;
+    collectionPrice.collectionId = entity.collectionId;
+    collectionPrice.soldOut = false;
+    collectionPrice.amountSold = BigInt.fromI32(0);
 
     collectionPrice.save();
   }
