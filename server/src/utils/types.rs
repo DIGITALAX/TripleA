@@ -182,12 +182,12 @@ pub struct CollectionInput {
     pub prices: Vec<U256>,
     pub agentIds: Vec<U256>,
     pub metadata: String,
+    pub forArtist: Address,
     pub collectionType: u8,
     pub amount: U256,
     pub fulfillerId: U256,
     pub remixId: U256,
     pub remixable: bool,
-    pub forArtist: Address,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -229,12 +229,12 @@ impl Tokenizable for CollectionInput {
                     .map(|t| t.into_uint().unwrap())
                     .collect(),
                 metadata: tokens[3].clone().into_string().unwrap(),
-                collectionType: tokens[4].clone().into_int().unwrap().as_u32() as u8,
-                amount: tokens[5].clone().into_uint().unwrap(),
-                fulfillerId: tokens[6].clone().into_uint().unwrap(),
-                remixId: tokens[7].clone().into_uint().unwrap(),
-                remixable: tokens[8].clone().into_bool().unwrap(),
-                forArtist: tokens[9].clone().into_address().unwrap(),
+                forArtist: tokens[4].clone().into_address().unwrap(),
+                collectionType: tokens[5].clone().into_int().unwrap().as_u32() as u8,
+                amount: tokens[6].clone().into_uint().unwrap(),
+                fulfillerId: tokens[7].clone().into_uint().unwrap(),
+                remixId: tokens[8].clone().into_uint().unwrap(),
+                remixable: tokens[9].clone().into_bool().unwrap(),
             }),
             _ => Err(InvalidOutputType(String::from("conversion error"))),
         }
@@ -246,12 +246,12 @@ impl Tokenizable for CollectionInput {
             Token::Array(self.prices.into_iter().map(Token::Uint).collect()),
             Token::Array(self.agentIds.into_iter().map(Token::Uint).collect()),
             Token::String(self.metadata),
+            Token::Address(self.forArtist),
             Token::Uint(U256::from(self.collectionType)),
             Token::Uint(self.amount),
             Token::Uint(self.fulfillerId),
             Token::Uint(self.remixId),
             Token::Bool(self.remixable),
-            Token::Address(self.forArtist),
         ])
     }
 }
@@ -259,7 +259,7 @@ impl Tokenizable for CollectionInput {
 impl Tokenizable for CollectionWorker {
     fn from_token(token: Token) -> Result<Self, InvalidOutputType> {
         match token {
-            Token::Tuple(tokens) if tokens.len() == 7 => Ok(Self {
+            Token::Tuple(tokens) if tokens.len() == 9 => Ok(Self {
                 instructions: tokens[0].clone().into_string().unwrap(),
                 publishFrequency: tokens[1].clone().into_uint().unwrap(),
                 remixFrequency: tokens[2].clone().into_uint().unwrap(),

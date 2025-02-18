@@ -351,7 +351,7 @@ async fn activity_loop(agents: Arc<RwLock<HashMap<u32, AgentManager>>>) {
             let agents_guard = agents.read().await;
             agent_ids = agents_guard
                 .iter()
-                // .filter(|(_, manager)| should_trigger(&manager.agent))
+                .filter(|(_, manager)| should_trigger(&manager.agent))
                 .map(|(&id, _)| id)
                 .collect();
         }
@@ -377,8 +377,7 @@ async fn activity_loop(agents: Arc<RwLock<HashMap<u32, AgentManager>>>) {
                 }
             });
         }
-        tokio::time::sleep(Duration::from_secs(5000)).await;
-        // tokio::time::sleep(Duration::from_secs(500)).await;
+        tokio::time::sleep(Duration::from_secs(500)).await;
     }
 }
 

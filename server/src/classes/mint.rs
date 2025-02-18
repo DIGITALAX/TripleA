@@ -15,7 +15,7 @@ use ethers::{
     middleware::{Middleware, SignerMiddleware},
     providers::{Http, Provider},
     signers::{LocalWallet, Wallet},
-    types::{Address, Eip1559TransactionRequest, NameOrAddress, H160, H256, U256},
+    types::{Address, Eip1559TransactionRequest, NameOrAddress, H160, H256, U256, U64},
 };
 use rand::{thread_rng, Rng};
 use reqwest::Client;
@@ -80,7 +80,7 @@ pub async fn mint(
         "facing away",
         "looking at the viewer",
         "looking to the side",
-    ][thread_rng().gen_range(0..5)];
+    ][thread_rng().gen_range(0..4)];
     let graphics = vec![
         "sci-fi starship in space",
         "psychedlic music album cover",
@@ -106,7 +106,7 @@ pub async fn mint(
         "rekt by the algo",
         "punch nazis",
         "agency for hire",
-    ][thread_rng().gen_range(0..13)];
+    ][thread_rng().gen_range(0..15)];
     let time = ["morning", "afternoon", "night"][thread_rng().gen_range(0..3)];
 
     let style_hair = if gender == "female" {
@@ -116,7 +116,7 @@ pub async fn mint(
             "green and blue medium length",
             "curly and frizzy",
             "short wavy billowing in the wind",
-        ][thread_rng().gen_range(0..8)]
+        ][thread_rng().gen_range(0..5)]
     } else {
         vec![
             "short dreadlocks and side fade",
@@ -126,7 +126,7 @@ pub async fn mint(
             "medium length brown",
             "short blonde curly",
             "fauxhawk",
-        ][thread_rng().gen_range(0..8)]
+        ][thread_rng().gen_range(0..7)]
     };
     let preset = ["Legend of Zelda", "Surrealist"][thread_rng().gen_range(0..2)];
 
@@ -134,7 +134,7 @@ pub async fn mint(
 
     let image_response = client
         .get(&format!(
-            "{}/ipfs/{}",
+            "{}ipfs/{}",
             INFURA_GATEWAY,
             INPUT_IRL_FASHION[thread_rng().gen_range(0..INPUT_IRL_FASHION.len())]
         ))
@@ -156,10 +156,10 @@ pub async fn mint(
             "style_preset": preset,
             "negative_prompt": NEGATIVE_PROMPT_IMAGE,
             "safe_mode": false,
-            "inpaint": {
-                "strength": 85,
-                "source_image_base64": STANDARD.encode(&bytes)
-            }
+            // "inpaint": {
+            //     "strength": 85,
+            //     "source_image_base64": STANDARD.encode(&bytes)
+            // }
         });
 
         let response = client
@@ -182,19 +182,17 @@ pub async fn mint(
                 .and_then(|v| v.as_str())
                 .unwrap_or("")
                 .to_string();
-            match call_image_details(&agent.model).await {
-                Ok((title, description, amount, prices, mona_price, bonsai_price)) => {
+            match call_image_details(&agent.model, true).await {
+                Ok((title, description, amount, prices)) => {
                     match upload_image_to_ipfs(&image).await {
                         Ok(ipfs) => {
-                            let _ = mint_collection(
+                            match mint_collection(
                                 &description,
                                 &format!("ipfs://{}", ipfs.Hash),
                                 &title,
                                 amount,
                                 collection_manager_contract,
                                 prices,
-                                mona_price,
-                                bonsai_price,
                                 &agent,
                                 U256::from(0),
                                 &agent.model,
@@ -205,61 +203,80 @@ pub async fn mint(
                                 false,
                                 &collection.artist,
                             )
-                            .await;
+                            .await
+                            {
+                                Ok(_) => {
+                                    let focus = String::from("IMAGE");
+                                    let schema =
+                                        "https://json-schemas.lens.dev/posts/image/3.0.0.json"
+                                            .to_string();
+                                    let tags = vec![
+                                        "tripleA".to_string(),
+                                        title.replace(" ", "").to_lowercase(),
+                                    ];
 
-                            let focus = String::from("IMAGE");
-                            let schema =
-                                "https://json-schemas.lens.dev/posts/image/3.0.0.json".to_string();
-                            let tags =
-                                vec!["tripleA".to_string(), title.replace(" ", "").to_lowercase()];
+                                    let publication = Publication {
+                                        schema,
+                                        lens: Content {
+                                            mainContentFocus: focus,
+                                            title,
+                                            content: description,
+                                            id: Uuid::new_v4().to_string(),
+                                            locale: "en".to_string(),
+                                            tags,
+                                            image: Some(Image {
+                                                tipo: "image/png".to_string(),
+                                                item: format!("ipfs://{}", ipfs.Hash),
+                                            }),
+                                        },
+                                    };
 
-                            let publication = Publication {
-                                schema,
-                                lens: Content {
-                                    mainContentFocus: focus,
-                                    title,
-                                    content: description,
-                                    id: Uuid::new_v4().to_string(),
-                                    locale: "en".to_string(),
-                                    tags,
-                                    image: Some(Image {
-                                        tipo: "image/png".to_string(),
-                                        item: format!("ipfs://{}", ipfs.Hash),
-                                    }),
-                                },
-                            };
+                                    let publication_json = to_string(&publication)?;
 
-                            let publication_json = to_string(&publication)?;
+                                    let content = match upload_lens_storage(publication_json).await
+                                    {
+                                        Ok(con) => con,
+                                        Err(e) => {
+                                            eprintln!(
+                                                "Error uploading content to Lens Storage: {}",
+                                                e
+                                            );
+                                            return Err(Box::new(io::Error::new(
+                                                io::ErrorKind::Other,
+                                                format!(
+                                                    "Error uploading content to Lens Storage: {}",
+                                                    e
+                                                ),
+                                            )));
+                                        }
+                                    };
 
-                            let content = match upload_lens_storage(publication_json).await {
-                                Ok(con) => con,
-                                Err(e) => {
-                                    eprintln!("Error uploading content to Lens Storage: {}", e);
-                                    return Err(Box::new(io::Error::new(
-                                        io::ErrorKind::Other,
-                                        format!("Error uploading content to Lens Storage: {}", e),
+                                    let _ = make_publication(
+                                        &content,
+                                        agent.id,
+                                        &tokens.as_ref().unwrap().tokens.access_token,
+                                        None,
+                                    )
+                                    .await;
+
+                                    let _ = collect_artists(
+                                        agents_contract,
+                                        market_contract,
+                                        &collection.artist,
+                                        collection.prices.clone(),
+                                        &agent,
+                                    )
+                                    .await;
+
+                                    Ok(())
+                                }
+                                Err(err) => {
+                                    return Err(Box::new(std::io::Error::new(
+                                        std::io::ErrorKind::Other,
+                                        format!("Error with minting collection {:?}", err),
                                     )));
                                 }
-                            };
-
-                            let _ = make_publication(
-                                &content,
-                                agent.id,
-                                &tokens.as_ref().unwrap().tokens.access_token,
-                                None,
-                            )
-                            .await;
-
-                            let _ = collect_artists(
-                                agents_contract,
-                                market_contract,
-                                &collection.artist,
-                                collection.prices.clone(),
-                                &agent,
-                            )
-                            .await;
-
-                            Ok(())
+                            }
                         }
                         Err(err) => {
                             return Err(Box::new(std::io::Error::new(
@@ -272,7 +289,7 @@ pub async fn mint(
                 Err(err) => {
                     return Err(Box::new(std::io::Error::new(
                         std::io::ErrorKind::Other,
-                        format!("Error with creating remix {:?}", err),
+                        format!("Error with minting collection {:?}", err),
                     )));
                 }
             }
@@ -422,13 +439,26 @@ async fn find_and_buy_collection(
                         };
 
                         println!("Agent Buy Hash: {:?}", tx_hash);
+
+                        match tx_hash {
+                            Some(tx) => {
+                                if tx.status == Some(U64::from(1)) {
+                                    eprintln!("Success")
+                                } else {
+                                    eprintln!("Error in sending Transaction");
+                                }
+                            }
+                            None => {
+                                eprintln!("Error in sending Transaction");
+                            }
+                        }
                     } else {
                         eprintln!("Error in sending Transaction");
                     }
                 }
 
                 Err(err) => {
-                    eprintln!("Error in create method for create collection: {:?}", err);
+                    eprintln!("Error in buy method for agent buy: {:?}", err);
                 }
             }
         }

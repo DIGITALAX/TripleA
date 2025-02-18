@@ -217,8 +217,9 @@ pub fn initialize_contracts(
     Arc<Contract<SignerMiddleware<Arc<Provider<Http>>, LocalWallet>>>,
     Arc<Contract<SignerMiddleware<Arc<Provider<Http>>, LocalWallet>>>,
 )> {
-    let provider = initialize_provider();
     dotenv().ok();
+    let provider = initialize_provider();
+
 
     let wallet = match initialize_wallet(private_key) {
         Some(wallet) => wallet,

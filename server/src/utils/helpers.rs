@@ -1,5 +1,6 @@
 use crate::utils::{
     constants::{BONSAI, COLLECTION_MANAGER, INFURA_GATEWAY, LENS_CHAIN_ID, MONA, TRIPLEA_URI},
+    contracts::initialize_provider,
     ipfs::upload_ipfs,
     lens::handle_lens_account,
     types::{
@@ -15,7 +16,11 @@ use ethers::{
     middleware::SignerMiddleware,
     providers::{Http, Middleware, Provider},
     signers::Wallet,
-    types::{Address, Eip1559TransactionRequest, NameOrAddress, H160, H256, U256},
+    types::{
+        transaction::eip2718::TypedTransaction, Address, Eip1559TransactionRequest, NameOrAddress,
+        TransactionRequest, H160, H256, U256, U64,
+    },
+    utils::hex,
 };
 use rand::{rngs::StdRng, Rng, SeedableRng};
 use regex::Regex;
@@ -45,9 +50,7 @@ pub fn extract_values_prompt(
 
 pub fn extract_values_image(
     input: &str,
-    mona_price: f64,
-    bonsai_price: f64,
-) -> Result<(String, String, U256, Vec<U256>, f64, f64), Box<dyn Error + Send + Sync>> {
+) -> Result<(String, String, U256, Vec<U256>), Box<dyn Error + Send + Sync>> {
     let title_re = Regex::new(r"(?m)^Title:\s*(.+)")?;
     let description_re = Regex::new(r"(?m)^Description:\s*(.+)")?;
     let amount_re = Regex::new(r"(?m)^Amount:\s*(\d+)")?;
@@ -82,14 +85,7 @@ pub fn extract_values_image(
         .and_then(|m| U256::from_dec_str(m.as_str()).ok())
         .unwrap_or(U256::zero());
 
-    Ok((
-        title,
-        description,
-        U256::from(amount),
-        vec![U256::from(mona), U256::from(bonsai)],
-        mona_price,
-        bonsai_price,
-    ))
+    Ok((title, description, U256::from(amount), vec![mona, bonsai]))
 }
 
 pub fn extract_values_drop(input: &str) -> Result<(String, String), Box<dyn Error + Send + Sync>> {
@@ -126,7 +122,7 @@ Adjectives: {}
 pub async fn fetch_metadata(uri: &str) -> Option<Value> {
     if let Some(ipfs_hash) = uri.strip_prefix("ipfs://") {
         let client = Client::new();
-        let url = format!("{}/{}", INFURA_GATEWAY, ipfs_hash);
+        let url = format!("{}ipfs/{}", INFURA_GATEWAY, ipfs_hash);
         if let Ok(response) = client.get(&url).send().await {
             if let Ok(json) = response.json::<Value>().await {
                 return Some(json);
@@ -297,21 +293,91 @@ pub async fn handle_agents() -> Result<HashMap<u32, AgentManager>, Box<dyn Error
     }
 }
 
-pub fn validate_and_fix_prices(prices: Vec<U256>, mona_price: f64, bonsai_price: f64) -> Vec<U256> {
-    let token_prices = [mona_price, bonsai_price];
+pub async fn handle_token_thresholds(irl: bool) -> Result<Vec<U256>, Box<dyn Error + Send + Sync>> {
+    let client = Client::new();
+
+    let query = json!({
+        "query": r#"
+        query {
+            tokenDetailsSets {
+                threshold
+                token
+                base 
+            }
+        }
+        "#,
+    });
+
+    let res = client.post(TRIPLEA_URI).json(&query).send().await;
+
+    match res {
+        Ok(response) => {
+            let parsed: Value = response.json().await?;
+            let empty_vec = vec![];
+            let token_details = parsed["data"]["tokenDetailsSets"]
+                .as_array()
+                .unwrap_or(&empty_vec);
+
+            let mut mona_price: Option<U256> = None;
+            let mut bonsai_price: Option<U256> = None;
+
+
+            for token in token_details {
+                if let (Some(token_address), Some(threshold_str), Some(base_str)) = (
+                    token["token"].as_str(),
+                    token["threshold"].as_str(),
+                    token["base"].as_str(),
+                ) {
+                    if let (Ok(threshold), Ok(base)) = (
+                        U256::from_dec_str(threshold_str),
+                        U256::from_dec_str(base_str),
+                    ) {
+                        let total_price = if irl {
+                            U256::max(threshold, base)
+                        } else {
+                            threshold
+                        };
+
+                        if token_address.eq_ignore_ascii_case(MONA) {
+                            mona_price = Some(total_price);
+                        } else if token_address.eq_ignore_ascii_case(BONSAI) {
+                            bonsai_price = Some(total_price);
+                        }
+                    }
+                }
+            }
+
+            Ok(vec![
+                mona_price.unwrap_or(U256::zero()),
+                bonsai_price.unwrap_or(U256::zero()),
+            ])
+        }
+        Err(_) => Ok(vec![]),
+    }
+}
+
+pub async fn validate_and_fix_prices(prices: Vec<U256>, irl: bool) -> Vec<U256> {
+    let thresholds: Vec<U256> = match handle_token_thresholds(irl).await {
+        Ok(thresholds) => thresholds,
+        Err(_) => vec![],
+    };
+
     let mut new_prices = Vec::with_capacity(2);
 
     for i in 0..2 {
-        let mut rng = StdRng::from_entropy();
-        let random_target = rng.gen_range(150.0..320.0);
-        let token_amount = prices[i].as_u128() as f64 / 10f64.powi(18);
-        let usd_value = token_amount * token_prices[i];
+        let final_price = if !thresholds.is_empty() {
+            if prices[i] < thresholds[i] {
+                let mut rng = StdRng::from_entropy();
 
-        let final_price = if usd_value < 200.0 || usd_value > 700.0 || token_amount.fract() > 0.0 {
-            let target_tokens = random_target / token_prices[i];
-            U256::from((target_tokens * 10f64.powi(18)) as u128)
+                let threshold_f64 = thresholds[i].as_u128() as f64;
+                let random_boost = rng.gen_range(1.01..1.15);
+                let adjusted_price_f64 = threshold_f64 * random_boost;
+                U256::from(adjusted_price_f64 as u128)
+            } else {
+                prices[i]
+            }
         } else {
-            prices[i]
+            U256::from_dec_str("200000000000000000000").unwrap()
         };
 
         new_prices.push(final_price);
@@ -332,8 +398,6 @@ pub async fn mint_collection(
         >,
     >,
     prices: Vec<U256>,
-    mona_price: f64,
-    bonsai_price: f64,
     agent: &TripleAAgent,
     remix_collection_id: U256,
     model: &str,
@@ -369,7 +433,12 @@ pub async fn mint_collection(
             .await
             {
                 Ok(response) => {
-                    let prices = validate_and_fix_prices(prices, mona_price, bonsai_price);
+                    let prices = validate_and_fix_prices(
+                        prices,
+                        if collection_type == 0u8 { false } else { true },
+                    )
+                    .await;
+
                     let method = collection_manager_contract.method::<(
                         CollectionInput,
                         Vec<CollectionWorker>,
@@ -383,6 +452,7 @@ pub async fn mint_collection(
                                     H160::from_str(MONA).unwrap(),
                                     H160::from_str(BONSAI).unwrap(),
                                 ],
+
                                 prices,
                                 agentIds: if worker {
                                     vec![U256::from(agent.id)]
@@ -465,9 +535,76 @@ pub async fn mint_collection(
                                     }
                                 };
 
-                                println!("Remix Hash: {:?}", tx_hash);
+                                println!("Mint Hash: {:?}", tx_hash);
 
-                                Ok(())
+                                match tx_hash {
+                                    Some(tx) => {
+                                        if tx.status == Some(U64::from(1)) {
+                                            Ok(())
+                                        } else {
+                                            eprintln!("Error in sending Transaction");
+
+                                            let provider = initialize_provider();
+
+                                            let tx_hash: H256 = tx.transaction_hash;
+
+                                            if let Ok(Some(transaction)) =
+                                                provider.get_transaction(tx_hash).await
+                                            {
+                                                let typed_tx =
+                                                    TypedTransaction::Legacy(TransactionRequest {
+                                                        from: Some(transaction.from),
+                                                        to: transaction
+                                                            .to
+                                                            .map(NameOrAddress::Address),
+                                                        gas: Some(transaction.gas),
+                                                        gas_price: transaction.gas_price,
+                                                        value: Some(transaction.value),
+                                                        data: Some(transaction.input.clone()),
+                                                        nonce: Some(transaction.nonce),
+                                                        chain_id: Some(
+                                                            U64::from_str(
+                                                                &transaction
+                                                                    .chain_id
+                                                                    .unwrap()
+                                                                    .to_string(),
+                                                            )
+                                                            .unwrap(),
+                                                        ),
+                                                    });
+                                                let call_result =
+                                                    provider.call(&typed_tx, None).await;
+
+                                                if let Ok(result) = call_result {
+                                                    if !result.is_empty() {
+                                                        println!(
+                                                            "Empty result {:?}",
+                                                            hex::encode(result.0)
+                                                        );
+                                                    }
+                                                }
+                                            }
+
+                                            if !tx.logs.is_empty() {
+                                                eprintln!(
+                                                    "Transaction logs may contain error events. {:?}", tx.logs
+                                                );
+                                            }
+
+                                            Err(Box::new(io::Error::new(
+                                                io::ErrorKind::Other,
+                                                "Error in sending Transaction",
+                                            )))
+                                        }
+                                    }
+                                    None => {
+                                        eprintln!("Error in sending Transaction");
+                                        Err(Box::new(io::Error::new(
+                                            io::ErrorKind::Other,
+                                            "Error in sending Transaction",
+                                        )))
+                                    }
+                                }
                             } else {
                                 eprintln!("Error in sending Transaction");
                                 Err(Box::new(io::Error::new(

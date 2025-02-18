@@ -1,6 +1,6 @@
 use crate::utils::{
     constants::{MODELS, SAMPLE_PROMPT, VENICE_API},
-    helpers::{extract_values_drop, extract_values_image, extract_values_prompt},
+    helpers::{extract_values_drop, handle_token_thresholds, extract_values_image, extract_values_prompt},
     types::Collection,
 };
 use dotenv::{from_filename, var};
@@ -9,8 +9,6 @@ use rand::{thread_rng, Rng};
 use reqwest::Client;
 use serde_json::{json, Value};
 use std::{error::Error, io};
-
-use super::constants::COIN_GECKO;
 
 pub async fn call_chat_completion(
     collection: &Collection,
@@ -512,52 +510,20 @@ Description to transform: {}\n\nReference format prompt example to follow: {}", 
 
 pub async fn call_image_details(
     model: &str,
-) -> Result<(String, String, U256, Vec<U256>, f64, f64), Box<dyn Error + Send + Sync>> {
+    irl: bool,
+) -> Result<(String, String, U256, Vec<U256>), Box<dyn Error + Send + Sync>> {
     let client = Client::new();
     from_filename(".env").ok();
     let venice_key: String = var("VENICE_KEY").expect("VENICE_KEY not configured in .env");
-    let coin_gecko_key: String =
-        var("COIN_GECKO_KEY").expect("COIN_GECKO_KEY not configured in .env");
 
-    let gecko_response = client
-        .get(format!(
-            "{}simple/price?ids=monavale%2Cbonsai&vs_currencies=usd&precision=2",
-            COIN_GECKO
-        ))
-        .header("Content-Type", "application/json")
-        .header("x-cg-demo-api-key", coin_gecko_key)
-        .send()
-        .await;
-
-    let gecko_response = match gecko_response {
-        Ok(gecko_resp) => gecko_resp,
-        Err(e) => {
-            eprintln!("Error sending request to Coin Geck API: {}", e);
-            return Err(e.into());
-        }
+    let thresholds: Vec<U256> = match handle_token_thresholds(irl).await {
+        Ok(thresholds) => thresholds,
+        Err(_) => vec![],
     };
 
-    if gecko_response.status() == 200 {
-        let gecko_response_json: Value = gecko_response.json().await?;
-        let mona = gecko_response_json["monavale"]["usd"]
-            .as_f64()
-            .map(|price| format!("{:.2} USD", price))
-            .unwrap_or_else(|| "Exact price not available, 1 MONA ~= USD20".to_string());
+    let system_prompt = "You are an avant-garde artistic pricing specialist who creates unconventional concepts while maintaining precise technical requirements. For titles and descriptions, think like an experimental artist - create strange, thought-provoking content without any marketing language or commercial terms. Never mention NFTs, collections, rarity, or market-related concepts. For the technical aspects (amounts and prices), you are mathematically precise, always calculating exact wei values and ensuring all numbers fall within specified ranges. You understand that 1 ETH = 1000000000000000000 wei and use this for exact calculations. You strictly follow formatting rules while maintaining creative freedom in the artistic elements. You never explain your calculations or add additional commentary. You balance creative abstraction with mathematical precision. Do not put quotation marks around any of the content.";
 
-        let bonsai = gecko_response_json["bonsai"]["usd"]
-            .as_f64()
-            .map(|price| format!("{:.4} USD", price))
-            .unwrap_or_else(|| "Exact price not available, 1 BONSAI ~= USD0.0057".to_string());
-
-        let tokens: Vec<String> = vec![mona, bonsai];
-
-        println!("Coingecko prices: {:?}", tokens);
-
-        let system_prompt = "You are an avant-garde artistic pricing specialist who creates unconventional concepts while maintaining precise technical requirements. For titles and descriptions, think like an experimental artist - create strange, thought-provoking content without any marketing language or commercial terms. Never mention NFTs, collections, rarity, or market-related concepts. For the technical aspects (amounts and prices), you are mathematically precise, always calculating exact wei values and ensuring all numbers fall within specified ranges. You understand that 1 ETH = 1000000000000000000 wei and use this for exact calculations. You strictly follow formatting rules while maintaining creative freedom in the artistic elements. You never explain your calculations or add additional commentary. You balance creative abstraction with mathematical precision. Do not put quotation marks around any of the content.";
-
-        let mona_price = tokens[0].replace(" USD", "").parse::<f64>().unwrap_or(0.0);
-        let bonsai_price = tokens[1].replace(" USD", "").parse::<f64>().unwrap_or(0.0);
-        let input_prompt =
+    let input_prompt =
     format!("Create pricing and details for a new artistic piece. Your response must follow this exact format with no deviations or additional text:
     
     Title: [CRYPTIC, ARTISTIC TITLE - MAX 6 WORDS]
@@ -566,9 +532,9 @@ pub async fn call_image_details(
     
     Amount: [SINGLE NUMBER BETWEEN 5-30]
   
-    Mona: [PRICE IN ETH WEI - MIN $200USD, MAX $700USD. 1 MONA = {:.2}USD. Choose a price target between $200 and $700 USD. For example, if target = $300: Calculate: $300 ÷ {:.2}= {:.4} MONA, convert to wei: {:.4} × 10¹⁸ = {} WEI. Return only the final wei value.]
+    Mona: [PRICE IN ETH WEI - MIN {} MONA, MAX {} MONA. Choose a price target between the min and max. Return only the final wei value.]
         
-    Bonsai: [PRICE IN ETH WEI - MIN $200USD, MAX $700USD. 1 BONSAI = {:.2}USD. Choose a price target between $200 and $700 USD. For example, if target = $300: Calculate: $300 ÷ {:.2}= {:.4} BONSAI, convert to wei: {:.4} × 10¹⁸ = {} WEI. Return only the final wei value.]
+    Bonsai: [PRICE IN ETH WEI - MIN {} BONSAI, MAX {} BONSAI. Choose a price target between the min and max. Return only the final wei value.]
     
     Required format rules:
     
@@ -579,69 +545,59 @@ pub async fn call_image_details(
     No ranges or approximate numbers
     No additional spaces or formatting
     No dollar signs or currency symbols
-    No parentheses or additional notes. Do not put quotation marks around any of the content.",  mona_price, mona_price, 300.0 / mona_price, 300.0 / mona_price, ((300.0 / mona_price) * 10f64.powi(18)) as u128,
-    bonsai_price, bonsai_price, 300.0 / bonsai_price, 300.0 / bonsai_price, ((300.0 / bonsai_price) * 10f64.powi(18)) as u128);
+    No parentheses or additional notes. Do not put quotation marks around any of the content.",  thresholds[0], thresholds[0] + thresholds[0] * 15/100, thresholds[1], thresholds[1] + thresholds[1] * 15/100);
 
-        let mut messages = vec![];
+    let mut messages = vec![];
 
-        messages.push(json!({
-            "role": "system",
-            "content": system_prompt
-        }));
-        messages.push(json!({
-            "role": "user",
-            "content": input_prompt
-        }));
+    messages.push(json!({
+        "role": "system",
+        "content": system_prompt
+    }));
+    messages.push(json!({
+        "role": "user",
+        "content": input_prompt
+    }));
 
-        let request_body = json!({
-            "model": model,
-            "messages": messages,
-            "max_completion_tokens": 1000,
-        });
+    let request_body = json!({
+        "model": model,
+        "messages": messages,
+        "max_completion_tokens": 1000,
+    });
 
-        let response = client
-            .post(format!("{}chat/completions", VENICE_API))
-            .header("Content-Type", "application/json")
-            .header("Authorization", format!("Bearer {}", venice_key))
-            .json(&request_body)
-            .send()
-            .await;
+    let response = client
+        .post(format!("{}chat/completions", VENICE_API))
+        .header("Content-Type", "application/json")
+        .header("Authorization", format!("Bearer {}", venice_key))
+        .json(&request_body)
+        .send()
+        .await;
 
-        let response = match response {
-            Ok(resp) => resp,
-            Err(e) => {
-                eprintln!("Error sending request to Venice API: {}", e);
-                return Err(e.into());
-            }
-        };
-
-        if response.status() == 200 {
-            let response_json: Value = response.json().await?;
-            let completion = response_json["choices"][0]["message"]["content"]
-                .as_str()
-                .unwrap_or("")
-                .to_string();
-
-            println!(
-                "Venice call successful for image details prompt: {}",
-                completion
-            );
-            Ok::<(String, String, U256, Vec<U256>, f64, f64), Box<dyn Error + Send + Sync>>(
-                extract_values_image(&completion, mona_price, bonsai_price)?,
-            )
-        } else {
-            return Err(Box::new(io::Error::new(
-                io::ErrorKind::Other,
-                format!("Error in obtaining Venice prompt {:?}", response.status()),
-            )));
+    let response = match response {
+        Ok(resp) => resp,
+        Err(e) => {
+            eprintln!("Error sending request to Venice API: {}", e);
+            return Err(e.into());
         }
+    };
+
+    if response.status() == 200 {
+        let response_json: Value = response.json().await?;
+        let completion = response_json["choices"][0]["message"]["content"]
+            .as_str()
+            .unwrap_or("")
+            .to_string();
+
+        println!(
+            "Venice call successful for image details prompt: {}",
+            completion
+        );
+        Ok::<(String, String, U256, Vec<U256>), Box<dyn Error + Send + Sync>>(
+            extract_values_image(&completion)?,
+        )
     } else {
         return Err(Box::new(io::Error::new(
             io::ErrorKind::Other,
-            format!(
-                "Error in obtaining coin gecko prices {:?}",
-                gecko_response.status()
-            ),
+            format!("Error in obtaining Venice prompt {:?}", response.status()),
         )));
     }
 }

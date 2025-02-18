@@ -234,10 +234,9 @@ contract TripleACollectionManager {
     ) internal view {
         for (uint8 i = 0; i < tokens.length; i++) {
             uint256 _base = accessControls.getTokenBase(tokens[i]);
-            uint256 _vig = accessControls.getTokenVig(tokens[i]);
             if (
                 (collectionType == TripleALibrary.CollectionType.IRL &&
-                    prices[i] < _base + ((prices[i] * _vig) / 100)) ||
+                    prices[i] < _base) ||
                 (prices[i] < accessControls.getTokenThreshold(tokens[i]) &&
                     useAgent)
             ) {

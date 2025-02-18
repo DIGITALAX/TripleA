@@ -13,7 +13,9 @@ use std::{env, error::Error, io, sync::Arc};
 use uuid::Uuid;
 
 use crate::utils::{
-    constants::{INFURA_GATEWAY, NEGATIVE_PROMPT, REMIX_FEED, STYLE_PRESETS, VENICE_API, ZERO_ADDRESS},
+    constants::{
+        INFURA_GATEWAY, NEGATIVE_PROMPT, REMIX_FEED, STYLE_PRESETS, VENICE_API, ZERO_ADDRESS,
+    },
     helpers::mint_collection,
     ipfs::{upload_image_to_ipfs, upload_lens_storage},
     lens::make_publication,
@@ -38,7 +40,7 @@ pub async fn remix(
 
             let image_response = client
                 .get(&format!(
-                    "{}/ipfs/{}",
+                    "{}ipfs/{}",
                     INFURA_GATEWAY,
                     collection.image.trim_start_matches("ipfs://")
                 ))
@@ -62,10 +64,10 @@ pub async fn remix(
                     "style_preset": STYLE_PRESETS[thread_rng().gen_range(0..3)],
                     "negative_prompt": NEGATIVE_PROMPT,
                     "safe_mode": false,
-                    "inpaint": {
-                        "strength": 90,
-                        "source_image_base64": STANDARD.encode(&bytes)
-                    }
+                    // "inpaint": {
+                    //     "strength": 90,
+                    //     "source_image_base64": STANDARD.encode(&bytes)
+                    // }
                 });
 
                 let response = client
@@ -88,19 +90,17 @@ pub async fn remix(
                         .and_then(|v| v.as_str())
                         .unwrap_or("")
                         .to_string();
-                    match call_image_details(&agent.model).await {
-                        Ok((title, description, amount, prices, mona_price, bonsai_price)) => {
+                    match call_image_details(&agent.model, false).await {
+                        Ok((title, description, amount, prices)) => {
                             match upload_image_to_ipfs(&image).await {
                                 Ok(ipfs) => {
-                                    let _ = mint_collection(
+                                    match mint_collection(
                                         &description,
                                         &format!("ipfs://{}", ipfs.Hash),
                                         &title,
                                         amount,
                                         collection_manager_contract,
                                         prices,
-                                        mona_price,
-                                        bonsai_price,
                                         &agent,
                                         collection.collection_id,
                                         &agent.model,
@@ -109,63 +109,72 @@ pub async fn remix(
                                         0u8,
                                         None,
                                         true,
-                                        ZERO_ADDRESS
+                                        ZERO_ADDRESS,
                                     )
-                                    .await;
-
-                                    let focus = String::from("IMAGE");
-                                    let schema =
+                                    .await
+                                    {
+                                        Ok(_) => {
+                                            let focus = String::from("IMAGE");
+                                            let schema =
                                         "https://json-schemas.lens.dev/posts/image/3.0.0.json"
                                             .to_string();
-                                    let tags = vec![
-                                        "tripleA".to_string(),
-                                        title.replace(" ", "").to_lowercase(),
-                                    ];
+                                            let tags = vec![
+                                                "tripleA".to_string(),
+                                                title.replace(" ", "").to_lowercase(),
+                                            ];
 
-                                    let publication = Publication {
-                                        schema,
-                                        lens: Content {
-                                            mainContentFocus: focus,
-                                            title,
-                                            content: description,
-                                            id: Uuid::new_v4().to_string(),
-                                            locale: "en".to_string(),
-                                            tags,
-                                            image: Some(Image {
-                                                tipo: "image/png".to_string(),
-                                                item: format!("ipfs://{}", ipfs.Hash),
-                                            }),
-                                        },
-                                    };
+                                            let publication = Publication {
+                                                schema,
+                                                lens: Content {
+                                                    mainContentFocus: focus,
+                                                    title,
+                                                    content: description,
+                                                    id: Uuid::new_v4().to_string(),
+                                                    locale: "en".to_string(),
+                                                    tags,
+                                                    image: Some(Image {
+                                                        tipo: "image/png".to_string(),
+                                                        item: format!("ipfs://{}", ipfs.Hash),
+                                                    }),
+                                                },
+                                            };
 
-                                    let publication_json = to_string(&publication)?;
+                                            let publication_json = to_string(&publication)?;
 
-                                    let content = match upload_lens_storage(publication_json).await
-                                    {
-                                        Ok(con) => con,
-                                        Err(e) => {
-                                            eprintln!(
+                                            let content =
+                                                match upload_lens_storage(publication_json).await {
+                                                    Ok(con) => con,
+                                                    Err(e) => {
+                                                        eprintln!(
                                                 "Error uploading content to Lens Storage: {}",
                                                 e
                                             );
-                                            return Err(Box::new(io::Error::new(
-                                                io::ErrorKind::Other,
-                                                format!(
+                                                        return Err(Box::new(io::Error::new(
+                                                            io::ErrorKind::Other,
+                                                            format!(
                                                     "Error uploading content to Lens Storage: {}",
                                                     e
                                                 ),
+                                                        )));
+                                                    }
+                                                };
+
+                                            let _ = make_publication(
+                                                &content,
+                                                agent.id,
+                                                &tokens.as_ref().unwrap().tokens.access_token,
+                                                // Some(REMIX_FEED.to_string()),
+                                                None,
+                                            )
+                                            .await;
+                                        }
+                                        Err(err) => {
+                                            return Err(Box::new(std::io::Error::new(
+                                                std::io::ErrorKind::Other,
+                                                format!("Error with creating remix {:?}", err),
                                             )));
                                         }
-                                    };
-
-                                    let _ = make_publication(
-                                        &content,
-                                        agent.id,
-                                        &tokens.as_ref().unwrap().tokens.access_token,
-                                        // Some(REMIX_FEED.to_string()),
-                                        None,
-                                    )
-                                    .await;
+                                    }
 
                                     Ok(())
                                 }

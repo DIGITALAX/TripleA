@@ -1,5 +1,6 @@
 use crate::classes::mint::mint;
 use crate::classes::{lead::lead_generation, publish::publish, remix::remix};
+use crate::utils::helpers::fetch_metadata;
 use crate::utils::types::{Balance, Price};
 use crate::utils::{
     constants::{ACCESS_CONTROLS, AGENTS, LENS_CHAIN_ID, TRIPLEA_URI},
@@ -30,17 +31,20 @@ impl AgentManager {
         initialize_api();
 
         match contracts {
-            Some((access_controls_contract, agents_contract, collection_manager_contract, market_contract)) => {
-                Some(AgentManager {
-                    agent: agent.clone(),
-                    current_queue: Vec::new(),
-                    agents_contract,
-                    access_controls_contract,
-                    market_contract,
-                    tokens: None,
-                    collection_manager_contract,
-                })
-            }
+            Some((
+                access_controls_contract,
+                agents_contract,
+                collection_manager_contract,
+                market_contract,
+            )) => Some(AgentManager {
+                agent: agent.clone(),
+                current_queue: Vec::new(),
+                agents_contract,
+                access_controls_contract,
+                market_contract,
+                tokens: None,
+                collection_manager_contract,
+            }),
             None => {
                 eprintln!(
                     "Failed to initialize contracts for agent with ID: {}",
@@ -386,6 +390,7 @@ impl AgentManager {
                         collection {
                             artist
                             collectionId
+                            uri
                             metadata {
                                 description
                                 title
@@ -468,20 +473,33 @@ impl AgentManager {
                             let balance: &Balance =
                                 balances.get(&collection_id).unwrap_or(&default_balance);
 
+                            let metadata = worker["collection"]["metadata"].clone();
+                            let is_metadata_empty = metadata.is_null()
+                                || metadata.as_object().map(|o| o.is_empty()).unwrap_or(false);
+
+                            let metadata_filled = if is_metadata_empty {
+                                if let Some(uri) = worker["collection"]["uri"].as_str() {
+                                    fetch_metadata(uri).await.unwrap_or(json!({}))
+                                } else {
+                                    json!({})
+                                }
+                            } else {
+                                metadata
+                            };
                             activities.push(AgentActivity {
                                 collection: Collection {
                                     collection_id,
                                     artist,
                                     username,
-                                    image: worker["collection"]["metadata"]["image"]
+                                    image: metadata_filled["image"]
                                         .as_str()
                                         .unwrap_or_default()
                                         .to_string(),
-                                    title: worker["collection"]["metadata"]["title"]
+                                    title: metadata_filled["title"]
                                         .as_str()
                                         .unwrap_or_default()
                                         .to_string(),
-                                    description: worker["collection"]["metadata"]["description"]
+                                    description: metadata_filled["description"]
                                         .as_str()
                                         .unwrap_or_default()
                                         .to_string(),
@@ -596,7 +614,7 @@ impl AgentManager {
                     let tokens = self.tokens.clone();
                     let collection_contract = self.collection_manager_contract.clone();
                     let agents_contract = self.agents_contract.clone();
-                    let market_contract=self.market_contract.clone();
+                    let market_contract = self.market_contract.clone();
 
                     tokio::spawn(async move {
                         cycle_activity(
@@ -606,7 +624,7 @@ impl AgentManager {
                             interval,
                             collection_contract,
                             agents_contract,
-                            market_contract
+                            market_contract,
                         )
                         .await;
                     });
@@ -766,11 +784,11 @@ async fn cycle_activity(
         >,
     >,
     market_contract: Arc<
-    ContractInstance<
-        Arc<SignerMiddleware<Arc<Provider<Http>>, Wallet<SigningKey>>>,
-        SignerMiddleware<Arc<Provider<Http>>, Wallet<SigningKey>>,
+        ContractInstance<
+            Arc<SignerMiddleware<Arc<Provider<Http>>, Wallet<SigningKey>>>,
+            SignerMiddleware<Arc<Provider<Http>>, Wallet<SigningKey>>,
+        >,
     >,
->,
 ) {
     let total_activities = activity.worker.lead_frequency.as_u64()
         + activity.worker.publish_frequency.as_u64()
@@ -814,7 +832,7 @@ async fn cycle_activity(
             let instructions = activity.worker.instructions.clone();
             let collection_contract = collection_manager_contract.clone();
             let agents_contract = agents_contract.clone();
-            let market_contract= market_contract.clone();
+            let market_contract = market_contract.clone();
             tokio::spawn(async move {
                 tokio::time::sleep(std::time::Duration::from_secs(
                     (i as i64 * activity_interval) as u64,

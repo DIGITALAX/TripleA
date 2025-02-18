@@ -162,12 +162,10 @@ contract TripleAMarket {
             }
         }
 
-
         if (_artist != address(0) && _shares.artistShare > 0) {
             address _for = collectionManager.getCollectionForArtist(
                 collectionId
             );
-
 
             if (
                 skyhuntersAccessControls.isAgent(_artist) && _for != address(0)
@@ -287,8 +285,6 @@ contract TripleAMarket {
             collectionId,
             _totalPrice
         );
-
-   
 
         if (_shares.agentShare > 0) {
             agents.spendArtistCollectBalance(
@@ -509,8 +505,13 @@ contract TripleAMarket {
 
             uint256 _vig = accessControls.getTokenVig(token);
             uint256 _base = accessControls.getTokenBase(token);
+            uint256 _fulfillerShare = 0;
 
-            uint256 _fulfillerShare = (totalPrice * _vig) / 100 + _base;
+            if (totalPrice > _base) {
+                _fulfillerShare = (totalPrice * _vig) / 100 + _base;
+            } else {
+                _fulfillerShare = _base;
+            }
 
             return (
                 _fulfillerAddress,
