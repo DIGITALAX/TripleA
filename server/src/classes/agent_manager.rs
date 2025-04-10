@@ -107,10 +107,10 @@ impl AgentManager {
                 match result {
                     Ok(balance) => {
                         println!("Agent Grass Balance: {}\n", balance);
-                        if balance <= U256::from(10u128.pow(16)) {
+                        if balance <= U256::from(200_000_000_000_000_000u128) {
                             let method = self.access_controls_contract.method::<_, H256>(
                                 "faucet",
-                                (self.agent.wallet.clone(), 1_000_000_000_000_000u128),
+                                (self.agent.wallet.clone(), 200_000_000_000_000_000u128),
                             );
 
                             match method {
@@ -358,9 +358,11 @@ impl AgentManager {
                 self.agent.id
             );
 
-            self
-            .current_queue
-            .retain(|item| ARTISTS.iter().any(|a| a.eq_ignore_ascii_case(&item.collection.artist)));
+            self.current_queue.retain(|item| {
+                ARTISTS
+                    .iter()
+                    .any(|a| a.eq_ignore_ascii_case(&item.collection.artist))
+            });
 
             println!("Queue retained for artists {:?}", self.current_queue);
 

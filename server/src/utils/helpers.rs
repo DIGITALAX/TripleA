@@ -537,7 +537,7 @@ pub async fn mint_collection(
                                     Ok(tx) => tx,
                                     Err(e) => {
                                         eprintln!(
-                                            "Error sending the transaction for payRent: {:?}",
+                                            "Error sending the transaction for mint collection: {:?}",
                                             e
                                         );
                                         Err(Box::new(e))?
