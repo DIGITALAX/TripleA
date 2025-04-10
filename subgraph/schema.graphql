@@ -1,5 +1,6 @@
 type AgentDetailsUpdated @entity(immutable: false) {
   id: Bytes!
+  sender: Bytes
   customInstructions: [String!]! # string[]
   agentIds: [BigInt!]! # uint256[]
   collectionId: BigInt! # uint256
@@ -10,6 +11,7 @@ type AgentDetailsUpdated @entity(immutable: false) {
 
 type CollectionActivated @entity(immutable: false) {
   id: Bytes!
+  sender: Bytes
   collectionId: BigInt! # uint256
   blockNumber: BigInt!
   blockTimestamp: BigInt!
@@ -50,6 +52,7 @@ type Price @entity(immutable: false) {
 
 type CollectionDeactivated @entity(immutable: false) {
   id: Bytes!
+  sender: Bytes
   collectionId: BigInt! # uint256
   blockNumber: BigInt!
   blockTimestamp: BigInt!
@@ -58,7 +61,7 @@ type CollectionDeactivated @entity(immutable: false) {
 
 type CollectionDeleted @entity(immutable: false) {
   id: Bytes!
-  artist: Bytes! # address
+  sender: Bytes
   collectionId: BigInt! # uint256
   blockNumber: BigInt!
   blockTimestamp: BigInt!
@@ -67,6 +70,7 @@ type CollectionDeleted @entity(immutable: false) {
 
 type CollectionPriceAdjusted @entity(immutable: false) {
   id: Bytes!
+  sender: Bytes
   token: Bytes! # address
   collectionId: BigInt! # uint256
   newPrice: BigInt! # uint256
@@ -90,7 +94,7 @@ type DropCreated @entity(immutable: false) {
 
 type DropDeleted @entity(immutable: false) {
   id: Bytes!
-  artist: Bytes! # address
+  sender: Bytes
   dropId: BigInt! # uint256
   blockNumber: BigInt!
   blockTimestamp: BigInt!
@@ -99,6 +103,7 @@ type DropDeleted @entity(immutable: false) {
 
 type Remixable @entity(immutable: false) {
   id: Bytes!
+  sender: Bytes
   collectionId: BigInt! # uint256
   remixable: Boolean! # bool
   blockNumber: BigInt!
@@ -107,6 +112,7 @@ type Remixable @entity(immutable: false) {
 }
 type ActivateAgent @entity(immutable: false) {
   id: Bytes!
+  sender: Bytes
   wallet: Bytes! # address
   agentId: BigInt! # uint256
   blockNumber: BigInt!

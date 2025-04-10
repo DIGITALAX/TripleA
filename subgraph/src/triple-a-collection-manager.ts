@@ -20,12 +20,14 @@ import {
 import {
   AgentCreated,
   AgentDetailsUpdated,
+  Balance,
   CollectionActivated,
   CollectionCreated,
   CollectionDeactivated,
   CollectionDeleted,
   CollectionPrice,
   CollectionPriceAdjusted,
+  CollectionWorker,
   DropCreated,
   DropDeleted,
   Price,
@@ -118,7 +120,7 @@ export function handleCollectionCreated(event: CollectionCreatedEvent): void {
 
   let collectionManager = TripleACollectionManager.bind(event.address);
   let agents = TripleAAgents.bind(
-    Address.fromString("0xeD6a08221D7A3E69635dC2C4FaE9205bC45E18Ed")
+    Address.fromString("0x424Fa11D84e5674809Fd0112eBa4f86d6C4ed2aD")
   );
 
   entity.amount = collectionManager.getCollectionAmount(entity.collectionId);
@@ -238,9 +240,83 @@ export function handleCollectionDeactivated(
   let entityCollection = CollectionCreated.load(
     Bytes.fromByteArray(ByteArray.fromBigInt(event.params.collectionId))
   );
+  let agentContract = TripleAAgents.bind(
+    Address.fromString("0x424Fa11D84e5674809Fd0112eBa4f86d6C4ed2aD")
+  );
 
   if (entityCollection) {
     entityCollection.active = false;
+
+    let agents = entityCollection.agentIds;
+    if (agents) {
+      for (let i = 0; i < (agents as BigInt[]).length; i++) {
+        let entityAgent = AgentCreated.load(
+          Bytes.fromByteArray(ByteArray.fromBigInt((agents as BigInt[])[i]))
+        );
+
+        if (entityAgent) {
+          let newWorkers: Bytes[] = [];
+          let newBalances: Bytes[] = [];
+          let workers = entityAgent.workers;
+          if (workers as Bytes[]) {
+            for (let j = 0; j < (workers as Bytes[]).length; j++) {
+              let worker = CollectionWorker.load((workers as Bytes[])[i]);
+              if (worker && worker.collectionId) {
+                if (
+                  (worker.collectionId as BigInt).equals(entity.collectionId)
+                ) {
+                  store.remove(
+                    "CollectionWorker",
+                    (workers as Bytes[])[j].toHexString()
+                  );
+                } else {
+                  newWorkers.push((workers as Bytes[])[j]);
+                }
+              }
+            }
+          }
+
+          let balances = entityAgent.balances;
+
+          if (balances) {
+            for (let j = 0; j < (balances as Bytes[]).length; j++) {
+              let updateBalance = Balance.load((balances as Bytes[])[j]);
+
+              if (updateBalance && updateBalance.collectionId) {
+                if (
+                  (entity.collectionId as BigInt).equals(
+                    updateBalance.collectionId
+                  )
+                ) {
+                  store.remove(
+                    "Balance",
+                    (balances as Bytes[])[j].toHexString()
+                  );
+                } else {
+                  newBalances.push((balances as Bytes[])[j]);
+                }
+              }
+            }
+          }
+
+          let active = agentContract.getAgentActiveCollectionIds(
+            entityAgent.SkyhuntersAgentManager_id
+          );
+          let cols: Bytes[] = [];
+
+          for (let k = 0; k < (active as BigInt[]).length; k++) {
+            cols.push(
+              Bytes.fromByteArray(ByteArray.fromBigInt((active as BigInt[])[k]))
+            );
+          }
+
+          entityAgent.activeCollectionIds = cols;
+          entityAgent.balances = newBalances;
+          entityAgent.workers = newWorkers;
+          entityAgent.save();
+        }
+      }
+    }
 
     entityCollection.save();
 
@@ -272,7 +348,7 @@ export function handleCollectionDeleted(event: CollectionDeletedEvent): void {
   let entity = new CollectionDeleted(
     event.transaction.hash.concatI32(event.logIndex.toI32())
   );
-  entity.artist = event.params.artist;
+  entity.sender = event.params.sender;
   entity.collectionId = event.params.collectionId;
 
   entity.blockNumber = event.block.number;
@@ -280,7 +356,7 @@ export function handleCollectionDeleted(event: CollectionDeletedEvent): void {
   entity.transactionHash = event.transaction.hash;
 
   entity.save();
-
+  let agentContract = TripleAAgents.bind(event.address);
   let entityCollection = CollectionCreated.load(
     Bytes.fromByteArray(ByteArray.fromBigInt(event.params.collectionId))
   );
@@ -295,15 +371,65 @@ export function handleCollectionDeleted(event: CollectionDeletedEvent): void {
         );
 
         if (entityAgent) {
+          let newWorkers: Bytes[] = [];
+          let newBalances: Bytes[] = [];
           let workers = entityAgent.workers;
-          if (workers) {
+          if (workers as Bytes[]) {
             for (let j = 0; j < (workers as Bytes[]).length; j++) {
-              store.remove(
-                "CollectionWorker",
-                (workers as Bytes[])[j].toHexString()
-              );
+              let worker = CollectionWorker.load((workers as Bytes[])[i]);
+              if (worker && worker.collectionId) {
+                if (
+                  (worker.collectionId as BigInt).equals(entity.collectionId)
+                ) {
+                  store.remove(
+                    "CollectionWorker",
+                    (workers as Bytes[])[j].toHexString()
+                  );
+                } else {
+                  newWorkers.push((workers as Bytes[])[j]);
+                }
+              }
             }
           }
+
+          let balances = entityAgent.balances;
+
+          if (balances) {
+            for (let j = 0; j < (balances as Bytes[]).length; j++) {
+              let updateBalance = Balance.load((balances as Bytes[])[j]);
+
+              if (updateBalance && updateBalance.collectionId) {
+                if (
+                  (entity.collectionId as BigInt).equals(
+                    updateBalance.collectionId
+                  )
+                ) {
+                  store.remove(
+                    "Balance",
+                    (balances as Bytes[])[j].toHexString()
+                  );
+                } else {
+                  newBalances.push((balances as Bytes[])[j]);
+                }
+              }
+            }
+          }
+
+          let active = agentContract.getAgentActiveCollectionIds(
+            entityAgent.SkyhuntersAgentManager_id
+          );
+          let cols: Bytes[] = [];
+
+          for (let k = 0; k < (active as BigInt[]).length; k++) {
+            cols.push(
+              Bytes.fromByteArray(ByteArray.fromBigInt((active as BigInt[])[k]))
+            );
+          }
+
+          entityAgent.activeCollectionIds = cols;
+          entityAgent.balances = newBalances;
+          entityAgent.workers = newWorkers;
+          entityAgent.save();
         }
       }
     }
@@ -447,7 +573,7 @@ export function handleDropDeleted(event: DropDeletedEvent): void {
   let entity = new DropDeleted(
     Bytes.fromByteArray(ByteArray.fromBigInt(event.params.dropId))
   );
-  entity.artist = event.params.artist;
+  entity.sender = event.params.sender;
   entity.dropId = event.params.dropId;
 
   entity.blockNumber = event.block.number;

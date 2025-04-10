@@ -1,9 +1,12 @@
-const { Provider, Wallet, ContractFactory } = require("zksync-ethers");
+const { ethers } = require("ethers");
 require("dotenv").config();
 const fs = require("fs");
 
-const provider = new Provider("https://rpc.testnet.lens.dev", 37111);
-const wallet = new Wallet(
+const provider = new ethers.JsonRpcProvider(
+  "https://rpc.lens.xyz",
+  232
+);
+const wallet = new ethers.Wallet(
   "",
   provider
 );
@@ -15,7 +18,7 @@ const wallet = new Wallet(
       "utf8"
     )
   );
-  const skyhuntersAcContractFactory = new ContractFactory(
+  const skyhuntersAcContractFactory = new ethers.ContractFactory(
     skyhuntersAcJson.abi,
     skyhuntersAcJson.bytecode.object,
     wallet
@@ -32,7 +35,7 @@ const wallet = new Wallet(
       "utf8"
     )
   );
-  const skyhuntersAgentsContractFactory = new ContractFactory(
+  const skyhuntersAgentsContractFactory = new ethers.ContractFactory(
     skyhuntersAgentsJson.abi,
     skyhuntersAgentsJson.bytecode.object,
     wallet
@@ -51,7 +54,7 @@ const wallet = new Wallet(
     )
   );
 
-  const tripleAACContractFactory = new ContractFactory(
+  const tripleAACContractFactory = new ethers.ContractFactory(
     tripleAACJson.abi,
     tripleAACJson.bytecode.object,
     wallet
@@ -71,7 +74,7 @@ const wallet = new Wallet(
       "utf8"
     )
   );
-  const tripleAFulfillerContractFactory = new ContractFactory(
+  const tripleAFulfillerContractFactory = new ethers.ContractFactory(
     tripleAFulfillerJson.abi,
     tripleAFulfillerJson.bytecode.object,
     wallet
@@ -90,7 +93,7 @@ const wallet = new Wallet(
       "utf8"
     )
   );
-  const tripleANFTContractFactory = new ContractFactory(
+  const tripleANFTContractFactory = new ethers.ContractFactory(
     tripleANFTJson.abi,
     tripleANFTJson.bytecode.object,
     wallet
@@ -108,7 +111,7 @@ const wallet = new Wallet(
       "utf8"
     )
   );
-  const tripleACollectionContractFactory = new ContractFactory(
+  const tripleACollectionContractFactory = new ethers.ContractFactory(
     tripleACollectionJson.abi,
     tripleACollectionJson.bytecode.object,
     wallet
@@ -130,7 +133,7 @@ const wallet = new Wallet(
       "utf8"
     )
   );
-  const tripleAAgentsContractFactory = new ContractFactory(
+  const tripleAAgentsContractFactory = new ethers.ContractFactory(
     tripleAAgentsJson.abi,
     tripleAAgentsJson.bytecode.object,
     wallet
@@ -149,7 +152,7 @@ const wallet = new Wallet(
       "utf8"
     )
   );
-  const tripleAMarketContractFactory = new ContractFactory(
+  const tripleAMarketContractFactory = new ethers.ContractFactory(
     tripleAMarketJson.abi,
     tripleAMarketJson.bytecode.object,
     wallet

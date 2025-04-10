@@ -1,0 +1,53 @@
+specVersion: 1.2.0
+indexerHints:
+  prune: auto
+schema:
+  file: ./schema.graphql
+dataSources:
+  - kind: ethereum
+    name: TripleACollectionManager
+    network: lens
+    source:
+      address: "0xBa53Fd19053fceFc91D091A02c71AbDcD79d856f"
+      abi: TripleACollectionManager
+      startBlock: 0
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.9
+      language: wasm/assemblyscript
+      entities:
+        - AgentDetailsUpdated
+        - CollectionActivated
+        - CollectionCreated
+        - CollectionDeactivated
+        - CollectionDeleted
+        - CollectionDropUpdated
+        - CollectionPriceAdjusted
+        - DropCreated
+        - DropDeleted
+        - Remixable
+      abis:
+        - name: TripleACollectionManager
+          file: ./abis/TripleACollectionManager.json
+      eventHandlers:
+        - event: AgentDetailsUpdated(address,string[],uint256[],uint256)
+          handler: handleAgentDetailsUpdated
+        - event: CollectionActivated(address,uint256)
+          handler: handleCollectionActivated
+        - event: CollectionCreated(address,uint256,indexed uint256)
+          handler: handleCollectionCreated
+        - event: CollectionDeactivated(address,uint256)
+          handler: handleCollectionDeactivated
+        - event: CollectionDeleted(address,indexed uint256)
+          handler: handleCollectionDeleted
+        - event: CollectionDropUpdated(address,uint256,uint256,uint256)
+          handler: handleCollectionDropUpdated
+        - event: CollectionPriceAdjusted(address,address,uint256,uint256)
+          handler: handleCollectionPriceAdjusted
+        - event: DropCreated(address,indexed uint256)
+          handler: handleDropCreated
+        - event: DropDeleted(address,indexed uint256)
+          handler: handleDropDeleted
+        - event: Remixable(address,uint256,bool)
+          handler: handleRemixable
+      file: ./src/triple-a-collection-manager.ts

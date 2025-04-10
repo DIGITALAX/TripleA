@@ -94,16 +94,23 @@ pub fn extract_values_drop(input: &str) -> Result<(String, String), Box<dyn Erro
 
     let title = title_re
         .captures(input)
-        .and_then(|cap| cap.get(1).map(|m| m.as_str()))
+        .and_then(|cap| cap.get(1).map(|m| strip_quotes(m.as_str())))
         .unwrap_or_default()
         .to_string();
     let description = description_re
         .captures(input)
-        .and_then(|cap| cap.get(1).map(|m| m.as_str()))
+        .and_then(|cap| cap.get(1).map(|m| strip_quotes(m.as_str())))
         .unwrap_or_default()
         .to_string();
 
     Ok((title, description))
+}
+
+fn strip_quotes(s: &str) -> String {
+    s.trim()
+        .trim_matches('"')
+        .trim()
+        .to_string()
 }
 
 pub fn format_instructions(agent: &TripleAAgent) -> String {
@@ -320,7 +327,6 @@ pub async fn handle_token_thresholds(irl: bool) -> Result<Vec<U256>, Box<dyn Err
 
             let mut mona_price: Option<U256> = None;
             let mut bonsai_price: Option<U256> = None;
-
 
             for token in token_details {
                 if let (Some(token_address), Some(threshold_str), Some(base_str)) = (

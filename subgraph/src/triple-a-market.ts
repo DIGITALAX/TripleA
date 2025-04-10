@@ -1,17 +1,27 @@
-import { Address, ByteArray, Bytes } from "@graphprotocol/graph-ts";
+import {
+  Address,
+  BigInt,
+  ByteArray,
+  Bytes,
+  store,
+} from "@graphprotocol/graph-ts";
 import {
   CollectionPurchased as CollectionPurchasedEvent,
   FulfillmentUpdated as FulfillmentUpdatedEvent,
   TripleAMarket,
 } from "../generated/TripleAMarket/TripleAMarket";
 import {
+  AgentCreated,
+  Balance,
   CollectionCreated,
   CollectionPrice,
   CollectionPurchased,
+  CollectionWorker,
   FulfillmentUpdated,
   Price,
 } from "../generated/schema";
 import { TripleACollectionManager } from "../generated/TripleACollectionManager/TripleACollectionManager";
+import { TripleAAgents } from "../generated/TripleAAgents/TripleAAgents";
 
 export function handleCollectionPurchased(
   event: CollectionPurchasedEvent
@@ -36,7 +46,10 @@ export function handleCollectionPurchased(
   let market = TripleAMarket.bind(event.address);
 
   let collectionManager = TripleACollectionManager.bind(
-    Address.fromString("0xAFA95137afe705526bc3afb17D1AAdf554d07160")
+    Address.fromString("0xBa53Fd19053fceFc91D091A02c71AbDcD79d856f")
+  );
+  let agentContract = TripleAAgents.bind(
+    Address.fromString("0x424Fa11D84e5674809Fd0112eBa4f86d6C4ed2aD")
   );
   entity.mintedTokens = market.getOrderMintedTokens(event.params.orderId);
   entity.totalPrice = market.getOrderTotalPrice(event.params.orderId);
@@ -65,6 +78,76 @@ export function handleCollectionPurchased(
 
     entityCollection.save();
 
+    if (sold.equals(entityCollection.amount)) {
+      let agents = entityCollection.agentIds;
+
+      if (agents) {
+        for (let i = 0; i < (agents as BigInt[]).length; i++) {
+          let entityAgent = AgentCreated.load(
+            Bytes.fromByteArray(ByteArray.fromBigInt((agents as BigInt[])[i]))
+          );
+
+          if (entityAgent) {
+            let newWorkers: Bytes[] = [];
+            let newBalances: Bytes[] = [];
+            let workers = entityAgent.workers;
+            if (workers) {
+              for (let j = 0; j < (workers as Bytes[]).length; j++) {
+                let worker = CollectionWorker.load((workers as Bytes[])[i]);
+                if (worker && worker.collectionId) {
+                  if ((worker.collectionId as BigInt).equals(entity.collectionId)) {
+                    store.remove(
+                      "CollectionWorker",
+                      (workers as Bytes[])[j].toHexString()
+                    );
+                  } else {
+                    newWorkers.push((workers as Bytes[])[j]);
+                  }
+                }
+              }
+            }
+
+            let balances = entityAgent.balances;
+
+            if (balances) {
+              for (let j = 0; j < (balances as Bytes[]).length; j++) {
+                let updateBalance = Balance.load((balances as Bytes[])[j]);
+
+                if (updateBalance && updateBalance.collectionId) {
+                  if ((updateBalance.collectionId as BigInt).equals( entity.collectionId)) {
+                    store.remove(
+                      "Balance",
+                      (balances as Bytes[])[j].toHexString()
+                    );
+                  } else {
+                    newBalances.push((balances as Bytes[])[j]);
+                  }
+                }
+              }
+            }
+
+            let active = agentContract.getAgentActiveCollectionIds(
+              entityAgent.SkyhuntersAgentManager_id
+            );
+            let cols: Bytes[] = [];
+
+            for (let k = 0; k < (active as BigInt[]).length; k++) {
+              cols.push(
+                Bytes.fromByteArray(
+                  ByteArray.fromBigInt((active as BigInt[])[k])
+                )
+              );
+            }
+
+            entityAgent.activeCollectionIds = cols;
+            entityAgent.balances = newBalances;
+            entityAgent.workers = newWorkers;
+            entityAgent.save();
+          }
+        }
+      }
+    }
+
     for (let i = 0; i < (entityCollection.prices as Bytes[]).length; i++) {
       let price = Price.load((entityCollection.prices as Bytes[])[i]);
 
@@ -83,7 +166,7 @@ export function handleCollectionPurchased(
         if (collectionPrice) {
           collectionPrice.amountSold = sold;
 
-          if ((sold = entityCollection.amount)) {
+          if (sold == entityCollection.amount) {
             collectionPrice.soldOut = true;
           }
 

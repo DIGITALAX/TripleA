@@ -10,14 +10,12 @@ use crate::utils::{
 };
 use crate::ActivityType;
 use chrono::{Timelike, Utc};
-use ethers::contract::ContractInstance;
-use ethers::core::k256::ecdsa::SigningKey;
-use ethers::signers::Wallet;
 use ethers::{
-    contract::{self, FunctionCall},
+    contract::{self, ContractInstance, FunctionCall},
+    core::k256::ecdsa::SigningKey,
     middleware::{Middleware, SignerMiddleware},
     providers::{Http, Provider},
-    signers::LocalWallet,
+    signers::{LocalWallet, Wallet},
     types::{Address, Eip1559TransactionRequest, NameOrAddress, H160, H256, U256},
 };
 use reqwest::Client;

@@ -11,25 +11,27 @@ const skyhuntersAgentsAbi = require("../../server/abis/SkyhuntersAgentManager.js
 const feedAbi = require("../../server/abis/AgentFeedRule.json");
 
 const provider = new ethers.JsonRpcProvider(
-  "https://rpc.testnet.lens.dev",
-  37111
+  "https://rpc.lens.xyz",
+  232
 );
 const wallet = new ethers.Wallet("", provider);
-const collectionManagerAddress = "0xAFA95137afe705526bc3afb17D1AAdf554d07160";
-const marketAddress = "0x9F101Db166174A33ADd019cFf54Daa7965b14251";
-const agentsAddress = "0xeD6a08221D7A3E69635dC2C4FaE9205bC45E18Ed";
-const fulfillerAddress = "0xf6Ba2713Bc8043655aEfe599E71EA5cEe27b3f3B";
-const accessControlsAddress = "0x4695Df1FDC39Ad972915545EA2E2403d4860592B";
-const nftAddress = "0x3daCf95490d2a130bA9EAbd4967a0B1c1bE1D112";
-const skyhuntersAcAddress = "0x2974ef777e002f33f9783b28209CB81d91E6eEFC";
-const skyhuntersAgentAddress = "0xA3292bB2e4713662fF034A75adC7219c75876b9a";
-const poolManagerAddress = "0x3D1f8A6D6584a1672d2817368783B9a2a36ae361";
+const collectionManagerAddress = "0xBa53Fd19053fceFc91D091A02c71AbDcD79d856f";
+const marketAddress = "0x6c7a9d566F6c2a9829B940b7571A220c70817c1a";
+const agentsAddress = "0x424Fa11D84e5674809Fd0112eBa4f86d6C4ed2aD";
+const fulfillerAddress = "0x2eB287C1B3EAd0479127413d317670D11A2BC527";
+const accessControlsAddress = "0x4F276081A4AC2d50eEE2aA6c78a3C4C06AAE9562";
+const nftAddress = "0xeBd613aD9324D912Fcb3778baFc666c296deDd27";
+const skyhuntersAcAddress = "0x79FbB9169678138A019deD3dc01Cf047f639Cc91";
+const skyhuntersAgentAddress = "0xDb073899eef2Dcf496Ee987F5238c5E9FE5d5933";
 const feedAddress = "0x27dfD1dc2867850E6c0930c1B5066854de0182e4";
 
-const WGRASS = "0xeee5a340Cdc9c179Db25dea45AcfD5FE8d4d3eB8";
-const MONA = "0x72ab7C7f3F6FF123D08692b0be196149d4951a41";
-const BONSAI = "0x15B58c74A0Ef6D0A593340721055223f38F5721E";
-const FULFILLER = "0x3D1f8A6D6584a1672d2817368783B9a2a36ae361";
+
+
+const WGHO = "0x6bDc36E20D267Ff0dd6097799f82e78907105e2F";
+// const MONA = "0x72ab7C7f3F6FF123D08692b0be196149d4951a41";
+const WETH = "0xE5ecd226b3032910CEaa43ba92EE8232f8237553";
+const BONSAI = "0xB0588f9A9cADe7CD5f194a5fe77AcD6A58250f82";
+const FULFILLER = "0xfa3fea500eeDAa120f7EeC2E4309Fe094F854E61";
 
 (async () => {
   const cmContract = new ethers.Contract(
@@ -68,96 +70,99 @@ const FULFILLER = "0x3D1f8A6D6584a1672d2817368783B9a2a36ae361";
 
   const nftContract = new ethers.Contract(nftAddress, nftAbi, wallet);
 
-  const feedContract = new ethers.Contract(feedAddress, feedAbi, wallet);
+  // const feedContract = new ethers.Contract(feedAddress, feedAbi, wallet);
 
   // Configura contratos
-  // const grassToken = await skyhuntersAcContract.setAcceptedToken(WGRASS);
-  // await grassToken.wait();
-  // const grass = await acContract.setTokenDetails(
-  //   WGRASS,
-  //   "100000000000000000",
-  //   "10000000000000000",
-  //   "50000000000000000",
-  //   "30000000000000000",
-  //   "70000000000000000",
+  // const ethToken = await skyhuntersAcContract.setAcceptedToken(WETH);
+  // await ethToken.wait();
+  // const eth = await acContract.setTokenDetails(
+  //   WETH,
+  //   "31677246870000000",
+  //   "316772469000000",
+  //   "3801269624000000",
+  //   "2534179749000000",
+  //   "1900634812000000",
   //   10,
-  //   "2000000000000000000"
+  //   "17739258250000000"
   // );
-  // await grass.wait();
+  // await eth.wait();
 
-  // const monaToken = await skyhuntersAcContract.setAcceptedToken(MONA);
-  // await monaToken.wait();
-  // const mona = await acContract.setTokenDetails(
-  //   MONA,
-  //   "10000000000000000000",
-  //   "1500000000000000000",
+  // const ghoToken = await skyhuntersAcContract.setAcceptedToken(WGHO);
+  // await ghoToken.wait();
+  // const gho = await acContract.setTokenDetails(
+  //   WGHO,
+  //   "50000000000000000000",
+  //   "500000000000000000",
   //   "6000000000000000000",
   //   "4000000000000000000",
-  //   "10000000000000000",
-  //   6,
-  //   "20000000000000000000"
+  //   "3000000000000000000",
+  //   9,
+  //   "28000000000000000000"
   // );
-  // await mona.wait();
+  // await gho.wait();
 
   // const bonsaiToken = await skyhuntersAcContract.setAcceptedToken(BONSAI);
   // await bonsaiToken.wait();
-  const bonsai = await acContract.setTokenDetails(
-    BONSAI,
-    "100000000000000000000",
-    "12000000000000000000",
-    "14500000000000000000",
-    "13000000000000000000",
-    "8000000000000000000",
-    5,
-    "50000000000000000000"
-  );
-  await bonsai.wait();
+  // const bonsai = await acContract.setTokenDetails(
+  //   BONSAI,
+  //   "15639850000000000000000",
+  //   "156396621800000000000",
+  //   "1876759462000000000000",
+  //   "1251172975000000000000",
+  //   "938379731000000000000",
+  //   9,
+  //   "8758210823000000000000"
+  // );
+  // await bonsai.wait();
 
-  await agentsContract.setAccessControls(accessControlsAddress);
-  await cmContract.setAccessControls(accessControlsAddress);
-  await fmContract.setAccessControls(accessControlsAddress);
-  await marketContract.setAccessControls(accessControlsAddress);
-  await nftContract.setAccessControls(accessControlsAddress);
+  // await agentsContract.setAccessControls(accessControlsAddress);
+  // await cmContract.setAccessControls(accessControlsAddress);
+  // await fmContract.setAccessControls(accessControlsAddress);
+  // await marketContract.setAccessControls(accessControlsAddress);
+  // await nftContract.setAccessControls(accessControlsAddress);
 
-  const tx0 = await agentsContract.setAgentManager(skyhuntersAgentAddress);
-  await tx0.wait();
+  // const tx0 = await agentsContract.setAgentManager(skyhuntersAgentAddress);
+  // await tx0.wait();
 
-  const tx1 = await agentsContract.setMarket(marketAddress);
-  await tx1.wait();
+  // const tx1 = await agentsContract.setMarket(marketAddress);
+  // await tx1.wait();
 
-  const tx2 = await cmContract.setMarket(marketAddress);
-  await tx2.wait();
-  const tx3 = await cmContract.setAgents(agentsAddress);
-  await tx3.wait();
+  // const tx2 = await cmContract.setMarket(marketAddress);
+  // await tx2.wait();
+  // const tx3 = await cmContract.setAgents(agentsAddress);
+  // await tx3.wait();
 
-  // const tx4 = await marketContract.setFulfillerManager(fulfillerAddress);
+  // const tx14 = await marketContract.setFulfillerManager(fulfillerAddress);
+  // await tx14.wait();
+  // const tx4 = await fmContract.setMarket(marketAddress);
   // await tx4.wait();
-  const tx4 = await fmContract.setMarket(marketAddress);
-  await tx4.wait();
-  const tx5 = await acContract.addFulfiller(FULFILLER);
-  await tx5.wait();
-  const tx6 = await fmContract.createFulfillerProfile({
-    metadata: "ipfs://QmNSKfpUbPJe3cu5aDsmdG4S8xGJaiMCvNbrGnd1avqKRm",
-    wallet: FULFILLER,
-  });
-  await tx6.wait();
+  // const tx5 = await acContract.addFulfiller(FULFILLER);
+  // await tx5.wait();
+  // const tx6 = await fmContract.createFulfillerProfile({
+  //   metadata: "ipfs://QmNSKfpUbPJe3cu5aDsmdG4S8xGJaiMCvNbrGnd1avqKRm",
+  //   wallet: FULFILLER,
+  // });
+  // await tx6.wait();
 
-  const tx7 = await nftContract.setMarket(marketAddress);
-  await tx7.wait();
+  // const tx7 = await nftContract.setMarket(marketAddress);
+  // await tx7.wait();
 
-  const tx8 = await skyhuntersAcContract.setAgentsContract(
-    skyhuntersAgentAddress
-  );
-  await tx8.wait();
+  // const tx8 = await skyhuntersAcContract.setAgentsContract(
+  //   skyhuntersAgentAddress
+  // );
+  // await tx8.wait();
 
-  const tx9 = await agentsContract.setSkyhuntersPoolManager(poolManagerAddress);
-  await tx9.wait();
+  // const tx9 = await agentsContract.setSkyhuntersPoolManager(poolManagerAddress);
+  // await tx9.wait();
 
   const tx10 = await marketContract.setAgents(agentsAddress);
   await tx10.wait();
 
   const tx11 = await agentsContract.setAmounts(30, 30, 40);
   await tx11.wait();
+  await agentsContract.setCollectionManager(collectionManagerAddress);
+  await marketContract.setCollectionManager(collectionManagerAddress);
+
 
   // await skyhuntersAgentContract.createAgent(
   //   ["0x07ee9af365a7013ee7dc2f556f5d64cb1a51bd08"],
@@ -165,8 +170,6 @@ const FULFILLER = "0x3D1f8A6D6584a1672d2817368783B9a2a36ae361";
   //   "ipfs://QmVZhDFGHFQWnx1P7uonTvGwDmX6fVUZF5mww6VMJrRXpx"
   // );
 
-  // await agentsContract.setCollectionManager(collectionManagerAddress);
-  // await marketContract.setCollectionManager(collectionManagerAddress);
 
   // const encodedData = ethers.AbiCoder.defaultAbiCoder().encode(
   //   ["address"],
@@ -201,4 +204,9 @@ const FULFILLER = "0x3D1f8A6D6584a1672d2817368783B9a2a36ae361";
   // const res7 = await acContract.getTokenCycleRentRemix(BONSAI);
 
   // console.log({res, res1, res2, res3, res4, res5, res6, res7})
+
+
+  // const res = await skyhuntersAgentContract.getAgentStudio(1);
+  // const res1 = await skyhuntersAcContract.isAdmin(wallet.address);
+  // console.log({res1})
 })();

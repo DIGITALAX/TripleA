@@ -42,7 +42,9 @@ pub fn authentication() -> String {
     STANDARD.encode(aut)
 }
 
-pub async fn upload_image_to_ipfs(base64_str: &str) -> Result<IPFSResponse,  Box<dyn Error + Send + Sync>> {
+pub async fn upload_image_to_ipfs(
+    base64_str: &str,
+) -> Result<IPFSResponse, Box<dyn Error + Send + Sync>> {
     let base64_data = base64_str.split(',').last().unwrap_or(base64_str);
     let image_bytes = general_purpose::STANDARD.decode(base64_data)?;
     // let path = format!("/var/data/{}.png", Uuid::new_v4());
@@ -128,7 +130,7 @@ pub async fn get_storage_key() -> Result<String, Box<dyn Error>> {
     let client = Client::new();
 
     let response = client
-        .post("https://storage-api.testnet.lens.dev/link/new")
+        .post("https://api.grove.storage/link/new")
         .send()
         .await?;
 
@@ -154,8 +156,8 @@ pub async fn get_storage_key() -> Result<String, Box<dyn Error>> {
 
 pub async fn upload_lens_storage(data: String) -> Result<String, Box<dyn Error>> {
     let client = create_client();
-    let storage_key = get_storage_key().await?;
-    let url = format!("https://storage-api.testnet.lens.dev/{}", storage_key);
+    // let storage_key = get_storage_key().await?;
+    let url = format!("https://api.grove.storage/?chain_id=232");
 
     let response = client
         .post(url)

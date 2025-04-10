@@ -1,0 +1,10 @@
+{
+    "accessControls": "0x4F276081A4AC2d50eEE2aA6c78a3C4C06AAE9562",
+    "fulfillerManager": "0x2eB287C1B3EAd0479127413d317670D11A2BC527",
+    "nft": "0xeBd613aD9324D912Fcb3778baFc666c296deDd27",
+    "collectionManager": "0xBa53Fd19053fceFc91D091A02c71AbDcD79d856f",
+    "agents": "0x424Fa11D84e5674809Fd0112eBa4f86d6C4ed2aD",
+    "market": "0x6c7a9d566F6c2a9829B940b7571A220c70817c1a",
+    "agentFeedRule": ""
+  }
+  

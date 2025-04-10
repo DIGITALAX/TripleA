@@ -1,13 +1,13 @@
 use std::sync::LazyLock;
 
-pub static AGENTS: &'static str = "0xeD6a08221D7A3E69635dC2C4FaE9205bC45E18Ed";
-pub static ACCESS_CONTROLS: &'static str = "0x4695Df1FDC39Ad972915545EA2E2403d4860592B";
-pub static COLLECTION_MANAGER: &'static str = "0xAFA95137afe705526bc3afb17D1AAdf554d07160";
-pub static MARKET: &'static str = "0x9F101Db166174A33ADd019cFf54Daa7965b14251";
+pub static AGENTS: &'static str = "0x424Fa11D84e5674809Fd0112eBa4f86d6C4ed2aD";
+pub static ACCESS_CONTROLS: &'static str = "0x4F276081A4AC2d50eEE2aA6c78a3C4C06AAE9562";
+pub static COLLECTION_MANAGER: &'static str = "0xBa53Fd19053fceFc91D091A02c71AbDcD79d856f";
+pub static MARKET: &'static str = "0x6c7a9d566F6c2a9829B940b7571A220c70817c1a";
 pub static REMIX_FEED: &'static str = "0x";
 pub static ZERO_ADDRESS: &'static str = "0x0000000000000000000000000000000000000000";
 pub static MONA: &'static str = "0x72ab7C7f3F6FF123D08692b0be196149d4951a41";
-pub static BONSAI: &'static str = "0x15B58c74A0Ef6D0A593340721055223f38F5721E";
+pub static BONSAI: &'static str = "0xB0588f9A9cADe7CD5f194a5fe77AcD6A58250f82";
 pub static MODELS: &[&str] = &[
     "flux-dev-uncensored",
     "lustify-sdxl",
@@ -16,11 +16,11 @@ pub static MODELS: &[&str] = &[
 ];
 pub static AGENT_INTERFACE_URL: &'static str = "https://triplea.agentmeme.xyz";
 pub static VENICE_API: &'static str = "https://api.venice.ai/api/v1/";
-pub static LENS_API: &'static str = "https://api.testnet.lens.dev/graphql";
-pub static LENS_RPC_URL: &'static str = "https://rpc.testnet.lens.dev";
+pub static LENS_API: &'static str = "https://api.lens.xyz/graphql";
+pub static LENS_RPC_URL: &'static str = "https://rpc.lens.xyz";
 pub static TRIPLEA_URI: &str = "https://api.studio.thegraph.com/query/37770/triplea/version/latest";
 pub static INFURA_GATEWAY: &'static str = "https://thedial.infura-ipfs.io/";
-pub static LENS_CHAIN_ID: LazyLock<u64> = LazyLock::new(|| 37111);
+pub static LENS_CHAIN_ID: LazyLock<u64> = LazyLock::new(|| 232);
 pub static STYLE_PRESETS: &[&str] = &[
     "Analog Film",
     "Line Art",
