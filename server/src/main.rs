@@ -226,8 +226,9 @@ async fn handle_connection(
                                     .expect("Error writing to the .env");
 
                                 let mut existing_data = Map::new();
-                                if let Ok(mut file) = File::open("var/data/data.json")
-                                    //  open("/var/data/data.json")
+                                if let Ok(mut file) = File::
+                                // open("var/data/data.json")
+                                     open("/var/data/data.json")
                                     .await
                                 {
                                     let mut content = String::new();
@@ -248,8 +249,8 @@ async fn handle_connection(
                                 let file = OpenOptions::new()
                                     .write(true)
                                     .create(true)
-                                    .open("var/data/data.json")
-                                    // .open("/var/data/data.json")
+                                    // .open("var/data/data.json")
+                                    .open("/var/data/data.json")
                                     .await;
 
                                 match file {

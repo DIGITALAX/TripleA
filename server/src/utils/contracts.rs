@@ -110,8 +110,8 @@ pub fn initialize_wallet(private_key: u32) -> Option<LocalWallet> {
             );
 
             match std::fs::
-            // read_to_string("/var/data/data.json")
-            read_to_string("var/data/data.json")
+            read_to_string("/var/data/data.json")
+            // read_to_string("var/data/data.json")
             {
                 Ok(json_data) => {
                     let parsed_json: Value =

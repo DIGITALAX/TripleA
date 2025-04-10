@@ -47,8 +47,8 @@ pub async fn upload_image_to_ipfs(
 ) -> Result<IPFSResponse, Box<dyn Error + Send + Sync>> {
     let base64_data = base64_str.split(',').last().unwrap_or(base64_str);
     let image_bytes = general_purpose::STANDARD.decode(base64_data)?;
-    // let path = format!("/var/data/{}.png", Uuid::new_v4());
-    let path = format!("var/data/{}.png", Uuid::new_v4());
+    let path = format!("/var/data/{}.png", Uuid::new_v4());
+    // let path = format!("var/data/{}.png", Uuid::new_v4());
     let file_result = OpenOptions::new()
         .write(true)
         .create(true)
