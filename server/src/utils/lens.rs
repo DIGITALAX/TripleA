@@ -50,7 +50,7 @@ async fn refresh(
         .post(LENS_API)
         .header("Authorization", format!("Bearer {}", auth_tokens))
         .header("Content-Type", "application/json")
-        .header("Origin", "https://npc-rust-engine.onrender.com")
+        .header("Origin", "https://triplea-66ij.onrender.com")
         // .header("Origin", "http://localhost:3000")
         .json(&query)
         .send()
@@ -113,7 +113,7 @@ pub async fn authenticate(
     let res = client
         .post(LENS_API)
         .header("Content-Type", "application/json")
-        .header("Origin", "https://npc-rust-engine.onrender.com")
+        .header("Origin", "https://triplea-66ij.onrender.com")
         // .header("Origin", "http://localhost:3000")
         .json(&mutation)
         .send()
@@ -165,7 +165,7 @@ pub async fn authenticate(
                     let response = client
                         .post(LENS_API)
                         .header("Content-Type", "application/json")
-                        .header("Origin", "https://npc-rust-engine.onrender.com")
+                        .header("Origin", "https://triplea-66ij.onrender.com")
                         // .header("Origin", "http://localhost:3000")
                         .json(&authenticate_mutation)
                         .send()
@@ -316,7 +316,7 @@ pub async fn make_publication(
         .post(LENS_API)
         .header("Authorization", format!("Bearer {}", auth_tokens))
         .header("Content-Type", "application/json")
-        .header("Origin", "https://npc-rust-engine.onrender.com")
+        .header("Origin", "https://triplea-66ij.onrender.com")
         // .header("Origin", "http://localhost:3000")
         .json(&query)
         .send()
@@ -432,7 +432,7 @@ async fn poll(hash: &str, auth_tokens: &str) -> Result<String, Box<dyn Error + S
         .post(LENS_API)
         .header("Authorization", format!("Bearer {}", auth_tokens))
         .header("Content-Type", "application/json")
-        .header("Origin", "https://npc-rust-engine.onrender.com")
+        .header("Origin", "https://triplea-66ij.onrender.com")
         // .header("Origin", "http://localhost:3000")
         .json(&query)
         .send()
@@ -496,7 +496,7 @@ pub async fn handle_lens_account(wallet: &str, username: bool) -> Result<String,
     let response = client
         .post(LENS_API)
         .header("Content-Type", "application/json")
-        .header("Origin", "https://npc-rust-engine.onrender.com")
+        .header("Origin", "https://triplea-66ij.onrender.com")
         // .header("Origin", "http://localhost:3000")
         .json(&query)
         .send()
@@ -581,7 +581,7 @@ pub async fn search_posts(
     let res = client
         .post(LENS_API)
         .header("Content-Type", "application/json")
-        .header("Origin", "https://npc-rust-engine.onrender.com")
+        .header("Origin", "https://triplea-66ij.onrender.com")
         .json(&query)
         .send()
         .await?;
@@ -662,7 +662,7 @@ pub async fn follow_profiles(
                 .post(LENS_API)
                 .header("Authorization", format!("Bearer {}", auth_tokens))
                 .header("Content-Type", "application/json")
-                .header("Origin", "https://npc-rust-engine.onrender.com")
+                .header("Origin", "https://triplea-66ij.onrender.com")
                 .json(&query)
                 .send()
                 .await?;
@@ -753,7 +753,7 @@ pub async fn make_comment(
         .post(LENS_API)
         .header("Authorization", format!("Bearer {}", auth_tokens))
         .header("Content-Type", "application/json")
-        .header("Origin", "https://npc-rust-engine.onrender.com")
+        .header("Origin", "https://triplea-66ij.onrender.com")
         // .header("Origin", "http://localhost:3000")
         .json(&query)
         .send()
@@ -892,7 +892,7 @@ pub async fn make_quote(
         .post(LENS_API)
         .header("Authorization", format!("Bearer {}", auth_tokens))
         .header("Content-Type", "application/json")
-        .header("Origin", "https://npc-rust-engine.onrender.com")
+        .header("Origin", "https://triplea-66ij.onrender.com")
         // .header("Origin", "http://localhost:3000")
         .json(&query)
         .send()
@@ -1001,7 +1001,7 @@ pub async fn feed_info(feed: &str) -> Result<(String, String), Box<dyn Error + S
     let res = client
         .post(LENS_API)
         .header("Content-Type", "application/json")
-        .header("Origin", "https://npc-rust-engine.onrender.com")
+        .header("Origin", "https://triplea-66ij.onrender.com")
         .json(&query)
         .send()
         .await?;
