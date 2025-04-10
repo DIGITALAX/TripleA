@@ -95,7 +95,9 @@ export function handleCollectionPurchased(
               for (let j = 0; j < (workers as Bytes[]).length; j++) {
                 let worker = CollectionWorker.load((workers as Bytes[])[j]);
                 if (worker && worker.collectionId) {
-                  if ((worker.collectionId as BigInt).equals(entity.collectionId)) {
+                  if (
+                    (worker.collectionId as BigInt).equals(entity.collectionId)
+                  ) {
                     store.remove(
                       "CollectionWorker",
                       (workers as Bytes[])[j].toHexString()
@@ -114,7 +116,11 @@ export function handleCollectionPurchased(
                 let updateBalance = Balance.load((balances as Bytes[])[j]);
 
                 if (updateBalance && updateBalance.collectionId) {
-                  if ((updateBalance.collectionId as BigInt).equals( entity.collectionId)) {
+                  if (
+                    (updateBalance.collectionId as BigInt).equals(
+                      entity.collectionId
+                    )
+                  ) {
                     store.remove(
                       "Balance",
                       (balances as Bytes[])[j].toHexString()

@@ -3,7 +3,7 @@ use crate::classes::{lead::lead_generation, publish::publish, remix::remix};
 use crate::utils::helpers::fetch_metadata;
 use crate::utils::types::{Balance, Price};
 use crate::utils::{
-    constants::{ACCESS_CONTROLS, AGENTS, LENS_CHAIN_ID, TRIPLEA_URI},
+    constants::{ACCESS_CONTROLS, AGENTS, ARTISTS, LENS_CHAIN_ID, TRIPLEA_URI},
     contracts::{initialize_api, initialize_contracts},
     lens::{handle_lens_account, handle_tokens},
     types::{AgentActivity, AgentManager, Collection, SavedTokens, TripleAAgent, TripleAWorker},
@@ -106,10 +106,10 @@ impl AgentManager {
                 match result {
                     Ok(balance) => {
                         println!("Agent Grass Balance: {}\n", balance);
-                        if balance <= U256::from(1u128.pow(18)) {
+                        if balance <= U256::from(10u128.pow(16)) {
                             let method = self.access_controls_contract.method::<_, H256>(
                                 "faucet",
-                                (self.agent.wallet.clone(), 2 * 10u128.pow(17)),
+                                (self.agent.wallet.clone(), 1_000_000_000_000_000u128),
                             );
 
                             match method {
@@ -352,11 +352,16 @@ impl AgentManager {
                 }
             }
         } else {
-            self.current_queue = Vec::new();
             println!(
                 "No collection Ids with sufficient tokens for agent_{}",
                 self.agent.id
             );
+
+            self.current_queue
+                .retain(|item| ARTISTS.contains(&item.collection.artist.as_str()));
+
+            println!("Queue retained for artists {:?}", self.current_queue);
+
             Ok(())
         }
     }

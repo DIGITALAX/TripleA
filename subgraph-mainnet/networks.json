@@ -3,6 +3,21 @@
     "TripleACollectionManager": {
       "address": "0xBa53Fd19053fceFc91D091A02c71AbDcD79d856f",
       "startBlock": 0
+    },
+    "TripleAFulfillerManager": {
+      "address": "0x2eB287C1B3EAd0479127413d317670D11A2BC527"
+    },
+    "TripleAMarket": {
+      "address": "0x6c7a9d566F6c2a9829B940b7571A220c70817c1a"
+    },
+    "TripleAAgents": {
+      "address": "0x424Fa11D84e5674809Fd0112eBa4f86d6C4ed2aD"
+    },
+    "TripleAAccessControls": {
+      "address": "0x4F276081A4AC2d50eEE2aA6c78a3C4C06AAE9562"
+    },
+    "SkyhuntersAgentManager": {
+      "address": "0xDb073899eef2Dcf496Ee987F5238c5E9FE5d5933"
     }
   }
 }

@@ -21,6 +21,18 @@ pub static LENS_RPC_URL: &'static str = "https://rpc.lens.xyz";
 pub static TRIPLEA_URI: &str = "https://api.studio.thegraph.com/query/37770/triplea/version/latest";
 pub static INFURA_GATEWAY: &'static str = "https://thedial.infura-ipfs.io/";
 pub static LENS_CHAIN_ID: LazyLock<u64> = LazyLock::new(|| 232);
+pub static ARTISTS: &[&str] = &[
+    "0xae2d4A8191B55E9feA86934dc4FbC89eEE22efB6",
+    "0x8860B76fEBC66092809B490A96E65BAD71c3Ac65",
+    "0x1a13EE92680Cc847e27a6bF66303491d2b9AEcE7",
+    "0xe3e76B32a1F66996d3Cb64D5599E5e6387D8C883",
+    "0x03F034B0dF65887EAEEAe851fa668E72cC708581",
+    "0xe5E949FBEdD829beD5e9283da4d50325D8F0F5a6",
+    "0xCb30574340d013F8A8aeC29f828a12b7D53641bD",
+    "0x9C9F99589111d181a7C58AfA6a53E469a187F663",
+    "0x26E3F8d2065a9BFDDdfFBA7fddEA0d7eb0eCFF6f",
+    "0x2dc0992cE7078b105eed1DFfce80db712eDA9792",
+];
 pub static STYLE_PRESETS: &[&str] = &[
     "Analog Film",
     "Line Art",
