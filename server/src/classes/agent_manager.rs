@@ -358,8 +358,9 @@ impl AgentManager {
                 self.agent.id
             );
 
-            self.current_queue
-                .retain(|item| ARTISTS.contains(&item.collection.artist.as_str()));
+            self
+            .current_queue
+            .retain(|item| ARTISTS.iter().any(|a| a.eq_ignore_ascii_case(&item.collection.artist)));
 
             println!("Queue retained for artists {:?}", self.current_queue);
 
