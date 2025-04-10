@@ -72,6 +72,8 @@ const FULFILLER = "0xfa3fea500eeDAa120f7EeC2E4309Fe094F854E61";
 
   // const feedContract = new ethers.Contract(feedAddress, feedAbi, wallet);
 
+;
+
   // Configura contratos
   // const ethToken = await skyhuntersAcContract.setAcceptedToken(WETH);
   // await ethToken.wait();

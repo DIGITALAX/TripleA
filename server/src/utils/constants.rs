@@ -6,7 +6,7 @@ pub static COLLECTION_MANAGER: &'static str = "0xBa53Fd19053fceFc91D091A02c71AbD
 pub static MARKET: &'static str = "0x6c7a9d566F6c2a9829B940b7571A220c70817c1a";
 pub static REMIX_FEED: &'static str = "0x";
 pub static ZERO_ADDRESS: &'static str = "0x0000000000000000000000000000000000000000";
-pub static MONA: &'static str = "0x72ab7C7f3F6FF123D08692b0be196149d4951a41";
+pub static WGHO: &'static str = "0x6bDc36E20D267Ff0dd6097799f82e78907105e2F";
 pub static BONSAI: &'static str = "0xB0588f9A9cADe7CD5f194a5fe77AcD6A58250f82";
 pub static MODELS: &[&str] = &[
     "flux-dev-uncensored",
@@ -14,11 +14,12 @@ pub static MODELS: &[&str] = &[
     "fluently-xl",
     "pony-realism",
 ];
+
 pub static AGENT_INTERFACE_URL: &'static str = "https://triplea.agentmeme.xyz";
 pub static VENICE_API: &'static str = "https://api.venice.ai/api/v1/";
 pub static LENS_API: &'static str = "https://api.lens.xyz/graphql";
 pub static LENS_RPC_URL: &'static str = "https://rpc.lens.xyz";
-pub static TRIPLEA_URI: &str = "https://api.studio.thegraph.com/query/37770/triplea/version/latest";
+pub static TRIPLEA_URI: &str = "https://gateway-arbitrum.network.thegraph.com/api/";
 pub static INFURA_GATEWAY: &'static str = "https://thedial.infura-ipfs.io/";
 pub static LENS_CHAIN_ID: LazyLock<u64> = LazyLock::new(|| 232);
 pub static ARTISTS: &[&str] = &[

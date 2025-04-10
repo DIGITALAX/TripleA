@@ -1,5 +1,5 @@
 use crate::utils::{
-    constants::{BONSAI, COLLECTION_MANAGER, INFURA_GATEWAY, LENS_CHAIN_ID, MONA, TRIPLEA_URI},
+    constants::{BONSAI, COLLECTION_MANAGER, INFURA_GATEWAY, LENS_CHAIN_ID, WGHO, TRIPLEA_URI},
     contracts::initialize_provider,
     ipfs::upload_ipfs,
     lens::handle_lens_account,
@@ -10,6 +10,7 @@ use crate::utils::{
     venice::call_drop_details,
 };
 use chrono::Utc;
+use dotenv::{from_filename, var};
 use ethers::{
     contract::{ContractInstance, FunctionCall},
     core::k256::ecdsa::SigningKey,
@@ -54,7 +55,7 @@ pub fn extract_values_image(
     let title_re = Regex::new(r"(?m)^Title:\s*(.+)")?;
     let description_re = Regex::new(r"(?m)^Description:\s*(.+)")?;
     let amount_re = Regex::new(r"(?m)^Amount:\s*(\d+)")?;
-    let mona_re = Regex::new(r"(?m)^Mona:\s*(\d+)")?;
+    let wgho_re = Regex::new(r"(?m)^WGho:\s*(\d+)")?;
     let bonsai_re = Regex::new(r"(?m)^Bonsai:\s*(\d+)")?;
 
     let title = title_re
@@ -73,7 +74,7 @@ pub fn extract_values_image(
         .and_then(|m| m.as_str().parse::<u32>().ok())
         .unwrap_or_default();
 
-    let mona: U256 = mona_re
+    let wgho: U256 = wgho_re
         .captures(input)
         .and_then(|cap| cap.get(1))
         .and_then(|m| U256::from_dec_str(m.as_str()).ok())
@@ -85,7 +86,7 @@ pub fn extract_values_image(
         .and_then(|m| U256::from_dec_str(m.as_str()).ok())
         .unwrap_or(U256::zero());
 
-    Ok((title, description, U256::from(amount), vec![mona, bonsai]))
+    Ok((title, description, U256::from(amount), vec![wgho, bonsai]))
 }
 
 pub fn extract_values_drop(input: &str) -> Result<(String, String), Box<dyn Error + Send + Sync>> {
@@ -167,8 +168,13 @@ pub async fn handle_agents() -> Result<HashMap<u32, AgentManager>, Box<dyn Error
         }
         "#,
     });
-
-    let res = client.post(TRIPLEA_URI).json(&query).send().await;
+    from_filename(".env").ok();
+    let graph_key: String = var("GRAPH_KEY").expect("GRAPH_KEY not configured in .env");
+    let res = client.post(format!(
+        "{}{}{}",
+        TRIPLEA_URI,
+        graph_key,
+        "/subgraphs/id/AudwYcFk14weD3LBKdn3kcgvT2JQKas31ZrKrTk8UF3K")).json(&query).send().await;
 
     match res {
         Ok(response) => {
@@ -314,8 +320,13 @@ pub async fn handle_token_thresholds(irl: bool) -> Result<Vec<U256>, Box<dyn Err
         }
         "#,
     });
-
-    let res = client.post(TRIPLEA_URI).json(&query).send().await;
+    from_filename(".env").ok();
+    let graph_key: String = var("GRAPH_KEY").expect("GRAPH_KEY not configured in .env");
+    let res = client.post(format!(
+        "{}{}{}",
+        TRIPLEA_URI,
+        graph_key,
+        "/subgraphs/id/AudwYcFk14weD3LBKdn3kcgvT2JQKas31ZrKrTk8UF3K")).json(&query).send().await;
 
     match res {
         Ok(response) => {
@@ -325,7 +336,7 @@ pub async fn handle_token_thresholds(irl: bool) -> Result<Vec<U256>, Box<dyn Err
                 .as_array()
                 .unwrap_or(&empty_vec);
 
-            let mut mona_price: Option<U256> = None;
+            let mut wgho_price: Option<U256> = None;
             let mut bonsai_price: Option<U256> = None;
 
             for token in token_details {
@@ -344,8 +355,8 @@ pub async fn handle_token_thresholds(irl: bool) -> Result<Vec<U256>, Box<dyn Err
                             threshold
                         };
 
-                        if token_address.eq_ignore_ascii_case(MONA) {
-                            mona_price = Some(total_price);
+                        if token_address.eq_ignore_ascii_case(WGHO) {
+                            wgho_price = Some(total_price);
                         } else if token_address.eq_ignore_ascii_case(BONSAI) {
                             bonsai_price = Some(total_price);
                         }
@@ -354,7 +365,7 @@ pub async fn handle_token_thresholds(irl: bool) -> Result<Vec<U256>, Box<dyn Err
             }
 
             Ok(vec![
-                mona_price.unwrap_or(U256::zero()),
+                wgho_price.unwrap_or(U256::zero()),
                 bonsai_price.unwrap_or(U256::zero()),
             ])
         }
@@ -455,7 +466,7 @@ pub async fn mint_collection(
                         (
                             CollectionInput {
                                 tokens: vec![
-                                    H160::from_str(MONA).unwrap(),
+                                    H160::from_str(WGHO).unwrap(),
                                     H160::from_str(BONSAI).unwrap(),
                                 ],
 
@@ -674,8 +685,13 @@ async fn get_drop_details(
             }
     }
     });
-
-    let res = client.post(TRIPLEA_URI).json(&query).send().await;
+    from_filename(".env").ok();
+    let graph_key: String = var("GRAPH_KEY").expect("GRAPH_KEY not configured in .env");
+    let res = client.post(format!(
+        "{}{}{}",
+        TRIPLEA_URI,
+        graph_key,
+        "/subgraphs/id/AudwYcFk14weD3LBKdn3kcgvT2JQKas31ZrKrTk8UF3K")).json(&query).send().await;
 
     match res {
         Ok(response) => {
@@ -748,7 +764,13 @@ pub async fn find_collection(
         }
     });
 
-    let res = client.post(TRIPLEA_URI).json(&query).send().await;
+    from_filename(".env").ok();
+    let graph_key: String = var("GRAPH_KEY").expect("GRAPH_KEY not configured in .env");
+    let res = client.post(format!(
+        "{}{}{}",
+        TRIPLEA_URI,
+        graph_key,
+        "/subgraphs/id/AudwYcFk14weD3LBKdn3kcgvT2JQKas31ZrKrTk8UF3K")).json(&query).send().await;
 
     match res {
         Ok(response) => {

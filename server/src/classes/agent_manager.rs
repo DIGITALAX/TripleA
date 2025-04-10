@@ -10,6 +10,7 @@ use crate::utils::{
 };
 use crate::ActivityType;
 use chrono::{Timelike, Utc};
+use dotenv::{from_filename, var};
 use ethers::{
     contract::{self, ContractInstance, FunctionCall},
     core::k256::ecdsa::SigningKey,
@@ -412,9 +413,19 @@ impl AgentManager {
                 "SkyhuntersAgentManager_id": self.agent.id
             }
         });
-
+        from_filename(".env").ok();
+        let graph_key: String = var("GRAPH_KEY").expect("GRAPH_KEY not configured in .env");
         let response = time::timeout(Duration::from_secs(60), async {
-            let res = client.post(TRIPLEA_URI).json(&query).send().await?;
+            let res = client
+                .post(format!(
+                    "{}{}{}",
+                    TRIPLEA_URI,
+                    graph_key,
+                    "/subgraphs/id/AudwYcFk14weD3LBKdn3kcgvT2JQKas31ZrKrTk8UF3K"
+                ))
+                .json(&query)
+                .send()
+                .await?;
 
             res.json::<Value>().await
         })

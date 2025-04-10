@@ -532,7 +532,7 @@ pub async fn call_image_details(
     
     Amount: [SINGLE NUMBER BETWEEN 5-30]
   
-    Mona: [PRICE IN ETH WEI - MIN {} MONA, MAX {} MONA. Choose a price target between the min and max. Return only the final wei value.]
+    Wgho: [PRICE IN ETH WEI - MIN {} WGHO, MAX {} WGHO. Choose a price target between the min and max. Return only the final wei value.]
         
     Bonsai: [PRICE IN ETH WEI - MIN {} BONSAI, MAX {} BONSAI. Choose a price target between the min and max. Return only the final wei value.]
     
