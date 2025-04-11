@@ -110,7 +110,7 @@ impl AgentManager {
                         if balance <= U256::from(200_000_000_000_000_000u128) {
                             let method = self.access_controls_contract.method::<_, H256>(
                                 "faucet",
-                                (self.agent.wallet.clone(), 200_000_000_000_000_000u128),
+                                (self.agent.wallet.clone(), 200_000_000_000_000_000u128, 120_000u64),
                             );
 
                             match method {
