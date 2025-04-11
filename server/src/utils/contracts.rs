@@ -10,7 +10,7 @@ use dotenv::{dotenv, from_filename, var};
 use ethers::{
     abi::{Abi, Address},
     contract::Contract,
-    middleware::SignerMiddleware,
+    middleware::{SignerMiddleware, Middleware},
     providers::{Http, Provider, ProviderExt},
     signers::{LocalWallet, Signer},
     types::Chain,
@@ -232,6 +232,8 @@ pub fn initialize_contracts(
     let client = Arc::new(SignerMiddleware::new(provider.clone(), wallet));
 
     let access_wallet = initialize_access_wallet();
+
+
     let access_client = Arc::new(SignerMiddleware::new(provider.clone(), access_wallet));
 
     let access_controls_address = ACCESS_CONTROLS

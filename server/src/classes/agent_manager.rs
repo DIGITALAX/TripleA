@@ -116,6 +116,8 @@ impl AgentManager {
                                     U256::from(120_000u64),
                                 ),
                             );
+
+                         
                             match method {
                                 Ok(call) => {
                                     let FunctionCall { tx, .. } = call;
@@ -125,11 +127,11 @@ impl AgentManager {
                                         let max_priority_fee = U256::from(25_000_000_000u64);
                                         let gas_limit = U256::from(300_000);
 
-                                        let client = self.agents_contract.client().clone();
-                                        let chain_id = *LENS_CHAIN_ID;
+                                        let client = self.access_controls_contract.client().clone();
+                                        let chain_id: u64 = *LENS_CHAIN_ID;
                                         let req = Eip1559TransactionRequest {
                                             from: Some(
-                                                self.agent.wallet.parse::<Address>().unwrap(),
+                                                self.access_controls_contract.client().address(),
                                             ),
                                             to: Some(NameOrAddress::Address(
                                                 ACCESS_CONTROLS.parse::<Address>().unwrap(),
