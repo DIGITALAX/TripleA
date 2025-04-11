@@ -161,11 +161,18 @@ export function handleCollectionCreated(event: CollectionCreatedEvent): void {
   }
   entity.active = true;
   entity.uri = collectionManager.getCollectionMetadata(entity.collectionId);
-  let ipfsHash = (entity.uri as String).split("/").pop();
-  if (ipfsHash != null) {
-    entity.metadata = ipfsHash;
-    CollectionMetadata.create(ipfsHash);
+  if (entity.uri !== null) {
+    let uriStr = entity.uri as string;
+    if (uriStr.length > 0) {
+      let ipfsHash = (entity.uri as string).split("/").pop();
+      if (ipfsHash != null) {
+        entity.metadata = ipfsHash;
+        CollectionMetadata.create(ipfsHash);
+      }
+    }
   }
+
+
 
   let prices: Bytes[] = [];
 
@@ -234,12 +241,17 @@ export function handleCollectionCreated(event: CollectionCreatedEvent): void {
   );
 
   entity.dropUri = collectionManager.getDropMetadata(entity.dropId);
-  let ipfsHashDrop = (entity.dropUri as String).split("/").pop();
-  if (ipfsHashDrop != null) {
-    entity.drop = ipfsHashDrop;
-    DropMetadata.create(ipfsHashDrop);
-  }
 
+  if (entity.dropUri !== null) {
+    let dropUriStr = entity.dropUri as string;
+    if (dropUriStr.length > 0) {
+      let ipfsHashDrop = (entity.dropUri as string).split("/").pop();
+      if (ipfsHashDrop != null) {
+        entity.drop = ipfsHashDrop;
+        DropMetadata.create(ipfsHashDrop);
+      }
+    }
+  }
   entity.save();
 }
 
@@ -439,7 +451,7 @@ export function handleCollectionDeleted(event: CollectionDeletedEvent): void {
           let tryActive = agentContract.try_getAgentActiveCollectionIds(
             entityAgent.SkyhuntersAgentManager_id
           );
-          
+
           let cols: Bytes[] = [];
           if (!tryActive.reverted) {
             let active = tryActive.value;
@@ -651,7 +663,7 @@ export function handleDropDeleted(event: DropDeletedEvent): void {
             if (price) {
               let tokenHex = (price.token as Bytes).toHexString();
               let collectionHex = (entityDrop.collections as Bytes[])[
-               i
+                i
               ].toHexString();
               let combinedPriceHex = tokenHex + collectionHex;
               if (combinedPriceHex.length % 2 !== 0) {

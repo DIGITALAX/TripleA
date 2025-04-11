@@ -1,5 +1,5 @@
 use crate::utils::{
-    constants::{BONSAI, COLLECTION_MANAGER, INFURA_GATEWAY, LENS_CHAIN_ID, WGHO, TRIPLEA_URI},
+    constants::{BONSAI, COLLECTION_MANAGER, INFURA_GATEWAY, LENS_CHAIN_ID, TRIPLEA_URI, WGHO},
     contracts::initialize_provider,
     ipfs::upload_ipfs,
     lens::handle_lens_account,
@@ -108,10 +108,7 @@ pub fn extract_values_drop(input: &str) -> Result<(String, String), Box<dyn Erro
 }
 
 fn strip_quotes(s: &str) -> String {
-    s.trim()
-        .trim_matches('"')
-        .trim()
-        .to_string()
+    s.trim().trim_matches('"').trim().to_string()
 }
 
 pub fn format_instructions(agent: &TripleAAgent) -> String {
@@ -170,11 +167,14 @@ pub async fn handle_agents() -> Result<HashMap<u32, AgentManager>, Box<dyn Error
     });
     from_filename(".env").ok();
     let graph_key: String = var("GRAPH_KEY").expect("GRAPH_KEY not configured in .env");
-    let res = client.post(format!(
-        "{}{}{}",
-        TRIPLEA_URI,
-        graph_key,
-        "/subgraphs/id/AudwYcFk14weD3LBKdn3kcgvT2JQKas31ZrKrTk8UF3K")).json(&query).send().await;
+    let res = client
+        .post(format!(
+            "{}{}{}",
+            TRIPLEA_URI, graph_key, "/subgraphs/id/AudwYcFk14weD3LBKdn3kcgvT2JQKas31ZrKrTk8UF3K"
+        ))
+        .json(&query)
+        .send()
+        .await;
 
     match res {
         Ok(response) => {
@@ -322,11 +322,14 @@ pub async fn handle_token_thresholds(irl: bool) -> Result<Vec<U256>, Box<dyn Err
     });
     from_filename(".env").ok();
     let graph_key: String = var("GRAPH_KEY").expect("GRAPH_KEY not configured in .env");
-    let res = client.post(format!(
-        "{}{}{}",
-        TRIPLEA_URI,
-        graph_key,
-        "/subgraphs/id/AudwYcFk14weD3LBKdn3kcgvT2JQKas31ZrKrTk8UF3K")).json(&query).send().await;
+    let res = client
+        .post(format!(
+            "{}{}{}",
+            TRIPLEA_URI, graph_key, "/subgraphs/id/AudwYcFk14weD3LBKdn3kcgvT2JQKas31ZrKrTk8UF3K"
+        ))
+        .json(&query)
+        .send()
+        .await;
 
     match res {
         Ok(response) => {
@@ -427,6 +430,14 @@ pub async fn mint_collection(
 ) -> Result<(), Box<dyn Error + Send + Sync>> {
     match get_drop_details(remix_collection_id, description, agent.id, image, &model).await {
         Ok((drop_metadata, drop_id)) => {
+            if drop_metadata.trim() == "" || !drop_metadata.contains("ipfs://") {
+                eprintln!("Error with drop metadata: {}", drop_metadata);
+                return Err(Box::new(io::Error::new(
+                    io::ErrorKind::Other,
+                    "Error with drop metadata",
+                )));
+            }
+
             match upload_ipfs(if collection_type == 0u8 {
                 to_string(&json!({
                     "title": title,
@@ -679,19 +690,22 @@ async fn get_drop_details(
         }
         "#,
         "variables": {
-            "request": {
+
                 "TripleAAgents_id": agent_id,
                 "remixId": remix_collection_id
-            }
+
     }
     });
     from_filename(".env").ok();
     let graph_key: String = var("GRAPH_KEY").expect("GRAPH_KEY not configured in .env");
-    let res = client.post(format!(
-        "{}{}{}",
-        TRIPLEA_URI,
-        graph_key,
-        "/subgraphs/id/AudwYcFk14weD3LBKdn3kcgvT2JQKas31ZrKrTk8UF3K")).json(&query).send().await;
+    let res = client
+        .post(format!(
+            "{}{}{}",
+            TRIPLEA_URI, graph_key, "/subgraphs/id/AudwYcFk14weD3LBKdn3kcgvT2JQKas31ZrKrTk8UF3K"
+        ))
+        .json(&query)
+        .send()
+        .await;
 
     match res {
         Ok(response) => {
@@ -755,22 +769,25 @@ pub async fn find_collection(
         }
         "#,
         "variables": {
-            "request": {
+
                 "soldOut": false,
                 "maxPrice": balance,
                 "artist": artist,
                 "token": token
-            }
+
         }
     });
 
     from_filename(".env").ok();
     let graph_key: String = var("GRAPH_KEY").expect("GRAPH_KEY not configured in .env");
-    let res = client.post(format!(
-        "{}{}{}",
-        TRIPLEA_URI,
-        graph_key,
-        "/subgraphs/id/AudwYcFk14weD3LBKdn3kcgvT2JQKas31ZrKrTk8UF3K")).json(&query).send().await;
+    let res = client
+        .post(format!(
+            "{}{}{}",
+            TRIPLEA_URI, graph_key, "/subgraphs/id/AudwYcFk14weD3LBKdn3kcgvT2JQKas31ZrKrTk8UF3K"
+        ))
+        .json(&query)
+        .send()
+        .await;
 
     match res {
         Ok(response) => {
