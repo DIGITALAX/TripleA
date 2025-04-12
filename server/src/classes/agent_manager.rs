@@ -92,115 +92,168 @@ impl AgentManager {
     }
 
     async fn get_faucet_grass(&mut self) -> Result<(), Box<dyn Error + Send + Sync>> {
-        let method = self.access_controls_contract.method::<_, U256>(
+        let faucet_method = self.access_controls_contract.method::<_, U256>(
             "getNativeGrassBalance",
-            H160::from_str(&self.agent.wallet.clone()).unwrap(),
+            self.access_controls_contract.address(),
         );
 
-        match method {
-            Ok(call) => {
-                let result: Result<
+        match faucet_method {
+            Ok(faucet_call) => {
+                let faucet_result: Result<
                     U256,
                     contract::ContractError<SignerMiddleware<Arc<Provider<Http>>, LocalWallet>>,
-                > = call.call().await;
+                > = faucet_call.call().await;
 
-                match result {
-                    Ok(balance) => {
-                        println!("Agent Grass Balance: {}\n", balance);
-                        if balance <= U256::from(200_000_000_000_000_000u128) {
-                            let method = self.access_controls_contract.method::<_, H256>(
-                                "faucet",
-                                (
-                                    self.agent.wallet.parse::<Address>()?,
-                                    U256::from(200_000_000_000_000_000u128),
-                                    U256::from(120_000u64),
-                                ),
+                match faucet_result {
+                    Ok(faucet_balance) => {
+                        println!("Faucet Native Balance: {}\n", faucet_balance);
+                        if faucet_balance >= U256::from(200_000_000_000_000_000u128) {
+                            let method = self.access_controls_contract.method::<_, U256>(
+                                "getNativeGrassBalance",
+                                H160::from_str(&self.agent.wallet.clone()).unwrap(),
                             );
 
-                         
                             match method {
                                 Ok(call) => {
-                                    let FunctionCall { tx, .. } = call;
+                                    let result: Result<
+                                        U256,
+                                        contract::ContractError<
+                                            SignerMiddleware<Arc<Provider<Http>>, LocalWallet>,
+                                        >,
+                                    > = call.call().await;
 
-                                    if let Some(tx_request) = tx.as_eip1559_ref() {
-                                        let gas_price = U256::from(500_000_000_000u64);
-                                        let max_priority_fee = U256::from(25_000_000_000u64);
-                                        let gas_limit = U256::from(300_000);
+                                    match result {
+                                        Ok(balance) => {
+                                            println!("Agent Grass Balance: {}\n", balance);
+                                            if balance <= U256::from(200_000_000_000_000_000u128) {
+                                                let method = self
+                                                    .access_controls_contract
+                                                    .method::<_, H256>(
+                                                        "faucet",
+                                                        (
+                                                            self.agent.wallet.parse::<Address>()?,
+                                                            U256::from(200_000_000_000_000_000u128),
+                                                            U256::from(120_000u64),
+                                                        ),
+                                                    );
 
-                                        let client = self.access_controls_contract.client().clone();
-                                        let chain_id: u64 = *LENS_CHAIN_ID;
-                                        let req = Eip1559TransactionRequest {
-                                            from: Some(
-                                                self.access_controls_contract.client().address(),
-                                            ),
-                                            to: Some(NameOrAddress::Address(
-                                                ACCESS_CONTROLS.parse::<Address>().unwrap(),
-                                            )),
-                                            gas: Some(gas_limit),
-                                            value: tx_request.value,
-                                            data: tx_request.data.clone(),
-                                            max_priority_fee_per_gas: Some(max_priority_fee),
-                                            max_fee_per_gas: Some(gas_price + max_priority_fee),
-                                            chain_id: Some(chain_id.into()),
-                                            ..Default::default()
-                                        };
+                                                match method {
+                                                    Ok(call) => {
+                                                        let FunctionCall { tx, .. } = call;
 
-                                        let pending_tx = match client
-                                            .send_transaction(req, None)
-                                            .await
-                                        {
-                                            Ok(tx) => tx,
-                                            Err(e) => {
-                                                eprintln!("Error sending the transaction to claim GRASS: {:?}", e);
-                                                Err(Box::new(e))?
-                                            }
-                                        };
+                                                        if let Some(tx_request) =
+                                                            tx.as_eip1559_ref()
+                                                        {
+                                                            let gas_price =
+                                                                U256::from(500_000_000_000u64);
+                                                            let max_priority_fee =
+                                                                U256::from(25_000_000_000u64);
+                                                            let gas_limit = U256::from(300_000);
 
-                                        let tx_hash = match pending_tx.confirmations(1).await {
-                                            Ok(hash) => hash,
-                                            Err(e) => {
-                                                eprintln!(
+                                                            let client = self
+                                                                .access_controls_contract
+                                                                .client()
+                                                                .clone();
+                                                            let chain_id: u64 = *LENS_CHAIN_ID;
+                                                            let req = Eip1559TransactionRequest {
+                                                                from: Some(
+                                                                    self.access_controls_contract
+                                                                        .client()
+                                                                        .address(),
+                                                                ),
+                                                                to: Some(NameOrAddress::Address(
+                                                                    ACCESS_CONTROLS
+                                                                        .parse::<Address>()
+                                                                        .unwrap(),
+                                                                )),
+                                                                gas: Some(gas_limit),
+                                                                value: tx_request.value,
+                                                                data: tx_request.data.clone(),
+                                                                max_priority_fee_per_gas: Some(
+                                                                    max_priority_fee,
+                                                                ),
+                                                                max_fee_per_gas: Some(
+                                                                    gas_price + max_priority_fee,
+                                                                ),
+                                                                chain_id: Some(chain_id.into()),
+                                                                ..Default::default()
+                                                            };
+
+                                                            let pending_tx = match client
+                                                                .send_transaction(req, None)
+                                                                .await
+                                                            {
+                                                                Ok(tx) => tx,
+                                                                Err(e) => {
+                                                                    eprintln!("Error sending the transaction to claim GRASS: {:?}", e);
+                                                                    Err(Box::new(e))?
+                                                                }
+                                                            };
+
+                                                            let tx_hash = match pending_tx
+                                                                .confirmations(1)
+                                                                .await
+                                                            {
+                                                                Ok(hash) => hash,
+                                                                Err(e) => {
+                                                                    eprintln!(
                                                     "Error with transaction confirmation from Faucet: {:?}",
                                                     e
                                                 );
-                                                Err(Box::new(e))?
-                                            }
-                                        };
+                                                                    Err(Box::new(e))?
+                                                                }
+                                                            };
 
-                                        println!(
+                                                            println!(
                                             "Faucet GRASS Claimed {} TX Hash: {:?}",
                                             self.agent.id, tx_hash
                                         );
 
-                                        return Ok(());
-                                    } else {
-                                        self.current_queue = Vec::new();
-                                        eprintln!("Error in sending Faucet Transaction");
-                                        return Err(Box::new(io::Error::new(
+                                                            return Ok(());
+                                                        } else {
+                                                            self.current_queue = Vec::new();
+                                                            eprintln!("Error in sending Faucet Transaction");
+                                                            return Err(Box::new(io::Error::new(
                                             io::ErrorKind::Other,
                                             "Error in sending Faucet Transaction",
                                         )));
+                                                        }
+                                                    }
+
+                                                    Err(err) => {
+                                                        self.current_queue = Vec::new();
+                                                        eprintln!("Error in method for Faucet claim: {:?}", err);
+                                                        return Err(Box::new(err));
+                                                    }
+                                                }
+                                            } else {
+                                                return Ok(());
+                                            }
+                                        }
+                                        Err(err) => {
+                                            eprintln!("Error claiming from faucet: {}", err);
+                                            return Err(Box::new(err));
+                                        }
                                     }
                                 }
-
                                 Err(err) => {
-                                    self.current_queue = Vec::new();
-                                    eprintln!("Error in method for Faucet claim: {:?}", err);
+                                    eprintln!("Error getting agent GRASS balance: {}", err);
                                     return Err(Box::new(err));
                                 }
                             }
                         } else {
-                            return Ok(());
+                            eprintln!("Faucet has no balance :(");
+                            return Err("Faucet has no balance :(".into());
                         }
                     }
                     Err(err) => {
-                        eprintln!("Error claiming from faucet: {}", err);
+                        eprintln!("Error getting balance from faucet: {}", err);
                         return Err(Box::new(err));
                     }
                 }
             }
             Err(err) => {
-                eprintln!("Error getting agent GRASS balance: {}", err);
+                eprintln!("Error getting faucet GRASS balance method: {}", err);
                 return Err(Box::new(err));
             }
         }
@@ -844,6 +897,8 @@ async fn cycle_activity(
         return;
     }
 
+    println!("Tasks to run: {:?}", tasks);
+
     let handles: Vec<_> = tasks
         .into_iter()
         .enumerate()
@@ -876,12 +931,12 @@ async fn cycle_activity(
                     ActivityType::Lead => {
                         let _ = lead_generation(&agent, &collection, tokens, &instructions).await;
                     }
-                    ActivityType::Publish => {
-                        let _ = publish(&agent, tokens, &collection, &instructions).await;
-                    }
-                    ActivityType::Remix => {
-                        let _ = remix(&agent, &collection, tokens, collection_contract).await;
-                    }
+                ActivityType::Publish => {
+                let _ = publish(&agent, tokens, &collection, &instructions).await;
+                }
+                ActivityType::Remix => {
+                    let _ = remix(&agent, &collection, tokens, collection_contract).await;
+                }
                 }
             })
         })

@@ -226,7 +226,8 @@ async fn handle_connection(
                                     .expect("Error writing to the .env");
 
                                 let mut existing_data = Map::new();
-                                if let Ok(mut file) = File::
+                                if let Ok(mut file) =
+                                    File::
                                 // open("var/data/data.json")
                                      open("/var/data/data.json")
                                     .await

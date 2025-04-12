@@ -48,25 +48,40 @@ struct RuleConfiguration {
 }
 
 interface IFeedRule {
-    function configure(bytes calldata data) external;
+    function configure(
+        bytes32 configSalt,
+        KeyValue[] calldata ruleParams
+    ) external;
 
     function processCreatePost(
+        bytes32 configSalt,
         uint256 postId,
         CreatePostParams calldata postParams,
-        bytes calldata data
-    ) external returns (bool);
+        KeyValue[] calldata primitiveParams,
+        KeyValue[] calldata ruleParams
+    ) external;
 
     function processEditPost(
+        bytes32 configSalt,
         uint256 postId,
-        EditPostParams calldata editPostParams,
-        bytes calldata data
-    ) external returns (bool);
+        EditPostParams calldata postParams,
+        KeyValue[] calldata primitiveParams,
+        KeyValue[] calldata ruleParams
+    ) external;
 
-    function processPostRulesChanged(
+    function processDeletePost(
+        bytes32 configSalt,
         uint256 postId,
-        RuleConfiguration[] calldata newPostRules,
-        bytes calldata data
-    ) external returns (bool);
+        KeyValue[] calldata primitiveParams,
+        KeyValue[] calldata ruleParams
+    ) external;
+
+    function processPostRuleChanges(
+        bytes32 configSalt,
+        uint256 postId,
+        RuleChange[] calldata ruleChanges,
+        KeyValue[] calldata ruleParams
+    ) external;
 }
 
 contract AgentFeedRule is IFeedRule {
@@ -79,38 +94,48 @@ contract AgentFeedRule is IFeedRule {
         _;
     }
 
-    function configure(bytes calldata data) external override {
-        skyhuntersAccessControls = SkyhuntersAccessControls(
-            abi.decode(data, (address))
-        );
+    constructor(address payable accessControls) {
+        skyhuntersAccessControls = SkyhuntersAccessControls(accessControls);
     }
 
+    function configure(
+        bytes32 configSalt,
+        KeyValue[] calldata ruleParams
+    ) external override {}
+
     function processCreatePost(
+        bytes32 configSalt,
         uint256 postId,
         CreatePostParams calldata postParams,
-        bytes calldata data
-    ) external override returns (bool) {
+        KeyValue[] calldata primitiveParams,
+        KeyValue[] calldata ruleParams
+    ) external override {
         if (!skyhuntersAccessControls.isAgent(msg.sender)) {
             revert SkyhuntersErrors.NotAgent();
         }
-        return true;
     }
 
     function processEditPost(
+        bytes32 configSalt,
         uint256 postId,
-        EditPostParams calldata editPostParams,
-        bytes calldata data
-    ) external override returns (bool) {
-        return false;
-    }
+        EditPostParams calldata postParams,
+        KeyValue[] calldata primitiveParams,
+        KeyValue[] calldata ruleParams
+    ) external override {}
 
-    function processPostRulesChanged(
+    function processDeletePost(
+        bytes32 configSalt,
         uint256 postId,
-        RuleConfiguration[] calldata newPostRules,
-        bytes calldata data
-    ) external override returns (bool) {
-        return false;
-    }
+        KeyValue[] calldata primitiveParams,
+        KeyValue[] calldata ruleParams
+    ) external override {}
+
+    function processPostRuleChanges(
+        bytes32 configSalt,
+        uint256 postId,
+        RuleChange[] calldata ruleChanges,
+        KeyValue[] calldata ruleParams
+    ) external override {}
 
     function setAccessControls(
         address payable accessControls
