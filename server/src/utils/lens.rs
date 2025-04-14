@@ -225,9 +225,13 @@ pub async fn handle_tokens(
         }
     };
 
+    println!("Saved Tokens: {:?}", tokens);
+
     if let Some(saved) = tokens {
         let now = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs();
         let expiry: u64 = saved.expiry.try_into().unwrap();
+
+        println!("Expired: {:?}", now < (expiry - 3600));
         if now < (expiry - 3600) {
             return Ok(saved);
         } else {
@@ -324,6 +328,7 @@ pub async fn make_publication(
 
     let json: Value = response.json().await?;
     println!("Post JSON response {:?}" , json);
+    
     if let Some(post_response) = json["data"]["post"].as_object() {
         if let Some(hash) = post_response.get("hash").and_then(|v| v.as_str()) {
             println!("Post Hash: {:?}", hash);
