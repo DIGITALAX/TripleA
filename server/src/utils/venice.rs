@@ -535,6 +535,8 @@ pub async fn call_image_details(
     Wgho: [PRICE IN ETH WEI - MIN {} WGHO, MAX {} WGHO. Choose a price target between the min and max. Return only the final wei value.]
         
     Bonsai: [PRICE IN ETH WEI - MIN {} BONSAI, MAX {} BONSAI. Choose a price target between the min and max. Return only the final wei value.]
+
+    Mona: [PRICE IN ETH WEI - MIN {} MONA, MAX {} MONA. Choose a price target between the min and max. Return only the final wei value.]
     
     Required format rules:
     
@@ -545,7 +547,7 @@ pub async fn call_image_details(
     No ranges or approximate numbers
     No additional spaces or formatting
     No dollar signs or currency symbols
-    No parentheses or additional notes. Do not put quotation marks around any of the content.",  thresholds[0], thresholds[0] + thresholds[0] * 15/100, thresholds[1], thresholds[1] + thresholds[1] * 15/100);
+    No parentheses or additional notes. Do not put quotation marks around any of the content.",  thresholds[0], thresholds[0] + thresholds[0] * 15/100, thresholds[1], thresholds[1] + thresholds[1] * 15/100, thresholds[2], thresholds[2] + thresholds[2] * 15/100);
 
     let mut messages = vec![];
 

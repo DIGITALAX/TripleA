@@ -1,5 +1,5 @@
 use crate::utils::{
-    constants::{BONSAI, COLLECTION_MANAGER, INFURA_GATEWAY, LENS_CHAIN_ID, TRIPLEA_URI, WGHO},
+    constants::{BONSAI, COLLECTION_MANAGER, INFURA_GATEWAY, LENS_CHAIN_ID, TRIPLEA_URI, WGHO, MONA},
     contracts::initialize_provider,
     ipfs::upload_ipfs,
     lens::handle_lens_account,
@@ -29,6 +29,7 @@ use reqwest::Client;
 use serde_json::{json, to_string, Value};
 use std::{collections::HashMap, error::Error, io, str::FromStr, sync::Arc};
 
+
 pub fn extract_values_prompt(
     input: &str,
 ) -> Result<(String, String), Box<dyn Error + Send + Sync>> {
@@ -57,6 +58,7 @@ pub fn extract_values_image(
     let amount_re = Regex::new(r"(?m)^Amount:\s*(\d+)")?;
     let wgho_re = Regex::new(r"(?m)^WGho:\s*(\d+)")?;
     let bonsai_re = Regex::new(r"(?m)^Bonsai:\s*(\d+)")?;
+    let mona_re = Regex::new(r"(?m)^Mona:\s*(\d+)")?;
 
     let title = title_re
         .captures(input)
@@ -86,7 +88,14 @@ pub fn extract_values_image(
         .and_then(|m| U256::from_dec_str(m.as_str()).ok())
         .unwrap_or(U256::zero());
 
-    Ok((title, description, U256::from(amount), vec![wgho, bonsai]))
+        let mona: U256 = mona_re
+        .captures(input)
+        .and_then(|cap| cap.get(1))
+        .and_then(|m| U256::from_dec_str(m.as_str()).ok())
+        .unwrap_or(U256::zero());
+
+
+    Ok((title, description, U256::from(amount), vec![wgho, bonsai, mona]))
 }
 
 pub fn extract_values_drop(input: &str) -> Result<(String, String), Box<dyn Error + Send + Sync>> {
@@ -341,6 +350,7 @@ pub async fn handle_token_thresholds(irl: bool) -> Result<Vec<U256>, Box<dyn Err
 
             let mut wgho_price: Option<U256> = None;
             let mut bonsai_price: Option<U256> = None;
+            let mut mona_price: Option<U256> = None;
 
             for token in token_details {
                 if let (Some(token_address), Some(threshold_str), Some(base_str)) = (
@@ -362,6 +372,8 @@ pub async fn handle_token_thresholds(irl: bool) -> Result<Vec<U256>, Box<dyn Err
                             wgho_price = Some(total_price);
                         } else if token_address.eq_ignore_ascii_case(BONSAI) {
                             bonsai_price = Some(total_price);
+                        } else if token_address.eq_ignore_ascii_case(MONA) {
+                            mona_price = Some(total_price);
                         }
                     }
                 }
@@ -370,6 +382,7 @@ pub async fn handle_token_thresholds(irl: bool) -> Result<Vec<U256>, Box<dyn Err
             Ok(vec![
                 wgho_price.unwrap_or(U256::zero()),
                 bonsai_price.unwrap_or(U256::zero()),
+                mona_price.unwrap_or(U256::zero()),
             ])
         }
         Err(_) => Ok(vec![]),
@@ -384,7 +397,7 @@ pub async fn validate_and_fix_prices(prices: Vec<U256>, irl: bool) -> Vec<U256> 
 
     let mut new_prices = Vec::with_capacity(2);
 
-    for i in 0..2 {
+    for i in 0..3 {
         let final_price = if !thresholds.is_empty() {
             if prices[i] < thresholds[i] {
                 let mut rng = StdRng::from_entropy();
@@ -479,6 +492,7 @@ pub async fn mint_collection(
                                 tokens: vec![
                                     H160::from_str(WGHO).unwrap(),
                                     H160::from_str(BONSAI).unwrap(),
+                                    H160::from_str(MONA).unwrap(),
                                 ],
 
                                 prices,

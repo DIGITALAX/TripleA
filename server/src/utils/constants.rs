@@ -8,6 +8,7 @@ pub static REMIX_FEED: &'static str = "0x";
 pub static ZERO_ADDRESS: &'static str = "0x0000000000000000000000000000000000000000";
 pub static WGHO: &'static str = "0x6bDc36E20D267Ff0dd6097799f82e78907105e2F";
 pub static BONSAI: &'static str = "0xB0588f9A9cADe7CD5f194a5fe77AcD6A58250f82";
+pub static MONA: &'static str = "0x28547B5b6B405A1444A17694AC84aa2d6A03b3Bd";
 pub static MODELS: &[&str] = &[
     "flux-dev-uncensored",
     "lustify-sdxl",

@@ -9,6 +9,7 @@
 /contracts/broadcast/*/31337/
 /contracts/broadcast/**/dry-run/
 /contracts/install.log
+/contracts/scripts/*
 
 # Docs
 /contracts/docs/
