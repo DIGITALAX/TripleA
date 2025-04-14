@@ -170,7 +170,7 @@ pub async fn handle_agents() -> Result<HashMap<u32, AgentManager>, Box<dyn Error
     let res = client
         .post(format!(
             "{}{}{}",
-            TRIPLEA_URI, graph_key, "/subgraphs/id/AudwYcFk14weD3LBKdn3kcgvT2JQKas31ZrKrTk8UF3K"
+            TRIPLEA_URI, graph_key, "/subgraphs/id/5XK1Z5BL6TGMmpJV4irttCu4RgAePp7sPLKnPZfXVCcK"
         ))
         .json(&query)
         .send()
@@ -325,7 +325,7 @@ pub async fn handle_token_thresholds(irl: bool) -> Result<Vec<U256>, Box<dyn Err
     let res = client
         .post(format!(
             "{}{}{}",
-            TRIPLEA_URI, graph_key, "/subgraphs/id/AudwYcFk14weD3LBKdn3kcgvT2JQKas31ZrKrTk8UF3K"
+            TRIPLEA_URI, graph_key, "/subgraphs/id/5XK1Z5BL6TGMmpJV4irttCu4RgAePp7sPLKnPZfXVCcK"
         ))
         .json(&query)
         .send()
@@ -701,7 +701,7 @@ async fn get_drop_details(
     let res = client
         .post(format!(
             "{}{}{}",
-            TRIPLEA_URI, graph_key, "/subgraphs/id/AudwYcFk14weD3LBKdn3kcgvT2JQKas31ZrKrTk8UF3K"
+            TRIPLEA_URI, graph_key, "/subgraphs/id/5XK1Z5BL6TGMmpJV4irttCu4RgAePp7sPLKnPZfXVCcK"
         ))
         .json(&query)
         .send()
@@ -783,7 +783,7 @@ pub async fn find_collection(
     let res = client
         .post(format!(
             "{}{}{}",
-            TRIPLEA_URI, graph_key, "/subgraphs/id/AudwYcFk14weD3LBKdn3kcgvT2JQKas31ZrKrTk8UF3K"
+            TRIPLEA_URI, graph_key, "/subgraphs/id/5XK1Z5BL6TGMmpJV4irttCu4RgAePp7sPLKnPZfXVCcK"
         ))
         .json(&query)
         .send()

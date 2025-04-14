@@ -482,7 +482,7 @@ impl AgentManager {
                     "{}{}{}",
                     TRIPLEA_URI,
                     graph_key,
-                    "/subgraphs/id/AudwYcFk14weD3LBKdn3kcgvT2JQKas31ZrKrTk8UF3K"
+                    "/subgraphs/id/5XK1Z5BL6TGMmpJV4irttCu4RgAePp7sPLKnPZfXVCcK"
                 ))
                 .json(&query)
                 .send()
