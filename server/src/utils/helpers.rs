@@ -395,7 +395,7 @@ pub async fn validate_and_fix_prices(prices: Vec<U256>, irl: bool) -> Vec<U256> 
         Err(_) => vec![],
     };
 
-    let mut new_prices = Vec::with_capacity(2);
+    let mut new_prices = Vec::with_capacity(3);
 
     for i in 0..3 {
         let final_price = if !thresholds.is_empty() {
