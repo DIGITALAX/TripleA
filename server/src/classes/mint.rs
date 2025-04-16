@@ -96,9 +96,14 @@ pub async fn mint(
         "people of the book",
         "stay shoshin",
         "fuck khomeini",
+        "fuck khamenei",
+        "i kōan in my sleep",
         "hair down",
         "open source fashion",
         "agent-made",
+        "trans women are women",
+        "you and the machines",
+        "me and the machines",
         "microfactory co-op",
         "open source art gen",
         "cypherpunks write code",
@@ -113,6 +118,8 @@ pub async fn mint(
         "rekt by the algo",
         "punch nazis",
         "agency for hire",
+        "laws off my girlie bits",
+        "i've got something on my mind"
     ][thread_rng().gen_range(0..15)];
     let time = ["morning", "afternoon", "night"][thread_rng().gen_range(0..3)];
 
