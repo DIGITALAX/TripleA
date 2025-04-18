@@ -69,7 +69,7 @@ pub async fn mint(
         "light",
         "dark brown",
         "black",
-    ][thread_rng().gen_range(0..8)];
+    ][thread_rng().gen_range(0..7)];
     let color_eyes =
         vec!["hazel", "green", "blue", "grey", "brown", "violet"][thread_rng().gen_range(0..6)];
     let color_fashion = vec!["black", "white"][thread_rng().gen_range(0..2)];
@@ -88,7 +88,17 @@ pub async fn mint(
         "synthwave edgerunners outrun scene",
         "yellow smiley face",
         "NASA logo and the moon",
-    ][thread_rng().gen_range(0..7)];
+        "Alien spacecraft in a nebula",
+        "Futuristic jazz album cover",
+        "Cyberpunk portrait in a neon city",
+        "Distant planet landscape",
+        "High-tech holographic interface",
+        "Alien bioluminescent forest",
+        "Samurai warrior in a parallel universe",
+        "3D geometric abstract art",
+        "Mythical creature in a fantasy world",
+        "Retrofuturistic metropolis at sunset",
+    ][thread_rng().gen_range(0..17)];
     let typography = vec![
         "i love web3",
         "vitalik was here",
@@ -119,8 +129,8 @@ pub async fn mint(
         "punch nazis",
         "agency for hire",
         "laws off my girlie bits",
-        "i've got something on my mind"
-    ][thread_rng().gen_range(0..15)];
+        "i've got something on my mind",
+    ][thread_rng().gen_range(0..30)];
     let time = ["morning", "afternoon", "night"][thread_rng().gen_range(0..3)];
 
     let style_hair = if gender == "female" {
