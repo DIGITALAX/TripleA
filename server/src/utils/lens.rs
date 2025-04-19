@@ -3,6 +3,7 @@ use crate::utils::{
     contracts::{initialize_api, initialize_provider, initialize_wallet},
     types::{LensTokens, SavedTokens},
 };
+use dotenv::{from_filename, var};
 use ethers::{
     middleware::Middleware,
     signers::{LocalWallet, Signer},
@@ -46,12 +47,15 @@ async fn refresh(
         }
     });
 
+    from_filename(".env").ok();
+    let server_key: String = var("SERVER_KEY").expect("SERVER_KEY not configured in .env");
+
     let response = client
         .post(LENS_API)
         .header("Authorization", format!("Bearer {}", auth_tokens))
         .header("Content-Type", "application/json")
         .header("Origin", "https://triplea-66ij.onrender.com")
-        // .header("Origin", "http://localhost:3000")
+        .header("x-api-key", server_key)
         .json(&query)
         .send()
         .await?;
@@ -110,9 +114,13 @@ pub async fn authenticate(
         }
     });
 
+    from_filename(".env").ok();
+    let server_key: String = var("SERVER_KEY").expect("SERVER_KEY not configured in .env");
+
     let res = client
         .post(LENS_API)
         .header("Content-Type", "application/json")
+        .header("x-api-key", server_key)
         .header("Origin", "https://triplea-66ij.onrender.com")
         // .header("Origin", "http://localhost:3000")
         .json(&mutation)
@@ -162,9 +170,14 @@ pub async fn authenticate(
                         }
                     });
 
+                    from_filename(".env").ok();
+                    let server_key: String =
+                        var("SERVER_KEY").expect("SERVER_KEY not configured in .env");
+
                     let response = client
                         .post(LENS_API)
                         .header("Content-Type", "application/json")
+                        .header("x-api-key", server_key)
                         .header("Origin", "https://triplea-66ij.onrender.com")
                         // .header("Origin", "http://localhost:3000")
                         .json(&authenticate_mutation)
@@ -316,9 +329,13 @@ pub async fn make_publication(
         }
     });
 
+    from_filename(".env").ok();
+    let server_key: String = var("SERVER_KEY").expect("SERVER_KEY not configured in .env");
+
     let response = client
         .post(LENS_API)
         .header("Authorization", format!("Bearer {}", auth_tokens))
+        .header("x-api-key", server_key)
         .header("Content-Type", "application/json")
         .header("Origin", "https://triplea-66ij.onrender.com")
         // .header("Origin", "http://localhost:3000")
@@ -327,8 +344,8 @@ pub async fn make_publication(
         .await?;
 
     let json: Value = response.json().await?;
-    println!("Post JSON response {:?}" , json);
-    
+    println!("Post JSON response {:?}", json);
+
     if let Some(post_response) = json["data"]["post"].as_object() {
         if let Some(hash) = post_response.get("hash").and_then(|v| v.as_str()) {
             println!("Post Hash: {:?}", hash);
@@ -434,9 +451,13 @@ async fn poll(hash: &str, auth_tokens: &str) -> Result<String, Box<dyn Error + S
         }
     });
 
+    from_filename(".env").ok();
+    let server_key: String = var("SERVER_KEY").expect("SERVER_KEY not configured in .env");
+
     let response = client
         .post(LENS_API)
         .header("Authorization", format!("Bearer {}", auth_tokens))
+        .header("x-api-key", server_key)
         .header("Content-Type", "application/json")
         .header("Origin", "https://triplea-66ij.onrender.com")
         // .header("Origin", "http://localhost:3000")
@@ -499,9 +520,13 @@ pub async fn handle_lens_account(wallet: &str, username: bool) -> Result<String,
         }
     });
 
+    from_filename(".env").ok();
+    let server_key: String = var("SERVER_KEY").expect("SERVER_KEY not configured in .env");
+
     let response = client
         .post(LENS_API)
         .header("Content-Type", "application/json")
+        .header("x-api-key", server_key)
         .header("Origin", "https://triplea-66ij.onrender.com")
         // .header("Origin", "http://localhost:3000")
         .json(&query)
@@ -584,9 +609,13 @@ pub async fn search_posts(
         }
     });
 
+    from_filename(".env").ok();
+    let server_key: String = var("SERVER_KEY").expect("SERVER_KEY not configured in .env");
+
     let res = client
         .post(LENS_API)
         .header("Content-Type", "application/json")
+        .header("x-api-key", server_key)
         .header("Origin", "https://triplea-66ij.onrender.com")
         .json(&query)
         .send()
@@ -664,9 +693,13 @@ pub async fn follow_profiles(
                 }
             });
 
+            from_filename(".env").ok();
+            let server_key: String = var("SERVER_KEY").expect("SERVER_KEY not configured in .env");
+
             let response = client
                 .post(LENS_API)
                 .header("Authorization", format!("Bearer {}", auth_tokens))
+                .header("x-api-key", server_key)
                 .header("Content-Type", "application/json")
                 .header("Origin", "https://triplea-66ij.onrender.com")
                 .json(&query)
@@ -755,9 +788,13 @@ pub async fn make_comment(
         }
     });
 
+    from_filename(".env").ok();
+    let server_key: String = var("SERVER_KEY").expect("SERVER_KEY not configured in .env");
+
     let response = client
         .post(LENS_API)
         .header("Authorization", format!("Bearer {}", auth_tokens))
+        .header("x-api-key", server_key)
         .header("Content-Type", "application/json")
         .header("Origin", "https://triplea-66ij.onrender.com")
         // .header("Origin", "http://localhost:3000")
@@ -894,9 +931,13 @@ pub async fn make_quote(
         }
     });
 
+    from_filename(".env").ok();
+    let server_key: String = var("SERVER_KEY").expect("SERVER_KEY not configured in .env");
+
     let response = client
         .post(LENS_API)
         .header("Authorization", format!("Bearer {}", auth_tokens))
+        .header("x-api-key", server_key)
         .header("Content-Type", "application/json")
         .header("Origin", "https://triplea-66ij.onrender.com")
         // .header("Origin", "http://localhost:3000")
@@ -1004,9 +1045,13 @@ pub async fn feed_info(feed: &str) -> Result<(String, String), Box<dyn Error + S
         }
     });
 
+    from_filename(".env").ok();
+    let server_key: String = var("SERVER_KEY").expect("SERVER_KEY not configured in .env");
+
     let res = client
         .post(LENS_API)
         .header("Content-Type", "application/json")
+        .header("x-api-key", server_key)
         .header("Origin", "https://triplea-66ij.onrender.com")
         .json(&query)
         .send()
