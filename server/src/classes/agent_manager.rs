@@ -918,25 +918,80 @@ async fn cycle_activity(
 
                 match task {
                     ActivityType::Mint => {
-                        let _ = mint(
-                            &agent,
-                            tokens,
-                            collection_contract,
-                            agents_contract,
-                            market_contract,
-                            &collection,
-                        )
-                        .await;
+                        let tokens =
+                            handle_tokens(agent.id, &agent.account_address, tokens.clone()).await;
+
+                        match tokens {
+                            Ok(new_tokens) => {
+                                let _ = mint(
+                                    &agent,
+                                    Some(new_tokens),
+                                    collection_contract,
+                                    agents_contract,
+                                    market_contract,
+                                    &collection,
+                                )
+                                .await;
+                            }
+
+                            Err(err) => {
+                                eprintln!("Error renewing Lens tokens on Mint: {:?}", err);
+                            }
+                        }
                     }
                     ActivityType::Lead => {
-                        let _ = lead_generation(&agent, &collection, tokens, &instructions).await;
+                        let tokens =
+                            handle_tokens(agent.id, &agent.account_address, tokens.clone()).await;
+
+                        match tokens {
+                            Ok(new_tokens) => {
+                                let _ = lead_generation(
+                                    &agent,
+                                    &collection,
+                                    Some(new_tokens),
+                                    &instructions,
+                                )
+                                .await;
+                            }
+                            Err(err) => {
+                                eprintln!("Error renewing Lens tokens on Lead Gen: {:?}", err);
+                            }
+                        }
                     }
-                ActivityType::Publish => {
-                let _ = publish(&agent, tokens, &collection, &instructions).await;
-                }
-                ActivityType::Remix => {
-                    let _ = remix(&agent, &collection, tokens, collection_contract).await;
-                }
+                    ActivityType::Publish => {
+                        let tokens =
+                            handle_tokens(agent.id, &agent.account_address, tokens.clone()).await;
+
+                        match tokens {
+                            Ok(new_tokens) => {
+                                let _ =
+                                    publish(&agent, Some(new_tokens), &collection, &instructions)
+                                        .await;
+                            }
+                            Err(err) => {
+                                eprintln!("Error renewing Lens tokens on Publish: {:?}", err);
+                            }
+                        }
+                    }
+                    ActivityType::Remix => {
+                        let tokens =
+                            handle_tokens(agent.id, &agent.account_address, tokens.clone()).await;
+
+                        match tokens {
+                            Ok(new_tokens) => {
+                                let _ = remix(
+                                    &agent,
+                                    &collection,
+                                    Some(new_tokens),
+                                    collection_contract,
+                                )
+                                .await;
+                            }
+                            Err(err) => {
+                                eprintln!("Error renewing Lens tokens on Remix: {:?}", err);
+                            }
+                        }
+                    }
                 }
             })
         })
