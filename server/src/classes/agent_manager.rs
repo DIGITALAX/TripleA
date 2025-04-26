@@ -107,7 +107,7 @@ impl AgentManager {
                 match faucet_result {
                     Ok(faucet_balance) => {
                         println!("Faucet Native Balance: {}\n", faucet_balance);
-                        if faucet_balance >= U256::from(200_000_000_000_000_000u128) {
+                        if faucet_balance <= U256::from(100_000_000_000_000_000u128) {
                             let method = self.access_controls_contract.method::<_, U256>(
                                 "getNativeGrassBalance",
                                 H160::from_str(&self.agent.wallet.clone()).unwrap(),
@@ -125,14 +125,14 @@ impl AgentManager {
                                     match result {
                                         Ok(balance) => {
                                             println!("Agent Grass Balance: {}\n", balance);
-                                            if balance <= U256::from(200_000_000_000_000_000u128) {
+                                            if balance <= U256::from(100_000_000_000_000_000u128) {
                                                 let method = self
                                                     .access_controls_contract
                                                     .method::<_, H256>(
                                                         "faucet",
                                                         (
                                                             self.agent.wallet.parse::<Address>()?,
-                                                            U256::from(200_000_000_000_000_000u128),
+                                                            U256::from(100_000_000_000_000_000u128),
                                                             U256::from(120_000u64),
                                                         ),
                                                     );
