@@ -1,4 +1,4 @@
-use chrono::Utc;
+use chrono::{Timelike, Utc};
 use dotenv::{dotenv, var};
 use futures_util::StreamExt;
 use rand::{
@@ -384,9 +384,13 @@ async fn activity_loop(agents: Arc<RwLock<HashMap<u32, AgentManager>>>) {
 }
 
 fn should_trigger(agent: &TripleAAgent) -> bool {
-    let now_seconds = Utc::now().timestamp() as u32;
-    let day_seconds = now_seconds % 18000;
-    let diff = (agent.clock as i32 - day_seconds as i32).abs();
+    let now = Utc::now();
+    let seconds_since_midnight = (now.hour() * 3600 + now.minute() * 60 + now.second()) as i32;
+    let diff = (agent.clock as i32 - seconds_since_midnight).abs();
 
-    diff <= 500
+    let days_since_epoch = (now.timestamp() / 86400) as i32;
+
+    let is_agent_day = days_since_epoch % 5 == agent.id as i32 % 5;
+
+    diff <= 500 && is_agent_day
 }
