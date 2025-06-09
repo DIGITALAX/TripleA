@@ -1,6 +1,8 @@
 use crate::utils::{
     constants::{MODELS, SAMPLE_PROMPT, VENICE_API},
-    helpers::{extract_values_drop, handle_token_thresholds, extract_values_image, extract_values_prompt},
+    helpers::{
+        extract_values_drop, extract_values_image, extract_values_prompt, handle_token_thresholds,
+    },
     types::Collection,
 };
 use dotenv::{from_filename, var};
@@ -593,9 +595,9 @@ pub async fn call_image_details(
             "Venice call successful for image details prompt: {}",
             completion
         );
-        Ok::<(String, String, U256, Vec<U256>), Box<dyn Error + Send + Sync>>(
-            extract_values_image(&completion)?,
-        )
+        Ok::<(String, String, U256, Vec<U256>), Box<dyn Error + Send + Sync>>(extract_values_image(
+            &completion,
+        )?)
     } else {
         return Err(Box::new(io::Error::new(
             io::ErrorKind::Other,
@@ -607,7 +609,7 @@ pub async fn call_image_details(
 pub async fn call_drop_details(
     description: &str,
     model: &str,
-) -> Result<(String, String), Box<dyn Error + Send + Sync>> {
+) -> Result<String, Box<dyn Error + Send + Sync>> {
     from_filename(".env").ok();
     let venice_key: String = var("VENICE_KEY").expect("VENICE_KEY not configured in .env");
     let max_completion_tokens = [100, 200, 350][thread_rng().gen_range(0..3)];
@@ -616,13 +618,11 @@ pub async fn call_drop_details(
     format!("Create a completely reimagined artistic concept inspired by this description. Your output must follow this exact format with no additional text or explanations:
     
     Title: [CREATE A PROVOCATIVE, UNUSUAL TITLE - MAX 6 WORDS]
-    Description: [WRITE AN ABSTRACT, AVANT-GARDE DESCRIPTION - MAX 100 WORDS]
     
     Rules:
     
     Title must be cryptic and poetic
     Do not put quotation marks around any of the content
-    Description must use surreal imagery and metaphors
     No marketing language or commercial terms
     No mentions of NFTs, collections, or markets
     Focus on artistic vision and concept

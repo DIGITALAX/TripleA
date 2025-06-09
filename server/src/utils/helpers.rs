@@ -1,5 +1,7 @@
 use crate::utils::{
-    constants::{BONSAI, COLLECTION_MANAGER, INFURA_GATEWAY, LENS_CHAIN_ID, TRIPLEA_URI, WGHO, MONA},
+    constants::{
+        BONSAI, COLLECTION_MANAGER, INFURA_GATEWAY, LENS_CHAIN_ID, MONA, TRIPLEA_URI, WGHO,
+    },
     contracts::initialize_provider,
     ipfs::upload_ipfs,
     lens::handle_lens_account,
@@ -28,7 +30,6 @@ use regex::Regex;
 use reqwest::Client;
 use serde_json::{json, to_string, Value};
 use std::{collections::HashMap, error::Error, io, str::FromStr, sync::Arc};
-
 
 pub fn extract_values_prompt(
     input: &str,
@@ -88,32 +89,30 @@ pub fn extract_values_image(
         .and_then(|m| U256::from_dec_str(m.as_str()).ok())
         .unwrap_or(U256::zero());
 
-        let mona: U256 = mona_re
+    let mona: U256 = mona_re
         .captures(input)
         .and_then(|cap| cap.get(1))
         .and_then(|m| U256::from_dec_str(m.as_str()).ok())
         .unwrap_or(U256::zero());
 
-
-    Ok((title, description, U256::from(amount), vec![wgho, bonsai, mona]))
+    Ok((
+        title,
+        description,
+        U256::from(amount),
+        vec![wgho, bonsai, mona],
+    ))
 }
 
-pub fn extract_values_drop(input: &str) -> Result<(String, String), Box<dyn Error + Send + Sync>> {
+pub fn extract_values_drop(input: &str) -> Result<String, Box<dyn Error + Send + Sync>> {
     let title_re = Regex::new(r"(?m)^Title:\s*(.+)")?;
-    let description_re = Regex::new(r"(?m)^Description:\s*(.+)")?;
 
     let title = title_re
         .captures(input)
         .and_then(|cap| cap.get(1).map(|m| strip_quotes(m.as_str())))
         .unwrap_or_default()
         .to_string();
-    let description = description_re
-        .captures(input)
-        .and_then(|cap| cap.get(1).map(|m| strip_quotes(m.as_str())))
-        .unwrap_or_default()
-        .to_string();
 
-    Ok((title, description))
+    Ok(title)
 }
 
 fn strip_quotes(s: &str) -> String {
@@ -704,10 +703,8 @@ async fn get_drop_details(
         }
         "#,
         "variables": {
-
                 "TripleAAgents_id": agent_id,
                 "remixId": remix_collection_id
-
     }
     });
     from_filename(".env").ok();
@@ -737,11 +734,10 @@ async fn get_drop_details(
                 drop_id = U256::from(id);
             } else {
                 match call_drop_details(&remix_collection_description, &model).await {
-                    Ok((title, description)) => {
+                    Ok(title) => {
                         match upload_ipfs(to_string(&json!({
                             "title": title,
-                            "description": description,
-                            "image": image
+                            "cover": image,
                         }))?)
                         .await
                         {
