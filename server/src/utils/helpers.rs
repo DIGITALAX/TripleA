@@ -290,7 +290,7 @@ pub async fn handle_agents() -> Result<HashMap<u32, AgentManager>, Box<dyn Error
                             .collect::<Vec<Vec<MessageExample>>>(),
                         model: metadata_filled["model"]
                             .as_str()
-                            .unwrap_or("dolphin-2.9.2-qwen2-72b")
+                            .unwrap_or("qwen3-4b")
                             .to_string(),
                         cover: metadata_filled["cover"].as_str().unwrap_or("").to_string(),
                         custom_instructions: metadata_filled["customInstructions"]
