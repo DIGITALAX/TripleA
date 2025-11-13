@@ -20,7 +20,6 @@ pub static AGENT_INTERFACE_URL: &'static str = "https://triplea.agentmeme.xyz";
 pub static VENICE_API: &'static str = "https://api.venice.ai/api/v1/";
 pub static LENS_API: &'static str = "https://api.lens.xyz/graphql";
 pub static LENS_RPC_URL: &'static str = "https://rpc.lens.xyz";
-pub static TRIPLEA_URI: &str = "https://gateway-arbitrum.network.thegraph.com/api/";
 pub static INFURA_GATEWAY: &'static str = "https://thedial.infura-ipfs.io/";
 pub static LENS_CHAIN_ID: LazyLock<u64> = LazyLock::new(|| 232);
 pub static ARTISTS: &[&str] = &[
