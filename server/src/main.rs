@@ -1,29 +1,26 @@
-use chrono::{Timelike, Utc};
-use dotenv::{dotenv, var};
+use chrono::{ Timelike, Utc };
+use dotenv::{ dotenv, var };
 use futures_util::StreamExt;
-use rand::{
-    rngs::StdRng,
-    {Rng, SeedableRng},
-};
-use serde_json::{from_str, json, to_string_pretty, Map, Value};
-use std::{collections::HashMap, error::Error, net::SocketAddr, sync::Arc, time::Duration};
+use rand::{ rngs::StdRng, ::{ Rng, SeedableRng } };
+use serde_json::{ from_str, json, to_string_pretty, Map, Value };
+use std::{ collections::HashMap, error::Error, net::SocketAddr, sync::Arc, time::Duration };
 use tokio::{
-    fs::{File, OpenOptions},
-    io::{AsyncReadExt, AsyncWriteExt},
-    net::{TcpListener, TcpStream},
+    fs::{ File, OpenOptions },
+    io::{ AsyncReadExt, AsyncWriteExt },
+    net::{ TcpListener, TcpStream },
     spawn,
     sync::RwLock,
 };
 use tokio_tungstenite::{
     accept_hdr_async,
-    tungstenite::{
-        handshake::server::{ErrorResponse, Request, Response},
-        Message,
-    },
+    tungstenite::{ handshake::server::{ ErrorResponse, Request, Response }, Message },
 };
 use tungstenite::http::method;
 use utils::{
-    constants::AGENT_INTERFACE_URL, contracts::configure_key, helpers::handle_agents, types::*,
+    constants::AGENT_INTERFACE_URL,
+    contracts::configure_key,
+    helpers::handle_agents,
+    types::*,
 };
 mod classes;
 mod utils;
@@ -37,9 +34,7 @@ async fn main() -> Result<(), Box<dyn Error + Send + Sync>> {
     let port: u16 = port.parse::<u16>().expect("Invalid Port");
     let addr = format!("0.0.0.0:{}", port);
     let addr: SocketAddr = addr.parse().expect("Invalid Address");
-    let listener = TcpListener::bind(&addr)
-        .await
-        .expect("Couldn't connect address");
+    let listener = TcpListener::bind(&addr).await.expect("Couldn't connect address");
 
     let agent_map = match handle_agents().await {
         Ok(agents) => agents,
@@ -55,8 +50,9 @@ async fn main() -> Result<(), Box<dyn Error + Send + Sync>> {
         let agent_map_clone = agent_map.clone();
         spawn(async move {
             if let Err(err) = handle_connection(stream, render_clone, agent_map_clone).await {
-                if !err.to_string().contains("Handshake not finished")
-                    && !err.to_string().contains("Unsupported HTTP method used")
+                if
+                    !err.to_string().contains("Handshake not finished") &&
+                    !err.to_string().contains("Unsupported HTTP method used")
                 {
                     eprintln!("Error managing the connection: {}", err);
                 } else {
@@ -72,13 +68,11 @@ async fn main() -> Result<(), Box<dyn Error + Send + Sync>> {
 async fn handle_connection(
     stream: TcpStream,
     render_key: String,
-    agents: Arc<RwLock<HashMap<u32, AgentManager>>>,
+    agents: Arc<RwLock<HashMap<u32, AgentManager>>>
 ) -> Result<(), Box<dyn Error + Send + Sync>> {
     let ws_stream = accept_hdr_async(stream, |req: &Request, respuesta: Response| {
         if req.method() != method::Method::GET && req.method() != method::Method::HEAD {
-            return Err(ErrorResponse::new(Some(
-                "HTTP method not supported".to_string(),
-            )));
+            return Err(ErrorResponse::new(Some("HTTP method not supported".to_string())));
         }
 
         if req.method() == method::Method::GET {
@@ -96,16 +90,18 @@ async fn handle_connection(
                                     if origen_str == AGENT_INTERFACE_URL {
                                         return Ok(respuesta);
                                     } else {
-                                        return Err(ErrorResponse::new(Some(
-                                            "Forbidden".to_string(),
-                                        )));
+                                        return Err(
+                                            ErrorResponse::new(Some("Forbidden".to_string()))
+                                        );
                                     }
                                 }
                                 Err(e) => {
                                     eprintln!("Error processing origin: {:?}", e);
-                                    Err(ErrorResponse::new(Some(
-                                        "Invalid origin header".to_string(),
-                                    )))
+                                    Err(
+                                        ErrorResponse::new(
+                                            Some("Invalid origin header".to_string())
+                                        )
+                                    )
                                 }
                             }
                         } else {
@@ -123,8 +119,7 @@ async fn handle_connection(
         } else {
             return Ok(respuesta);
         }
-    })
-    .await?;
+    }).await?;
 
     let (_, mut read) = ws_stream.split();
 
@@ -134,39 +129,41 @@ async fn handle_connection(
                 if let Ok(parsed) = from_str::<Value>(&text) {
                     if let Some(message_type) = parsed.get("type").and_then(Value::as_str) {
                         if message_type == "new_agent" {
-                            if let (
-                                Some(public_address),
-                                Some(encryption_details),
-                                Some(id),
-                                Some(title),
-                                Some(bio),
-                                Some(lore),
-                                Some(knowledge),
-                                Some(adjectives),
-                                Some(message_examples),
-                                Some(style),
-                                Some(cover),
-                                Some(custom_instructions),
-                                Some(account_address),
-                                Some(model),
-                                Some(feeds),
-                            ) = (
-                                parsed["publicAddress"].as_str(),
-                                parsed["encryptionDetails"].as_str(),
-                                parsed["id"].as_u64().map(|v| v.to_string()),
-                                parsed["title"].as_str(),
-                                parsed["bio"].as_str(),
-                                parsed["lore"].as_str(),
-                                parsed["knowledge"].as_str(),
-                                parsed["adjectives"].as_str(),
-                                parsed["messageExamples"].as_array(),
-                                parsed["style"].as_str(),
-                                parsed["model"].as_str(),
-                                parsed["cover"].as_str(),
-                                parsed["customInstructions"].as_str(),
-                                parsed["accountAddress"].as_str(),
-                                parsed["feeds"].as_array(),
-                            ) {
+                            if
+                                let (
+                                    Some(public_address),
+                                    Some(encryption_details),
+                                    Some(id),
+                                    Some(title),
+                                    Some(bio),
+                                    Some(lore),
+                                    Some(knowledge),
+                                    Some(adjectives),
+                                    Some(message_examples),
+                                    Some(style),
+                                    Some(cover),
+                                    Some(custom_instructions),
+                                    Some(account_address),
+                                    Some(model),
+                                    Some(feeds),
+                                ) = (
+                                    parsed["publicAddress"].as_str(),
+                                    parsed["encryptionDetails"].as_str(),
+                                    parsed["id"].as_u64().map(|v| v.to_string()),
+                                    parsed["title"].as_str(),
+                                    parsed["bio"].as_str(),
+                                    parsed["lore"].as_str(),
+                                    parsed["knowledge"].as_str(),
+                                    parsed["adjectives"].as_str(),
+                                    parsed["messageExamples"].as_array(),
+                                    parsed["style"].as_str(),
+                                    parsed["model"].as_str(),
+                                    parsed["cover"].as_str(),
+                                    parsed["customInstructions"].as_str(),
+                                    parsed["accountAddress"].as_str(),
+                                    parsed["feeds"].as_array(),
+                                )
+                            {
                                 let private_key = match configure_key(encryption_details) {
                                     Ok(private_key) => private_key,
                                     Err(err) => {
@@ -192,10 +189,12 @@ async fn handle_connection(
                                         clock =
                                             random_hour * 3600 + random_minute * 60 + random_second;
 
-                                        if !agents_snapshot.values().any(|agent| {
-                                            let agent_clock = agent.agent.clock;
-                                            (clock as i32 - agent_clock as i32).abs() < 60
-                                        }) {
+                                        if
+                                            !agents_snapshot.values().any(|agent| {
+                                                let agent_clock = agent.agent.clock;
+                                                ((clock as i32) - (agent_clock as i32)).abs() < 60
+                                            })
+                                        {
                                             break;
                                         }
                                     }
@@ -206,60 +205,55 @@ async fn handle_connection(
                                 let mut env_file = OpenOptions::new()
                                     .append(true)
                                     .create(true)
-                                    .open(".env")
-                                    .await
+                                    .open(".env").await
                                     .expect("Can't open .env");
 
-                                let metadata =
-                                    env_file.metadata().await.expect("Can't read metadata");
+                                let metadata = env_file
+                                    .metadata().await
+                                    .expect("Can't read metadata");
                                 if metadata.len() > 0 {
                                     env_file
-                                        .write_all(b"\n")
-                                        .await
+                                        .write_all(b"\n").await
                                         .expect("Error adding newline to .env");
                                 }
 
                                 let entry = format!("ID_{}={}\n", new_id.to_string(), private_key);
                                 env_file
-                                    .write_all(entry.as_bytes())
-                                    .await
+                                    .write_all(entry.as_bytes()).await
                                     .expect("Error writing to the .env");
 
                                 let mut existing_data = Map::new();
-                                if let Ok(mut file) =
-                                    File::
-                                // open("var/data/data.json")
-                                     open("/var/data/data.json")
-                                    .await
+                                if
+                                    let Ok(mut file) = File
+                                        // open("var/data/data.json")
+                                        ::open("/var/data/data.json").await
                                 {
                                     let mut content = String::new();
                                     file.read_to_string(&mut content).await.unwrap();
-                                    existing_data =
-                                        from_str(&content).unwrap_or_else(|_| Map::new());
+                                    existing_data = from_str(&content).unwrap_or_else(|_|
+                                        Map::new()
+                                    );
                                 }
 
                                 existing_data.insert(
                                     format!("ID_{}", new_id.to_string()),
-                                    json!(encryption_details),
+                                    json!(encryption_details)
                                 );
 
-                                println!(
-                                    "Attempting to create or write to var/data/data.json agent_{}",
-                                    new_id
-                                );
+                                println!("Attempting to create or write to var/data/data.json agent_{}", new_id);
                                 let file = OpenOptions::new()
                                     .write(true)
                                     .create(true)
                                     // .open("var/data/data.json")
-                                    .open("/var/data/data.json")
-                                    .await;
+                                    .open("/var/data/data.json").await;
 
                                 match file {
                                     Ok(mut file) => {
-                                        let data = to_string_pretty(&existing_data)
-                                            .unwrap_or_else(|_| String::new());
-                                        file.write_all(data.as_bytes()).await.unwrap_or_else(
-                                            |err| eprintln!("Error writing: {:?}", err),
+                                        let data = to_string_pretty(&existing_data).unwrap_or_else(
+                                            |_| String::new()
+                                        );
+                                        file.write_all(data.as_bytes()).await.unwrap_or_else(|err|
+                                            eprintln!("Error writing: {:?}", err)
                                         );
                                         let mut all_feeds: Vec<String> = Vec::new();
                                         for value in feeds {
@@ -267,58 +261,54 @@ async fn handle_connection(
                                                 all_feeds.push(string_value.to_string());
                                             }
                                         }
-                                        let new_agent = AgentManager::new(&TripleAAgent {
-                                            id: new_id,
-                                            name: title.to_string(),
-                                            bio: bio.to_string(),
-                                            lore: lore.to_string(),
-                                            adjectives: adjectives.to_string(),
-                                            style: style.to_string(),
-                                            knowledge: knowledge.to_string(),
-                                            message_examples: message_examples
-                                                .iter()
-                                                .map(|v| {
-                                                    v.as_array()
-                                                        .unwrap_or(&vec![])
-                                                        .iter()
-                                                        .map(|msg| MessageExample {
-                                                            user: msg["user"]
-                                                                .as_str()
-                                                                .unwrap_or("")
-                                                                .to_string(),
-                                                            content: Text {
-                                                                text: msg["content"]["text"]
+                                        let new_agent = AgentManager::new(
+                                            &(TripleAAgent {
+                                                id: new_id,
+                                                name: title.to_string(),
+                                                bio: bio.to_string(),
+                                                lore: lore.to_string(),
+                                                adjectives: adjectives.to_string(),
+                                                style: style.to_string(),
+                                                knowledge: knowledge.to_string(),
+                                                message_examples: message_examples
+                                                    .iter()
+                                                    .map(|v| {
+                                                        v.as_array()
+                                                            .unwrap_or(&vec![])
+                                                            .iter()
+                                                            .map(|msg| MessageExample {
+                                                                user: msg["user"]
                                                                     .as_str()
                                                                     .unwrap_or("")
                                                                     .to_string(),
-                                                            },
-                                                        })
-                                                        .collect::<Vec<MessageExample>>()
-                                                })
-                                                .collect::<Vec<Vec<MessageExample>>>(),
-                                            model: model.to_string(),
-                                            cover: cover.to_string(),
-                                            custom_instructions: custom_instructions.to_string(),
-                                            wallet: public_address.to_string(),
-                                            clock,
-                                            last_active_time: Utc::now().timestamp() as u32,
-                                            account_address: account_address.to_string(),
-                                            feeds: all_feeds,
-                                        });
+                                                                content: Text {
+                                                                    text: msg["content"]["text"]
+                                                                        .as_str()
+                                                                        .unwrap_or("")
+                                                                        .to_string(),
+                                                                },
+                                                            })
+                                                            .collect::<Vec<MessageExample>>()
+                                                    })
+                                                    .collect::<Vec<Vec<MessageExample>>>(),
+                                                model: model.to_string(),
+                                                cover: cover.to_string(),
+                                                custom_instructions: custom_instructions.to_string(),
+                                                wallet: public_address.to_string(),
+                                                clock,
+                                                last_active_time: Utc::now().timestamp() as u32,
+                                                account_address: account_address.to_string(),
+                                                feeds: all_feeds,
+                                            })
+                                        );
 
                                         match new_agent {
                                             Some(agent) => {
                                                 agents_write.insert(new_id, agent);
-                                                println!(
-                                                    "Agent added at address: {}",
-                                                    public_address
-                                                );
+                                                println!("Agent added at address: {}", public_address);
                                             }
                                             None => {
-                                                eprintln!(
-                                                    "Agent not added at address: {}",
-                                                    public_address
-                                                );
+                                                eprintln!("Agent not added at address: {}", public_address);
                                             }
                                         }
                                     }
@@ -386,11 +376,11 @@ async fn activity_loop(agents: Arc<RwLock<HashMap<u32, AgentManager>>>) {
 fn should_trigger(agent: &TripleAAgent) -> bool {
     let now = Utc::now();
     let seconds_since_midnight = (now.hour() * 3600 + now.minute() * 60 + now.second()) as i32;
-    let diff = (agent.clock as i32 - seconds_since_midnight).abs();
+    let diff = ((agent.clock as i32) - seconds_since_midnight).abs();
 
     let days_since_epoch = (now.timestamp() / 86400) as i32;
 
-    let is_agent_day = days_since_epoch % 5 == agent.id as i32 % 5;
+    let is_agent_day = days_since_epoch % 5 == (agent.id as i32) % 5;
 
     diff <= 500 && is_agent_day
 }

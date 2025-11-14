@@ -110,11 +110,14 @@ Remember: Your goal is to spark genuine intellectual or emotional resonance, not
         );
         Ok(completion)
     } else {
+        let status_code = response.status();
+        let error_text = response.text().await.unwrap_or_else(|_| "Could not read error".to_string());
+        eprintln!("Venice API Error - Status: {}, Response: {}", status_code, error_text);
         return Err(Box::new(io::Error::new(
             io::ErrorKind::Other,
             format!(
-                "Error in obtaining Venice prompt {:?}",
-                response.text().await
+                "Error in obtaining Venice prompt {} - {}",
+                status_code, error_text
             ),
         )));
     }
@@ -204,9 +207,12 @@ Avoid generic terms like "art" or "design" unless absolutely essential to the qu
         println!("Venice call successful for receiving query: {}", completion);
         Ok(completion)
     } else {
+        let status_code = response.status();
+        let error_text = response.text().await.unwrap_or_else(|_| "Could not read error".to_string());
+        eprintln!("Venice API Error (receive_query) - Status: {}, Response: {}", status_code, error_text);
         return Err(Box::new(io::Error::new(
             io::ErrorKind::Other,
-            format!("Error in obtaining Venice prompt {:?}", response.status()),
+            format!("Error in obtaining Venice prompt {} - {}", status_code, error_text),
         )));
     }
 }
@@ -321,9 +327,12 @@ use_image: [YES/NO based on whether the image would enhance or distract from you
         println!("Venice call successful for comment: {}", completion);
         Ok((completion, use_image))
     } else {
+        let status_code = response.status();
+        let error_text = response.text().await.unwrap_or_else(|_| "Could not read error".to_string());
+        eprintln!("Venice API Error (call_comment_completion) - Status: {}, Response: {}", status_code, error_text);
         return Err(Box::new(io::Error::new(
             io::ErrorKind::Other,
-            format!("Error in obtaining Venice prompt {:?}", response.status()),
+            format!("Error in obtaining Venice prompt {} - {}", status_code, error_text),
         )));
     }
 }
@@ -425,9 +434,12 @@ Also follow these custom instructions: {} {}"#,
         println!("Venice call successful: {}", completion);
         Ok(completion)
     } else {
+        let status_code = response.status();
+        let error_text = response.text().await.unwrap_or_else(|_| "Could not read error".to_string());
+        eprintln!("Venice API Error (call_feed_completion) - Status: {}, Response: {}", status_code, error_text);
         return Err(Box::new(io::Error::new(
             io::ErrorKind::Other,
-            format!("Error in obtaining Venice prompt {:?}", response.status()),
+            format!("Error in obtaining Venice prompt {} - {}", status_code, error_text),
         )));
     }
 }
@@ -503,9 +515,12 @@ Description to transform: {}\n\nReference format prompt example to follow: {}", 
         println!("Venice call successful for image prompt: {}", completion);
         Ok(extract_values_prompt(&completion)?)
     } else {
+        let status_code = response.status();
+        let error_text = response.text().await.unwrap_or_else(|_| "Could not read error".to_string());
+        eprintln!("Venice API Error (call_prompt) - Status: {}, Response: {}", status_code, error_text);
         return Err(Box::new(io::Error::new(
             io::ErrorKind::Other,
-            format!("Error in obtaining Venice prompt {:?}", response.status()),
+            format!("Error in obtaining Venice prompt {} - {}", status_code, error_text),
         )));
     }
 }
@@ -599,9 +614,12 @@ pub async fn call_image_details(
             &completion,
         )?)
     } else {
+        let status_code = response.status();
+        let error_text = response.text().await.unwrap_or_else(|_| "Could not read error".to_string());
+        eprintln!("Venice API Error (call_image_details) - Status: {}, Response: {}", status_code, error_text);
         return Err(Box::new(io::Error::new(
             io::ErrorKind::Other,
-            format!("Error in obtaining Venice prompt {:?}", response.status()),
+            format!("Error in obtaining Venice prompt {} - {}", status_code, error_text),
         )));
     }
 }
@@ -676,9 +694,12 @@ pub async fn call_drop_details(
         println!("Venice call successful for drop prompt: {}", completion);
         Ok(extract_values_drop(&completion)?)
     } else {
+        let status_code = response.status();
+        let error_text = response.text().await.unwrap_or_else(|_| "Could not read error".to_string());
+        eprintln!("Venice API Error (call_drop_details) - Status: {}, Response: {}", status_code, error_text);
         return Err(Box::new(io::Error::new(
             io::ErrorKind::Other,
-            format!("Error in obtaining Venice prompt {:?}", response.status()),
+            format!("Error in obtaining Venice prompt {} - {}", status_code, error_text),
         )));
     }
 }

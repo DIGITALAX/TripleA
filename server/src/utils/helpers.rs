@@ -191,7 +191,9 @@ pub async fn handle_agents() -> Result<HashMap<u32, AgentManager>, Box<dyn Error
         "#,
     });
     from_filename(".env").ok();
-    let graph_url: String = var("GRAPH_NODE_URL").expect("GRAPH_NODE_URL not configured in .env");
+    let graph_url: String = var("GRAPH_NODE_URL").expect(
+        "GRAPH_NODE_URL not configured in .env"
+    );
     let res = client.post(graph_url).json(&query).send().await;
 
     match res {
@@ -288,10 +290,7 @@ pub async fn handle_agents() -> Result<HashMap<u32, AgentManager>, Box<dyn Error
                                     .collect::<Vec<MessageExample>>()
                             })
                             .collect::<Vec<Vec<MessageExample>>>(),
-                        model: metadata_filled["model"]
-                            .as_str()
-                            .unwrap_or("qwen3-4b")
-                            .to_string(),
+                        model: metadata_filled["model"].as_str().unwrap_or("qwen3-4b").to_string(),
                         cover: metadata_filled["cover"].as_str().unwrap_or("").to_string(),
                         custom_instructions: metadata_filled["customInstructions"]
                             .as_str()
@@ -341,7 +340,9 @@ pub async fn handle_token_thresholds(irl: bool) -> Result<Vec<U256>, Box<dyn Err
         "#,
     });
     from_filename(".env").ok();
-    let graph_url: String = var("GRAPH_NODE_URL").expect("GRAPH_NODE_URL not configured in .env");
+    let graph_url: String = var("GRAPH_NODE_URL").expect(
+        "GRAPH_NODE_URL not configured in .env"
+    );
     let res = client.post(graph_url).json(&query).send().await;
 
     match res {
@@ -725,7 +726,9 @@ async fn get_drop_details(
     }
     });
     from_filename(".env").ok();
-    let graph_url: String = var("GRAPH_NODE_URL").expect("GRAPH_NODE_URL not configured in .env");
+    let graph_url: String = var("GRAPH_NODE_URL").expect(
+        "GRAPH_NODE_URL not configured in .env"
+    );
     let res = client.post(graph_url).json(&query).send().await;
 
     match res {
@@ -807,7 +810,9 @@ pub async fn find_collection(
     });
 
     from_filename(".env").ok();
-    let graph_url: String = var("GRAPH_NODE_URL").expect("GRAPH_NODE_URL not configured in .env");
+    let graph_url: String = var("GRAPH_NODE_URL").expect(
+        "GRAPH_NODE_URL not configured in .env"
+    );
     let res = client.post(graph_url).json(&query).send().await;
 
     match res {
